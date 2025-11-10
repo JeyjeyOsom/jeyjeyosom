@@ -164,8 +164,8 @@ export default function Contact() {
             disabled={status === "sending"}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className={`w-full py-3 rounded-lg font-medium text-white transition ${
-              status === "sending" ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+            className={`w-full py-3 rounded-lg font-medium text-white border border-gray-700 transition ${
+              status === "sending" ? "bg-blue-400 cursor-not-allowed" : "hover:border-indigo-400 hover:bg-indigo-600"
             }`}
           >
             {status === "sending" ? "Sending..." : "Send Message"}

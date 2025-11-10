@@ -39,16 +39,19 @@ export default function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-lg text-gray-400 max-w-xl"
+        className="text-lg max-w-xl"
       >
-        Full Stack Developer crafting scalable, elegant, and impactful web
+        <span className="text-blue-400 font-bold mr-1">
+        Full Stack Developer 
+        </span> 
+        crafting scalable, elegant, and impactful web
         experiences.
       </motion.p>
       <motion.a
         href="#projects"
         whileHover={{ scale: 1.05 }}
         transition={{ type: "spring", stiffness: 200 }}
-        className="mt-8 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-blue-500 transition"
+        className="px-5 py-2 rounded-full border border-gray-700 hover:border-indigo-400 hover:bg-indigo-600 mt-8"
       >
         View My Work
       </motion.a>
