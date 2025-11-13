@@ -30,7 +30,7 @@ export default function Projects() {
   return (
     <section
       id="projects"
-      className="relative py-24 px-6 md:px-8 text-gray-300 overflow-hidden"
+      className="relative py-24 px-6 md:px-8 text-gray-300"
     >
       {/* Header */}
       <motion.h2

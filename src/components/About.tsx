@@ -6,6 +6,7 @@ export default function About() {
       id="about"
       className="relative px-6 md:px-8 py-24 max-w-4xl mx-auto text-center text-gray-300"
     >
+
       <motion.h2
         className="text-4xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500"
         initial={{ opacity: 0, y: 20 }}

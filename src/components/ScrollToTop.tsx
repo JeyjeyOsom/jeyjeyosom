@@ -31,7 +31,7 @@ export default function ScrollToTop() {
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.3 }}
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 z-[9999] rounded-full bg-blue-500/90 backdrop-blur-sm p-3 text-white shadow-[0_4px_15px_rgba(59,130,246,0.4)] hover:bg-blue-600 focus:outline-none"
+          className="fixed bottom-6 right-6 z-49 rounded-full bg-blue-500/90 backdrop-blur-sm p-3 text-white shadow-[0_4px_15px_rgba(59,130,246,0.4)] hover:bg-blue-600 focus:outline-none"
         >
           <motion.div
             whileHover={{ y: -2 }}

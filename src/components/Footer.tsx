@@ -4,17 +4,17 @@ import { Github, Linkedin, Mail } from "lucide-react"
 export default function Footer() {
   const socials = [
     {
-      href: "https://github.com/yourusername",
+      href: "https://github.com/JeyjeyOsom",
       icon: <Github className="w-5 h-5" />,
       label: "GitHub",
     },
     {
-      href: "https://linkedin.com/in/yourusername",
+      href: "https://www.linkedin.com/in/jeyjey0som96/",
       icon: <Linkedin className="w-5 h-5" />,
       label: "LinkedIn",
     },
     {
-      href: "mailto:yourname@email.com",
+      href: "mailto:jrodejon@gmail.com",
       icon: <Mail className="w-5 h-5" />,
       label: "Email",
     },
@@ -33,7 +33,7 @@ export default function Footer() {
         {/* Left side */}
         <div className="text-center md:text-left">
           <p className="text-sm">
-            Built with ❤️ by{" "}
+            Built with purpose by{" "}
             <span className="text-blue-400 font-medium">Juan Dejon</span>
           </p>
           <p className="text-xs text-gray-500">
