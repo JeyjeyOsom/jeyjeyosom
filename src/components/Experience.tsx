@@ -2,16 +2,17 @@ import {
   motion,
   useScroll,
   useTransform,
-  useMotionValueEvent,
+  useSpring,
+  useVelocity,
 } from "framer-motion"
-import { useRef, useState } from "react"
+import { useRef } from "react"
 import { Briefcase } from "lucide-react"
 
 const experiences = [
   {
     role: "Full Stack Developer",
     company: "PFG",
-    period: "2022 — Present",
+    period: "FEBRUARY 2024 — Present",
     description: [
       "Developed and maintained production-grade applications using AdonisJS, Vue.js, and TypeScript.",
       "Integrated Redis and AWS S3 for caching, file storage, and signed URL generation to optimize performance.",
@@ -32,29 +33,26 @@ const experiences = [
   },
   {
     role: "Frontend Developer",
-    company: "Freelance / Independent Projects",
-    period: "2021 — 2022",
+    company: "Dexio Group",
+    period: "SEPTEMBER 2023 - FEBRUARY 2024",
     description: [
-      "Built responsive and visually engaging web interfaces using Vue.js and React.",
-      "Collaborated with clients to translate design concepts into functional, production-ready frontends.",
-      "Integrated REST APIs and dynamic routing with modern frameworks for smooth, scalable UIs.",
+      "Built responsive and visually engaging web interfaces using React.",
+      "Collaborated with the team to translate design concepts into functional, production-ready frontends.",
       "Focused on optimizing performance and accessibility through reusable component design.",
-      "Gained experience with cloud hosting platforms like Vercel and Netlify for rapid deployment.",
     ],
     tech: [
-      "Vue.js",
       "React",
       "JavaScript (ES6+)",
-      "Tailwind CSS",
+      "Express.js",
+      "CSS",
       "Vercel",
-      "Netlify",
-      "Git",
+      "Git(GitLab)",
     ],
   },
   {
     role: "Junior Web Developer (Internship)",
-    company: "Local Tech Startup",
-    period: "2020 — 2021",
+    company: "Virtual Staffing Solutions OPC.",
+    period: "FEBRUARY 2023 - JULY 2023",
     description: [
       "Assisted in developing internal tools and dashboards using basic HTML, CSS, and JavaScript.",
       "Contributed to small backend tasks under senior supervision, gaining early exposure to Node.js.",
@@ -69,27 +67,25 @@ export default function Experience() {
   const timelineRef = useRef(null)
   const { scrollYProgress } = useScroll({
     target: timelineRef,
-    offset: ["start 100px", "end end"],
+    offset: ["start 75px", "end end"],
   })
 
   const height = useTransform(scrollYProgress, [0, 1], ["0%", "100%"])
-  const [activeIndex, setActiveIndex] = useState(0)
-
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    const index = Math.min(
-      experiences.length - 1,
-      Math.floor(progress * experiences.length)
-    )
-    setActiveIndex(index)
+  const smoothHeight = useSpring(height, {
+    stiffness: 40,
+    damping: 20,
+    mass: 1.2,
   })
+
+  const scrollVelocity = useVelocity(scrollYProgress)
+  const shimmerSpeed = useTransform(scrollVelocity, [-1, 0, 1], [0.5, 1, 2])
 
   return (
     <section
       id="experience"
-      className="relative py-24 px-6 md:px-8 text-gray-300 overflow-hidden"
+      className="relative py-24 px-6 md:px-8 text-gray-300"
     >
       <div className="max-w-5xl mx-auto relative">
-        {/* Section Header */}
         <motion.h2
           className="text-4xl font-bold mb-12 text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500"
           initial={{ opacity: 0, y: 20 }}
@@ -99,41 +95,43 @@ export default function Experience() {
           Work Experience
         </motion.h2>
 
-        {/* Scroll Counter */}
-        <motion.div
-          className="fixed left-10 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium hidden lg:block"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <motion.span
-            key={activeIndex}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="block text-indigo-400 font-semibold"
-          >
-            {String(activeIndex + 1).padStart(2, "0")}
-          </motion.span>
-          <span className="text-gray-600">
-            / {String(experiences.length).padStart(2, "0")}
-          </span>
-        </motion.div>
-
-        {/* Timeline Wrapper */}
         <div ref={timelineRef} className="relative">
-
-          {/* Background line */}
           <div className="absolute left-[11px] top-0 w-[2px] h-full bg-gray-800 rounded-full" />
 
-          {/* Glowing progress bar */}
           <motion.div
-            style={{ height }}
-            className="absolute left-[11px] top-0 w-[2px] rounded-full bg-gradient-to-b from-indigo-500 via-blue-500 to-transparent shadow-[0_0_15px_4px_rgba(79,70,229,0.4)] origin-top"
-          />
+            style={{ height: smoothHeight }}
+            animate={{
+              opacity: [0.8, 1, 0.8],
+              boxShadow: [
+                "0 0 15px 4px rgba(79,70,229,0.4)",
+                "0 0 25px 6px rgba(99,102,241,0.6)",
+                "0 0 15px 4px rgba(79,70,229,0.4)",
+              ],
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="absolute left-[11px] top-0 w-[2px] rounded-full bg-gradient-to-b from-indigo-500 via-blue-500 to-transparent origin-top overflow-hidden"
+          >
+            <motion.div
+              className="absolute left-0 top-0 w-full h-[150px] bg-gradient-to-b from-white/40 via-white/10 to-transparent blur-sm"
+              animate={{
+                y: ["-150px", "100%"],
+              }}
+              transition={{
+                ease: "easeInOut",
+                duration: 6, 
+                repeat: Infinity,
+                repeatType: "loop",
+              }}
+              style={{
+                animationDuration: shimmerSpeed,
+              }}
+            />
+          </motion.div>
 
-          {/* Experience Cards */}
           {experiences.map((exp, index) => (
             <motion.div
               key={index}
@@ -142,12 +140,10 @@ export default function Experience() {
               transition={{ duration: 0.6, delay: index * 0.2 }}
               className="mb-12 ml-6 relative"
             >
-              {/* Timeline Icon */}
-              <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-indigo-500 rounded-full ring-4 ring-gray-950">
+              <span className="absolute z-10 -left-6 flex items-center justify-center w-5 h-5 bg-indigo-500 rounded-full ring-4 ring-gray-950">
                 <Briefcase size={14} className="text-white" />
               </span>
 
-              {/* Card */}
               <div className="bg-gray-900/70 backdrop-blur-md border border-gray-800 rounded-2xl p-6 hover:border-indigo-500/50 transition">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
                   <h3 className="text-xl font-semibold text-white">
@@ -174,7 +170,6 @@ export default function Experience() {
                   ))}
                 </ul>
 
-                {/* Tech Stack */}
                 <div className="flex flex-wrap gap-2 mt-4">
                   {exp.tech.map((t, i) => (
                     <motion.span
@@ -194,7 +189,6 @@ export default function Experience() {
         </div>
       </div>
 
-      {/* Floating ambient glow */}
       <motion.div
         className="absolute -top-40 right-0 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-indigo-500 via-blue-600 to-transparent opacity-20 blur-3xl"
         animate={{ y: [0, 20, 0] }}
