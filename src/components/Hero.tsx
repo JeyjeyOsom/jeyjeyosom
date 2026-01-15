@@ -26,17 +26,17 @@ export default function Hero() {
   useEffect(() => {
     controls.start({
       background: [
-        "radial-gradient(circle at 20% 30%, #4f46e5, transparent 50%)",
-        "radial-gradient(circle at 80% 70%, #9333ea, transparent 50%)",
-        "radial-gradient(circle at 40% 80%, #0ea5e9, transparent 50%)",
-        "radial-gradient(circle at 20% 30%, #4f46e5, transparent 50%)",
+        "radial-gradient(circle at 20% 30%, #6366f1, transparent 50%)",
+        "radial-gradient(circle at 80% 70%, #a855f7, transparent 50%)",
+        "radial-gradient(circle at 40% 80%, #06b6d4, transparent 50%)",
+        "radial-gradient(circle at 20% 30%, #6366f1, transparent 50%)",
       ],
-      borderColor: ["#4f46e5", "#9333ea", "#0ea5e9", "#4f46e5"],
+      borderColor: ["#6366f1", "#a855f7", "#06b6d4", "#6366f1"],
       boxShadow: [
-        "0 0 40px 10px rgba(79,70,229,0.35)",
-        "0 0 40px 10px rgba(147,51,234,0.35)",
-        "0 0 40px 10px rgba(14,165,233,0.35)",
-        "0 0 40px 10px rgba(79,70,229,0.35)",
+        "0 0 30px 5px rgba(99,102,241,0.2)",
+        "0 0 30px 5px rgba(168,85,247,0.2)",
+        "0 0 30px 5px rgba(6,182,212,0.2)",
+        "0 0 30px 5px rgba(99,102,241,0.2)",
       ],
       transition: {
         duration: 18,
@@ -49,10 +49,11 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      className="flex flex-col items-center justify-center text-center h-[80vh] px-6"
+      className="relative flex flex-col items-center justify-center text-center h-[100vh] px-6  bg-white dark:bg-gray-900 transition-colors duration-500"
     >
+      {/* Dynamic Background Glow */}
       <motion.div
-        className="absolute inset-0 opacity-40 blur-3xl pointer-events-none"
+        className="absolute inset-0 opacity-20 dark:opacity-40 blur-3xl pointer-events-none"
         animate={controls}
       />
 
@@ -71,22 +72,18 @@ export default function Hero() {
           borderStyle: "solid",
         }}
         animate={controls}
-        transition={{
-          duration: 18,
-          repeat: Infinity,
-          ease: "linear",
-        }}
       >
         <img
           src="/dasd.jpg"
           alt="Juan Dejon"
-          className="object-cover w-full h-full rounded-full"
+          className="object-cover w-full h-full rounded-full bg-slate-100"
         />
+        {/* Overlay for depth */}
         <motion.div
-          className="absolute inset-0 rounded-full bg-gradient-to-t from-gray-900/60 to-transparent pointer-events-none"
+          className="absolute inset-0 rounded-full bg-gradient-to-t from-slate-900/20 dark:from-gray-900/60 to-transparent pointer-events-none"
           animate={{
             background: isHovering
-              ? "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), transparent 70%)"
+              ? "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), transparent 70%)"
               : "radial-gradient(circle at 50% 50%, rgba(255,255,255,0), transparent 70%)",
           }}
           transition={{ duration: 0.7 }}
@@ -97,18 +94,18 @@ export default function Hero() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="text-5xl font-bold mb-4"
+        className="text-5xl font-extrabold mb-4 text-slate-900 dark:text-white tracking-tight"
       >
-        Hi, I’m <span className="text-blue-400">Juan Dejon</span>
+        Hi, I’m <span className="text-blue-600 dark:text-blue-400">Juan Dejon</span>
       </motion.h1>
 
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        className="text-lg max-w-xl text-gray-300"
+        className="text-lg max-w-xl text-slate-600 dark:text-gray-300 leading-relaxed"
       >
-        <span className="text-blue-400 font-bold mr-1">
+        <span className="text-blue-600 dark:text-blue-400 font-bold mr-1">
           Full Stack Developer
         </span>
         crafting scalable, elegant, and impactful web experiences.
@@ -117,8 +114,14 @@ export default function Hero() {
       <motion.a
         href="#projects"
         whileHover={{ scale: 1.05 }}
-        transition={{ type: "spring", stiffness: 200 }}
-        className="px-5 py-2 rounded-full border border-gray-700 hover:border-indigo-400 hover:bg-indigo-600 mt-8"
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        className="mt-8 px-8 py-3 rounded-full font-semibold text-sm 
+                   border border-slate-200 dark:border-gray-700 
+                   text-slate-900 dark:text-white
+                   hover:bg-slate-900 hover:text-white 
+                   dark:hover:bg-blue-600 dark:hover:border-blue-600
+                   transition-all duration-300 shadow-sm"
       >
         View My Work
       </motion.a>

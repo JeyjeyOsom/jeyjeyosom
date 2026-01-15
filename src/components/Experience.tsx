@@ -83,29 +83,32 @@ export default function Experience() {
   return (
     <section
       id="experience"
-      className="relative py-24 px-6 md:px-8 text-gray-300"
+      className="relative py-24 px-6 md:px-8 text-slate-600 dark:text-gray-300 transition-colors duration-500"
     >
       <div className="max-w-5xl mx-auto relative">
         <motion.h2
-          className="text-4xl font-bold mb-12 text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500"
+          className="text-4xl font-bold mb-16 text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-400 dark:to-blue-500"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           Work Experience
         </motion.h2>
 
         <div ref={timelineRef} className="relative">
-          <div className="absolute left-[11px] top-0 w-[2px] h-full bg-gray-800 rounded-full" />
+          {/* Static Background Line */}
+          <div className="absolute left-[11px] top-0 w-[2px] h-full bg-slate-200 dark:bg-gray-800 rounded-full" />
 
+          {/* Animated Progress Line */}
           <motion.div
             style={{ height: smoothHeight }}
             animate={{
-              opacity: [0.8, 1, 0.8],
+              opacity: [0.6, 1, 0.6],
               boxShadow: [
-                "0 0 15px 4px rgba(79,70,229,0.4)",
-                "0 0 25px 6px rgba(99,102,241,0.6)",
-                "0 0 15px 4px rgba(79,70,229,0.4)",
+                "0 0 10px 2px rgba(79,70,229,0.2)",
+                "0 0 20px 4px rgba(99,102,241,0.4)",
+                "0 0 10px 2px rgba(79,70,229,0.2)",
               ],
             }}
             transition={{
@@ -113,22 +116,13 @@ export default function Experience() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute left-[11px] top-0 w-[2px] rounded-full bg-gradient-to-b from-indigo-500 via-blue-500 to-transparent origin-top overflow-hidden"
+            className="absolute left-[11px] top-0 w-[2px] rounded-full bg-gradient-to-b from-indigo-500 via-blue-500 to-transparent origin-top overflow-hidden z-20"
           >
+             {/* Shimmer Effect */}
             <motion.div
-              className="absolute left-0 top-0 w-full h-[150px] bg-gradient-to-b from-white/40 via-white/10 to-transparent blur-sm"
-              animate={{
-                y: ["-150px", "100%"],
-              }}
-              transition={{
-                ease: "easeInOut",
-                duration: 6, 
-                repeat: Infinity,
-                repeatType: "loop",
-              }}
-              style={{
-                animationDuration: shimmerSpeed,
-              }}
+              className="absolute left-0 top-0 w-full h-[150px] bg-gradient-to-b from-white/60 via-white/20 to-transparent blur-sm"
+              animate={{ y: ["-150px", "1000%"] }}
+              transition={{ ease: "linear", duration: 8, repeat: Infinity }}
             />
           </motion.div>
 
@@ -137,50 +131,48 @@ export default function Experience() {
               key={index}
               initial={{ opacity: 0, x: -40 }}
               whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.2 }}
-              className="mb-12 ml-6 relative"
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: index * 0.1 }}
+              className="mb-16 ml-8 relative"
             >
-              <span className="absolute z-10 -left-6 flex items-center justify-center w-5 h-5 bg-indigo-500 rounded-full ring-4 ring-gray-950">
-                <Briefcase size={14} className="text-white" />
+              {/* Timeline Icon */}
+              <span className="absolute z-30 -left-[31px] flex items-center justify-center w-6 h-6 bg-indigo-600 dark:bg-indigo-500 rounded-full ring-4 ring-white dark:ring-gray-950 shadow-sm">
+                <Briefcase size={12} className="text-white" />
               </span>
 
-              <div className="bg-gray-900/70 backdrop-blur-md border border-gray-800 rounded-2xl p-6 hover:border-indigo-500/50 transition">
+              {/* Card */}
+              <div className="bg-slate-50/50 dark:bg-gray-900/70 backdrop-blur-md border border-slate-200 dark:border-gray-800 rounded-2xl p-6 md:p-8 hover:border-indigo-400 dark:hover:border-indigo-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                  <h3 className="text-xl font-semibold text-white">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">
                     {exp.role}
                   </h3>
-                  <span className="text-sm text-gray-500 italic">
+                  <span className="text-xs font-semibold tracking-wider text-slate-400 dark:text-gray-500 uppercase">
                     {exp.period}
                   </span>
                 </div>
-                <p className="text-indigo-400 font-medium mb-3">
+                
+                <p className="text-indigo-600 dark:text-indigo-400 font-bold mb-4">
                   {exp.company}
                 </p>
 
-                <ul className="list-disc list-inside space-y-2 text-gray-400 text-sm text-left">
+                <ul className="space-y-3 text-slate-600 dark:text-gray-400 text-sm">
                   {exp.description.map((line, i) => (
-                    <motion.li
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.1 }}
-                    >
-                      {line}
-                    </motion.li>
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                      <span>{line}</span>
+                    </li>
                   ))}
                 </ul>
 
-                <div className="flex flex-wrap gap-2 mt-4">
+                {/* Tech Tags */}
+                <div className="flex flex-wrap gap-2 mt-6">
                   {exp.tech.map((t, i) => (
-                    <motion.span
+                    <span
                       key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 + i * 0.05 }}
-                      className="px-3 py-1 text-xs bg-gray-800/80 text-gray-300 rounded-full border border-gray-700 hover:border-indigo-400 transition"
+                      className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-300 rounded-lg border border-slate-200 dark:border-gray-700 hover:border-indigo-400 transition-colors"
                     >
                       {t}
-                    </motion.span>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -189,10 +181,11 @@ export default function Experience() {
         </div>
       </div>
 
+      {/* Decorative Background Blob */}
       <motion.div
-        className="absolute -top-40 right-0 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-indigo-500 via-blue-600 to-transparent opacity-20 blur-3xl"
-        animate={{ y: [0, 20, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -top-40 right-0 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-indigo-100 via-blue-100 to-transparent dark:from-indigo-500/10 dark:via-blue-600/10 opacity-50 blur-3xl -z-10"
+        animate={{ y: [0, 30, 0] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
     </section>
   )

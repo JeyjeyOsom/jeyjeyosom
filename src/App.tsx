@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Navbar from "./components/Navbar"
 import Hero from "./components/Hero"
 import About from "./components/About"
@@ -11,17 +11,30 @@ import Skills from './components/Skills'
 import Experience from './components/Experience'
 
 export default function App() {
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    // Load previous theme from localStorage
+    return localStorage.getItem("theme") === "dark"
+  })
 
+  // Apply dark mode class to <html>
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add("dark")
+      localStorage.setItem("theme", "dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+      localStorage.setItem("theme", "light")
+    }
+  }, [dark])
 
   return (
     <div className={dark ? "dark" : ""}>
-      <div className="min-h-screen bg-gray-900 text-gray-100 transition-colors duration-300">
+      <div className="min-h-screen  bg-white dark:bg-gray-900 text-gray-100 transition-colors duration-500">
         {/* Navbar */}
         <Navbar dark={dark} setDark={setDark} />
 
         {/* Sections */}
-        <main className="space-y-24 pt-24">
+        <main >
           <ScrollProgress />
           <Hero />
           <About />

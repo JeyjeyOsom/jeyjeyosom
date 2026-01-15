@@ -30,13 +30,14 @@ export default function Projects() {
   return (
     <section
       id="projects"
-      className="relative py-24 px-6 md:px-8 text-gray-300"
+      className="relative py-24 px-6 md:px-8 text-slate-600 dark:text-gray-300 transition-colors duration-500"
     >
       {/* Header */}
       <motion.h2
-        className="text-4xl font-bold mb-12 text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500"
+        className="text-4xl font-bold mb-16 text-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-400 dark:to-blue-500"
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
         transition={{ duration: 0.6 }}
       >
         Featured Projects
@@ -49,22 +50,26 @@ export default function Projects() {
             key={index}
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
             transition={{ duration: 0.6, delay: index * 0.15 }}
-            whileHover={{ y: -5 }}
-            className="group relative bg-gray-900/70 backdrop-blur-md border border-gray-800 rounded-2xl p-6 shadow-md hover:shadow-indigo-500/20 transition"
+            whileHover={{ y: -8 }}
+            className="group relative bg-white/70 dark:bg-gray-900/70 backdrop-blur-md border border-slate-200 dark:border-gray-800 rounded-3xl p-7 shadow-sm hover:shadow-2xl hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20 transition-all duration-300"
           >
-            {/* Icon */}
-            <div className="flex justify-between items-center mb-3">
-              <Code2 className="text-indigo-400" />
-              <div className="flex gap-3">
+            {/* Header: Icon & Links */}
+            <div className="flex justify-between items-center mb-6">
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
+                <Code2 size={22} />
+              </div>
+              <div className="flex gap-4">
                 {project.github && (
                   <a
                     href={project.github}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-indigo-400 transition"
+                    className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    aria-label="GitHub Repository"
                   >
-                    <Github size={18} />
+                    <Github size={20} />
                   </a>
                 )}
                 {project.demo && (
@@ -72,51 +77,46 @@ export default function Projects() {
                     href={project.demo}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-400 hover:text-indigo-400 transition"
+                    className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                    aria-label="Live Demo"
                   >
-                    <ExternalLink size={18} />
+                    <ExternalLink size={20} />
                   </a>
                 )}
               </div>
             </div>
 
             {/* Title & Description */}
-            <h3 className="text-xl font-semibold text-white mb-2">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
               {project.title}
             </h3>
-            <p className="text-gray-400 text-sm mb-4 leading-relaxed">
+            <p className="text-slate-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
               {project.description}
             </p>
 
             {/* Tech Stack */}
             <div className="flex flex-wrap gap-2">
               {project.tech.map((tech, i) => (
-                <motion.span
+                <span
                   key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + i * 0.05 }}
-                  className="px-3 py-1 text-xs bg-gray-800/80 text-gray-300 rounded-full border border-gray-700 hover:border-indigo-400 transition"
+                  className="px-3 py-1 text-[11px] font-bold tracking-tight bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 rounded-lg border border-slate-200/50 dark:border-gray-700 transition-colors"
                 >
                   {tech}
-                </motion.span>
+                </span>
               ))}
             </div>
 
-            {/* Hover Glow */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-600/20 to-blue-600/20 opacity-0 group-hover:opacity-100 blur-2xl transition duration-500"
-              layoutId={`glow-${index}`}
-            />
+            {/* Subtle Hover Gradient (Light Mode Optimized) */}
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-indigo-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           </motion.div>
         ))}
       </div>
 
-      {/* Floating ambient background */}
+      {/* Background ambient decoration */}
       <motion.div
-        className="absolute -bottom-40 left-0 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-blue-600 via-indigo-500 to-transparent opacity-20 blur-3xl"
-        animate={{ y: [0, 20, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -bottom-40 left-0 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-blue-100 via-indigo-50 to-transparent dark:from-blue-900/10 dark:via-indigo-900/10 opacity-60 blur-3xl -z-10"
+        animate={{ y: [0, 30, 0], scale: [1, 1.1, 1] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
     </section>
   )
