@@ -5,17 +5,17 @@ export default function Footer() {
   const socials = [
     {
       href: "https://github.com/JeyjeyOsom",
-      icon: <Github className="w-5 h-5" />,
+      icon: <Github className="w-4 h-4" />,
       label: "GitHub",
     },
     {
       href: "https://www.linkedin.com/in/jeyjey0som96/",
-      icon: <Linkedin className="w-5 h-5" />,
+      icon: <Linkedin className="w-4 h-4" />,
       label: "LinkedIn",
     },
     {
       href: "mailto:jrodejon@gmail.com",
-      icon: <Mail className="w-5 h-5" />,
+      icon: <Mail className="w-4 h-4" />,
       label: "Email",
     },
   ]
@@ -23,43 +23,56 @@ export default function Footer() {
   return (
     <motion.footer
       id="footer"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      transition={{ duration: 1 }}
       viewport={{ once: true }}
-      className="border-t border-slate-200 dark:border-gray-800 py-12 bg-white dark:bg-gray-950/90 text-slate-500 dark:text-gray-400 transition-colors duration-500"
+      className="py-20 px-6 bg-white dark:bg-[#0a0a0a] transition-colors duration-500"
     >
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 px-6">
-        {/* Branding & Copyright */}
-        <div className="text-center md:text-left space-y-1">
-          <p className="text-sm font-medium text-slate-700 dark:text-gray-300">
-            Built with purpose by{" "}
-            <span className="text-indigo-600 dark:text-blue-400 font-bold tracking-tight">
-              Juan Dejon
-            </span>
-          </p>
-          <p className="text-xs text-slate-400 dark:text-gray-500 italic">
-            © {new Date().getFullYear()} All rights reserved. Built with React & Tailwind.
-          </p>
-        </div>
+      <div className="max-w-6xl mx-auto">
+        {/* Subtle top divider line */}
+        <div className="w-full h-[1px] bg-slate-100 dark:bg-gray-900 mb-12" />
 
-        {/* Social Links */}
-        <div className="flex items-center gap-6">
-          {socials.map((social) => (
-            <motion.a
-              key={social.label}
-              href={social.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-full bg-slate-50 dark:bg-gray-900 text-slate-400 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-blue-400 border border-slate-100 dark:border-gray-800 transition-all shadow-sm hover:shadow-md"
-              whileHover={{ y: -3, scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              title={social.label}
-            >
-              {social.icon}
-              <span className="sr-only">{social.label}</span>
-            </motion.a>
-          ))}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-10">
+          
+          {/* Left: Branding */}
+          <div className="flex flex-col items-center md:items-start space-y-2">
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white">
+              Juan Dejon.
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-gray-600 uppercase tracking-widest">
+              © {new Date().getFullYear()} — Engineering with purpose.
+            </p>
+          </div>
+
+          {/* Center/Right: Social Links as Textual Buttons */}
+          <div className="flex items-center gap-8">
+            {socials.map((social) => (
+              <motion.a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-white transition-colors duration-300 group"
+                whileHover={{ y: -2 }}
+                title={social.label}
+              >
+                <span className="p-1.5 rounded-full border border-transparent group-hover:border-slate-100 dark:group-hover:border-gray-800 transition-all">
+                  {social.icon}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">
+                  {social.label}
+                </span>
+              </motion.a>
+            ))}
+          </div>
+
+          {/* Right: Small Tech Stack Note */}
+          <div className="hidden lg:block">
+             <p className="text-[10px] text-slate-300 dark:text-gray-800 font-serif italic">
+               Built with React & Tailwind
+             </p>
+          </div>
         </div>
       </div>
     </motion.footer>

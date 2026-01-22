@@ -9,6 +9,7 @@ import Footer from "./components/Footer"
 import Contact from "./components/Contact"
 import Skills from './components/Skills'
 import Experience from './components/Experience'
+import Noise from './components/Noise'
 
 export default function App() {
   const [dark, setDark] = useState(() => {
@@ -30,12 +31,10 @@ export default function App() {
   return (
     <div className={dark ? "dark" : ""}>
       <div className="min-h-screen  bg-white dark:bg-gray-900 text-gray-100 transition-colors duration-500">
-        {/* Navbar */}
         <Navbar dark={dark} setDark={setDark} />
-
-        {/* Sections */}
         <main >
-          <ScrollProgress />
+          {/* <ScrollProgress /> */}
+          <Noise />
           <Hero />
           <About />
           <Experience />

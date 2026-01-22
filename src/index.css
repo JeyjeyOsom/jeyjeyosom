@@ -13,3 +13,14 @@ body {
 ::selection {
   @apply bg-blue-600 text-white;
 }
+
+/* In your global CSS file */
+::selection {
+  background-color: #4f46e5; /* Your Indigo-600 */
+  color: white;
+}
+
+.dark ::selection {
+  background-color: #ffffff;
+  color: #000000;
+}
