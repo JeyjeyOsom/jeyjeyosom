@@ -2,129 +2,92 @@ import { motion, useAnimation, useMotionValue, useTransform } from "framer-motio
 import { useEffect, useState } from "react"
 
 export default function Hero() {
-  const [isHovering, setIsHovering] = useState(false)
-  const controls = useAnimation()
-
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rotateX = useTransform(y, [-50, 50], [15, -15])
-  const rotateY = useTransform(x, [-50, 50], [-15, 15])
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const offsetX = e.clientX - rect.left - rect.width / 2
-    const offsetY = e.clientY - rect.top - rect.height / 2
-    x.set(offsetX / 10)
-    y.set(offsetY / 10)
-  }
-
-  const resetTilt = () => {
-    x.set(0)
-    y.set(0)
-  }
-
-  useEffect(() => {
-    controls.start({
-      background: [
-        "radial-gradient(circle at 20% 30%, #6366f1, transparent 50%)",
-        "radial-gradient(circle at 80% 70%, #a855f7, transparent 50%)",
-        "radial-gradient(circle at 40% 80%, #06b6d4, transparent 50%)",
-        "radial-gradient(circle at 20% 30%, #6366f1, transparent 50%)",
-      ],
-      borderColor: ["#6366f1", "#a855f7", "#06b6d4", "#6366f1"],
-      boxShadow: [
-        "0 0 30px 5px rgba(99,102,241,0.2)",
-        "0 0 30px 5px rgba(168,85,247,0.2)",
-        "0 0 30px 5px rgba(6,182,212,0.2)",
-        "0 0 30px 5px rgba(99,102,241,0.2)",
-      ],
-      transition: {
-        duration: 18,
-        repeat: Infinity,
-        ease: "linear",
-      },
-    })
-  }, [controls])
-
   return (
-    <section
-      id="hero"
-      className="relative flex flex-col items-center justify-center text-center h-[100vh] px-6  bg-white dark:bg-gray-900 transition-colors duration-500"
-    >
-      {/* Dynamic Background Glow */}
-      <motion.div
-        className="absolute inset-0 opacity-20 dark:opacity-40 blur-3xl pointer-events-none"
-        animate={controls}
-      />
+    <section id="hero" className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-8 transition-colors duration-500 bg-white dark:bg-[#0a0a0a]">
+      
+      {/* Background Subtle Accent */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 -right-20 w-[500px] h-[500px] bg-indigo-50/50 dark:bg-indigo-950/10 rounded-full blur-[120px]" />
+      </div>
 
-      <motion.div
-        className="relative mx-auto mb-8 w-40 h-40 rounded-full overflow-hidden cursor-pointer"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => {
-          resetTilt()
-          setIsHovering(false)
-        }}
-        onMouseEnter={() => setIsHovering(true)}
-        style={{
-          rotateX,
-          rotateY,
-          borderWidth: "4px",
-          borderStyle: "solid",
-        }}
-        animate={controls}
-      >
-        <img
-          src="/dasd.jpg"
-          alt="Juan Dejon"
-          className="object-cover w-full h-full rounded-full bg-slate-100"
-        />
-        {/* Overlay for depth */}
-        <motion.div
-          className="absolute inset-0 rounded-full bg-gradient-to-t from-slate-900/20 dark:from-gray-900/60 to-transparent pointer-events-none"
-          animate={{
-            background: isHovering
-              ? "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), transparent 70%)"
-              : "radial-gradient(circle at 50% 50%, rgba(255,255,255,0), transparent 70%)",
-          }}
-          transition={{ duration: 0.7 }}
-        />
-      </motion.div>
+      <div className="max-w-6xl mx-auto w-full relative z-10">
+        
+        {/* Availability Badge */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center gap-2 mb-8"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 dark:text-gray-500">
+            Available for new opportunities
+          </span>
+        </motion.div>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-5xl font-extrabold mb-4 text-slate-900 dark:text-white tracking-tight"
-      >
-        Hi, I’m <span className="text-blue-600 dark:text-blue-400">Juan Dejon</span>
-      </motion.h1>
+        {/* High-Impact Typography */}
+        <div className="space-y-4">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="text-5xl md:text-8xl lg:text-9xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9]"
+          >
+            Juan <br /> 
+            <span className="text-transparent stroke-text dark:text-white">Dejon.</span>
+          </motion.h1>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="text-lg max-w-xl text-slate-600 dark:text-gray-300 leading-relaxed"
-      >
-        <span className="text-blue-600 dark:text-blue-400 font-bold mr-1">
-          Full Stack Developer
-        </span>
-        crafting scalable, elegant, and impactful web experiences.
-      </motion.p>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="text-xl md:text-2xl text-slate-500 dark:text-gray-400 max-w-xl font-medium leading-relaxed"
+          >
+            Full Stack Developer crafting <span className="text-slate-900 dark:text-gray-200">scalable systems</span> and 
+            <span className="italic font-serif"> refined</span> digital experiences.
+          </motion.p>
+        </div>
 
-      <motion.a
-        href="#projects"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        className="mt-8 px-8 py-3 rounded-full font-semibold text-sm 
-                   border border-slate-200 dark:border-gray-700 
-                   text-slate-900 dark:text-white
-                   hover:bg-slate-900 hover:text-white 
-                   dark:hover:bg-blue-600 dark:hover:border-blue-600
-                   transition-all duration-300 shadow-sm"
-      >
-        View My Work
-      </motion.a>
+        {/* Minimal CTA */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.4 }}
+          className="mt-12 flex flex-wrap gap-8 items-center"
+        >
+          <a 
+            href="#projects" 
+            className="group relative text-sm font-bold tracking-widest uppercase overflow-hidden text-slate-900 dark:text-white"
+          >
+            View Projects
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-indigo-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+          </a>
+          
+          <div className="hidden md:block h-[1px] w-12 bg-slate-200 dark:bg-gray-800" />
+
+          <a 
+            href="#contact" 
+            className="text-sm font-bold tracking-widest uppercase text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-white transition-colors"
+          >
+            Get in touch
+          </a>
+        </motion.div>
+      </div>
+
+      {/* Aesthetic CSS for the "Outline" text effect (can be added to your global CSS) */}
+      <style >{`
+        .stroke-text {
+          -webkit-text-stroke: 1px #0f172a;
+          color: transparent;
+        }
+        :global(.dark) .stroke-text {
+          -webkit-text-stroke: 1px #ffffff;
+          color: transparent;
+        }
+      `}</style>
     </section>
   )
 }
