@@ -1,28 +1,28 @@
 import { motion } from "framer-motion"
-import { Code2, ExternalLink, Github } from "lucide-react"
+import {  ExternalLink, Github } from "lucide-react"
 
 const projects = [
   {
-    title: "Project Virtue",
-    demo: "https://projectvirtue.app",
+    title: "Project Katuyuan",
+    // demo: "https://projectkatuyuan.app",
     description:
       "A full-featured AdonisJS-based application integrating AWS S3, Redis caching, and Ethereum API endpoints. Features brand profile management, secure authentication, and scalable REST architecture.",
     tech: ["AdonisJS", "Redis", "AWS S3", "PostgreSQL", "VineJS", "TypeScript"],
-    github: "https://github.com/Project-Raptor/project-virtue",
+    github: "https://github.com/JeyjeyOsom/project-katuyuan",
   },
   {
-    title: "SignalRaptor",
+    title: "Project Pagkamay Tulubagon",
     description:
-      "A real-time analytics and automation platform built with AdonisJS and WebSockets. Enables data-driven insights, creative management, and API integration across multiple brands.",
-    tech: ["AdonisJS", "WebSockets", "TypeScript", "PostgreSQL", "AWS"],
-    github: "https://github.com/Project-Raptor/signalraptor-server",
+      "An enterprise-grade automation and real-time analytics ecosystem. Features a sophisticated multi-tenant architecture with bi-directional WebSocket communication, integrated with a high-fidelity React interface supporting dynamic theming and fluid motion design.",
+    tech: [ "React", "Framer Motion", "WebSockets", "TypeScript", "Tailwind CSS"],
+    github: "https://github.com/JeyjeyOsom/project-pagkamay-tulubagon",
   },
   {
     title: "Portfolio Website",
     description:
       "A modern, animated developer portfolio built with React, Tailwind CSS, and Framer Motion. Features smooth transitions, ambient motion design, and section-based navigation.",
     tech: ["React", "Tailwind CSS", "Framer Motion", "Vite", "TypeScript"],
-    github: "https://github.com/juan-dejon/my-portfolio",
+    github: "https://github.com/JeyjeyOsom/my-portfolio",
   },
 ]
 
@@ -105,7 +105,7 @@ export default function Projects() {
                       <Github size={24} />
                     </a>
                   )}
-                  {project.demo && (
+                  {/* {project.demo && (
                     <a
                       href={project.demo}
                       target="_blank"
@@ -114,7 +114,7 @@ export default function Projects() {
                     >
                       <ExternalLink size={24} />
                     </a>
-                  )}
+                  )} */}
                 </div>
               </div>
 
