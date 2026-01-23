@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { useState } from "react"
 import emailjs from "emailjs-com"
 import Toast from "./ui/Toast"
@@ -61,6 +61,26 @@ export default function Contact() {
     } finally {
       setStatus("idle")
     }
+  }
+
+  function AnimateError({ message }: { message?: string }) {
+    return (
+      <div className="absolute -bottom-6 left-0">
+        <AnimatePresence mode="wait">
+          {message && (
+            <motion.p
+              key={message}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="text-[10px] font-black uppercase text-red-500 tracking-tighter"
+            >
+              {message}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+    )
   }
 
   const inputBaseClasses = `w-full bg-transparent border-b py-3 outline-none transition-all duration-500 
@@ -167,26 +187,5 @@ export default function Contact() {
         :global(.dark) .stroke-text { -webkit-text-stroke: 1px #ffffff; color: transparent; }
       `}</style>
     </section>
-  )
-}
-import { AnimatePresence, motion as m } from "framer-motion"
-
-function AnimateError({ message }: { message?: string }) {
-  return (
-    <div className="absolute -bottom-6 left-0">
-      <AnimatePresence mode="wait">
-        {message && (
-          <motion.p
-            key={message}
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className="text-[10px] font-black uppercase text-red-500 tracking-tighter"
-          >
-            {message}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
   )
 }

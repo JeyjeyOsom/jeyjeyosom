@@ -1,12 +1,6 @@
 import {
-  motion,
-  useScroll,
-  useTransform,
-  useSpring,
-  useVelocity,
+  motion
 } from "framer-motion"
-import { useRef } from "react"
-import { Briefcase } from "lucide-react"
 
 const experiences = [
   {
