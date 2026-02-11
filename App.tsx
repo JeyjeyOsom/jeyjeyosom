@@ -3,7 +3,6 @@ import Navbar from "./components/Navbar"
 import Hero from "./components/Hero"
 import About from "./components/About"
 import Projects from "./components/Projects"
-import ScrollProgress from "./components/ScrollProgress"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
 import Contact from "./components/Contact"
@@ -33,7 +32,6 @@ export default function App() {
       <div className="min-h-screen  bg-white dark:bg-gray-900 text-gray-100 transition-colors duration-500">
         <Navbar dark={dark} setDark={setDark} />
         <main >
-          {/* <ScrollProgress /> */}
           <Noise />
           <Hero />
           <About />

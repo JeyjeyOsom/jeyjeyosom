@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect } from "react"
-import { motion, AnimatePresence, useInView, useMotionValue } from "framer-motion"
+import { useRef, useState  } from "react"
+import { motion, AnimatePresence, useInView} from "framer-motion"
 import {
   Code,
   Database,
