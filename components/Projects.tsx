@@ -3,28 +3,44 @@ import {   Github } from "lucide-react"
 
 const projects = [
   {
-    title: "Project Katuyuan",
-    // demo: "https://projectkatuyuan.app",
+    title: "Project Ascension",
+    // demo: "https://projectascension.app",
     description:
-      "A full-featured AdonisJS-based application integrating AWS S3, Redis caching, and Ethereum API endpoints. Features brand profile management, secure authentication, and scalable REST architecture.",
-    tech: ["AdonisJS", "Redis", "AWS S3", "PostgreSQL", "VineJS", "TypeScript"],
-    github: "https://github.com/JeyjeyOsom/project-katuyuan",
+      "Project Ascension is a production-inspired full-stack platform built to explore modern software architecture, backend engineering, cloud-native development, and AI-powered systems development. The project is intentionally developed using professional engineering practices including sprint planning, architecture decision records, documentation-first development, testing, and CI/CD.",
+    tech: [
+      "Python",
+      "Redis",
+      "FastAPI",
+      "PostgreSQL",
+      "Docker",
+      "React",
+      "Tailwind CSS",
+      "Vite",
+    ],
+    github: "https://github.com/JeyjeyOsom/project-ascension",
   },
   {
-    title: "Project Pagkamay Tulubagon",
+    title: "AI Brand Consistency & Asset Manager",
     description:
-      "An enterprise-grade automation and real-time analytics ecosystem. Features a sophisticated multi-tenant architecture with bi-directional WebSocket communication, integrated with a high-fidelity React interface supporting dynamic theming and fluid motion design.",
-    tech: [ "React", "Framer Motion", "WebSockets", "TypeScript", "Tailwind CSS"],
-    github: "https://github.com/JeyjeyOsom/project-pagkamay-tulubagon",
+      "Problem Statement: PR teams and brand managers struggle to ensure that all published content aligns with brand guidelines (tone, vocabulary, identity). Manual review is slow, subjective, and inconsistent. Our Solution: A lightweight platform that:Centralizes brand assets and guidelines Uses an LLM (Gemini API) to evaluate content automatically and Produces objective compliance scores + actionable suggestions",
+    tech: [
+      "Vue.js",
+      "Gemini API",
+      "AdonisJS",
+      "TypeScript",
+      "Tailwind CSS",
+      "Docker",
+    ],
+    github: "https://github.com/JeyjeyOsom/project-resurgence",
   },
   {
     title: "Portfolio Website",
     description:
       "A modern, animated developer portfolio built with React, Tailwind CSS, and Framer Motion. Features smooth transitions, ambient motion design, and section-based navigation.",
     tech: ["React", "Tailwind CSS", "Framer Motion", "Vite", "TypeScript"],
-    github: "https://github.com/JeyjeyOsom/my-portfolio",
+    github: "https://github.com/JeyjeyOsom/jeyjeyosom",
   },
-]
+];
 
 export default function Projects() {
   return (
