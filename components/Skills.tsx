@@ -22,11 +22,19 @@ const skills = {
   ],
   backend: [
     { name: "Node.js", level: 95, info: "Built RESTful APIs & services", icon: <Server /> },
+    { name: "FastAPI", level: 95, info: "Built RESTful APIs & services", icon: <Server /> },
     { name: "AdonisJS", level: 90, info: "Advanced experience in backend systems", icon: <Server /> },
     { name: "NestJS", level: 80, info: "Modular TypeScript backend design", icon: <Server /> },
     { name: "PostgreSQL", level: 85, info: "Optimized queries and schema design", icon: <Database /> },
     { name: "MongoDB", level: 80, info: "Worked on document-based systems", icon: <Database /> },
     { name: "Redis", level: 75, info: "Used for caching and rate-limiting", icon: <Database /> },
+  ],
+  ai: [
+    {name: "Gemini API", level: 85, info: "Building LLM-powered applications and AI features.", icon:<Sparkles />},
+    {name: "Claude", level: 95, info: "Architecture discussions, code reviews, and technical planning.", icon:<Sparkles />},
+    {name: "ChatGPT", level: 90, info: "Debugging, documentation, system design, and rapid prototyping.", icon:<Sparkles />},
+    {name: "GitHub Copilot", level: 90, info: "AI-assisted development and code generation.", icon:<Sparkles />},
+    {name: "Agentic Workflows", level: 80, info: "Designing autonomous multi-step AI automation systems.", icon:<Sparkles />},
   ],
   devops: [
     { name: "Git / GitHub / GitLab", level: 95, info: "Version control & CI/CD workflows", icon: <GitBranch /> },
@@ -47,9 +55,10 @@ const skills = {
 const categories = [
   { key: "frontend", label: "Frontend" },
   { key: "backend", label: "Backend" },
-  { key: "devops", label: "DevOps / Tools" },
+  { key: "ai", label: "AI & Automation" },
+  { key: "devops", label: "DevOps / Cloud" },
   { key: "softskills", label: "Soft Skills" },
-]
+];
 
 export default function Skills() {
   const [active, setActive] = useState("frontend")
@@ -63,18 +72,19 @@ export default function Skills() {
       className="py-32 px-6 transition-colors duration-500 bg-white dark:bg-[#0a0a0a]"
     >
       <div className="max-w-6xl mx-auto">
-        
         {/* Editorial Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-4">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, x: -20 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             className="text-6xl md:text-8xl font-black tracking-tighter text-slate-900 dark:text-white leading-[0.8]"
           >
-            Tools <br />
-            <span className="text-transparent stroke-text dark:text-white">& Stack.</span>
+            Engineering <br />
+            <span className="text-transparent stroke-text dark:text-white">
+              & Toolkit.
+            </span>
           </motion.h2>
-          
+
           {/* Category Navigation */}
           <nav className="flex flex-wrap gap-x-8 gap-y-4">
             {categories.map((cat) => (
@@ -82,14 +92,14 @@ export default function Skills() {
                 key={cat.key}
                 onClick={() => setActive(cat.key)}
                 className={`text-xs uppercase tracking-[0.2em] font-black transition-all duration-300 relative pb-2 ${
-                  active === cat.key 
-                    ? "text-indigo-600 dark:text-white" 
+                  active === cat.key
+                    ? "text-indigo-600 dark:text-white"
                     : "text-slate-300 dark:text-gray-700 hover:text-slate-500"
                 }`}
               >
                 {cat.label}
                 {active === cat.key && (
-                  <motion.div 
+                  <motion.div
                     layoutId="activeTab"
                     className="absolute bottom-0 left-0 w-full h-[2px] bg-indigo-600"
                   />
@@ -118,7 +128,7 @@ export default function Skills() {
         </div>
       </div>
 
-      <style >{`
+      <style>{`
         .stroke-text {
           -webkit-text-stroke: 1px #0f172a;
           color: transparent;
@@ -129,7 +139,7 @@ export default function Skills() {
         }
       `}</style>
     </section>
-  )
+  );
 }
 
 function SkillItem({ skill, index }: any) {
