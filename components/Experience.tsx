@@ -6,15 +6,17 @@ const experiences = [
   {
     role: "Full Stack Developer",
     company: "Publicity For Good",
-    period: "MARCH 2024 - Present",
+    period: "MARCH 2024 - JULY 2026",
     description: [
-      "Developed and maintained production-grade applications using AdonisJS, Vue.js, and TypeScript.",
+      "Developed and maintained production-grade applications using React, FastApi, AdonisJS, Vue.js, and TypeScript.",
       "Integrated Redis and AWS S3 for caching, file storage, and signed URL generation to optimize performance.",
       "Implemented scalable authentication, lockout, and user profile systems aligned with enterprise-grade security standards.",
       "Collaborated closely with cross-functional teams to design and deliver intuitive, high-performing UI/UX experiences.",
       "Leveraged PostgreSQL and Redis to enhance data handling, query optimization, and caching efficiency.",
     ],
     tech: [
+      "React",
+      "FastApi",
       "AdonisJS",
       "Vue.js",
       "Redis",
@@ -23,6 +25,7 @@ const experiences = [
       "TypeScript",
       "Vite",
       "Tailwind CSS",
+      "Docker",
     ],
   },
   {
