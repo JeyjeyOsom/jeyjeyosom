@@ -7,7 +7,6 @@ export default function About() {
       className="py-32 px-6 transition-colors duration-500 bg-white dark:bg-[#0a0a0a]"
     >
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 items-start">
-        
         {/* Left Side: Bold Vertical Heading */}
         <div className="md:col-span-4 lg:col-span-5">
           <motion.h2
@@ -18,10 +17,12 @@ export default function About() {
             className="text-6xl md:text-8xl font-black tracking-tighter text-slate-900 dark:text-white leading-[0.8]"
           >
             The <br />
-            <span className="text-transparent stroke-text dark:text-white">Profile.</span>
+            <span className="text-transparent stroke-text dark:text-white">
+              Profile.
+            </span>
           </motion.h2>
-          
-          <motion.div 
+
+          <motion.div
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
@@ -32,7 +33,6 @@ export default function About() {
 
         {/* Right Side: Narrative Content */}
         <div className="md:col-span-8 lg:col-span-7 space-y-12">
-          
           {/* Primary Bio */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -41,7 +41,13 @@ export default function About() {
             transition={{ duration: 0.8 }}
           >
             <p className="text-2xl md:text-3xl text-slate-900 dark:text-white leading-snug font-medium">
-              I’m Juan Dejon, a <span className="italic font-serif text-indigo-600 dark:text-indigo-400">Full Stack Developer</span> currently shaping production-grade systems at <span className="underline decoration-slate-200 underline-offset-8 transition-colors hover:decoration-indigo-500"><br></br>Publicity For Good</span>.
+              I'm Juan Dejon, a{" "}
+              <span className="italic font-serif text-indigo-600 dark:text-indigo-400">
+                Full Stack Developer
+              </span>{" "}
+              passionate about building scalable software, modern backend
+              systems, and intelligent applications that solve real-world
+              problems.
             </p>
           </motion.div>
 
@@ -54,16 +60,37 @@ export default function About() {
             className="space-y-6 text-slate-500 dark:text-gray-400 text-lg leading-relaxed max-w-xl"
           >
             <p>
-              With over 3 years of professional experience, I focus on the bridge between 
-              robust backend architecture and refined user interfaces. I don’t just write code; 
-              I build <span className="text-slate-900 dark:text-gray-200 font-semibold">scalable solutions</span> that 
-              prioritize performance and user intent.
+              With over{" "}
+              <span className="text-slate-900 dark:text-gray-200 font-semibold">
+                3 years of professional experience
+              </span>
+              , I've built production-ready web applications across healthcare,
+              public relations, and business management. I enjoy designing
+              scalable backend architectures while creating intuitive user
+              experiences that deliver real value.
             </p>
-            
+
             <p>
-              My daily stack involves <span className="text-slate-900 dark:text-gray-200 font-medium">AdonisJS, Vue, Redis, and AWS</span>, 
-              where I collaborate with cross-functional teams to turn complex problems into 
-              seamless digital products.
+              My core stack includes{" "}
+              <span className="text-slate-900 dark:text-gray-200 font-medium">
+                React, Vue, AdonisJS, FastAPI, PostgreSQL, Redis, Docker, AWS,
+                and TypeScript
+              </span>
+              . I love turning complex business requirements into clean,
+              maintainable, and high-performing software through thoughtful
+              architecture and collaboration.
+            </p>
+
+            <p>
+              Outside of professional work, I'm constantly exploring emerging
+              technologies. My current focus is on{" "}
+              <span className="text-slate-900 dark:text-gray-200 font-medium">
+                AI engineering, LLM-powered applications, automation, and
+                agentic workflows
+              </span>
+              . I'm committed to continuous learning and enjoy experimenting
+              with modern tools that help developers build faster, smarter, and
+              more reliable software.
             </p>
           </motion.div>
 
@@ -76,10 +103,12 @@ export default function About() {
             className="pt-8 border-t border-slate-100 dark:border-gray-900 flex items-center gap-4"
           >
             <div className="text-[10px] uppercase tracking-[0.3em] font-black text-indigo-600 dark:text-indigo-400">
-              Focus
+              Philosophy
             </div>
+
             <p className="text-sm text-slate-400 dark:text-gray-500 italic">
-              Continuous learning, elegant collaboration, and building with purpose.
+              Keep learning. Build with purpose. Leverage modern technologies
+              and AI to create software that makes a meaningful impact.
             </p>
           </motion.div>
         </div>
@@ -96,5 +125,5 @@ export default function About() {
         }
       `}</style>
     </section>
-  )
+  );
 }
