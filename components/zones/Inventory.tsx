@@ -28,15 +28,15 @@ interface Item {
 const ITEMS: Record<string, Item[]> = {
   frontend: [
     { name: "React", info: "Used in multiple production apps", icon: <Code />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Dexio Group", "Project Ascension"] },
-    { name: "Next.js", info: "Role-based dashboards & server-rendered apps", icon: <Code />, usedIn: ["Fortius"] },
-    { name: "Vue.js", info: "Strong experience in dynamic UIs", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
+    { name: "Next.js", info: "Role-based dashboards & server-rendered apps", icon: <Code />, equipped: true, usedIn: ["Fortius"] },
+    { name: "Vue.js", info: "Strong experience in dynamic UIs", icon: <Code />, usedIn: ["Publicity For Good", "AI Brand Manager"] },
     { name: "TypeScript & JavaScript", info: "Daily driver for full-stack work", icon: <Code />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension", "this site"] },
     { name: "Tailwind CSS", info: "Styled modern UIs efficiently", icon: <Palette />, usedIn: ["Publicity For Good", "Project Ascension", "this site"] },
     { name: "Framer Motion", info: "Smooth animations & transitions", icon: <Sparkles />, usedIn: ["this site"] },
     { name: "Figma", info: "UI collaboration and prototyping", icon: <Palette /> },
   ],
   backend: [
-    { name: "Node.js", info: "Built RESTful APIs & services", icon: <Server />, usedIn: ["Dexio Group", "Virtual Staffing Solutions"] },
+    { name: "Node.js", info: "Built RESTful APIs & services", icon: <Server />, equipped: true, usedIn: ["Dexio Group", "Virtual Staffing Solutions"] },
     { name: "FastAPI", info: "Built RESTful APIs & services", icon: <Server />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension"] },
     { name: "AdonisJS", info: "Advanced experience in backend systems", icon: <Server />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
     { name: "NestJS", info: "Modular TypeScript backend design", icon: <Server /> },

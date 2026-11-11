@@ -80,7 +80,7 @@ function WarmupPortrait() {
 const STATS: Array<[string, string]> = [
   ["CLASS", "Full Stack Developer"],
   ["EXP", "3+ years in production"],
-  ["FOCUS", "AI engineering & agentic apps"],
+  ["FOCUS", "RAG systems, LLM integration & agentic automation"],
   ["STATUS", "Open to work"],
 ]
 
@@ -141,8 +141,8 @@ export default function StatsScreen() {
             <p className="font-body text-xl md:text-2xl leading-snug text-cream-100">
               I'm Juan Dejon, a{" "}
               <span className="text-sunset-400 font-semibold">Full Stack Developer</span>{" "}
-              passionate about building scalable software, modern backend systems,
-              and intelligent applications that solve real-world problems.
+              building production web applications, backend systems, and
+              AI-powered platforms end-to-end.
             </p>
 
             <div className="space-y-6 font-body text-base md:text-lg leading-relaxed text-mist-300 max-w-xl">
@@ -151,33 +151,32 @@ export default function StatsScreen() {
                 <span className="text-cream-100 font-semibold">
                   3 years of professional experience
                 </span>
-                , I've built production-ready web applications across healthcare,
-                public relations, and business management. I enjoy designing
-                scalable backend architectures while creating intuitive user
-                experiences that deliver real value.
+                , I've shipped production applications across real estate,
+                public relations, healthcare, and staffing — with a strong
+                backend focus on API architecture, database design, and systems
+                that stay fast and secure under real traffic.
               </p>
 
               <p>
-                My core stack includes{" "}
+                My core stack is{" "}
                 <span className="text-cream-100 font-medium">
-                  React, Vue, AdonisJS, FastAPI, PostgreSQL, Redis, Docker, AWS,
-                  and TypeScript
+                  FastAPI, Node.js, AdonisJS, Next.js, React, PostgreSQL, Redis,
+                  Docker, AWS, and TypeScript
                 </span>
-                . I love turning complex business requirements into clean,
-                maintainable, and high-performing software through thoughtful
-                architecture and collaboration.
+                . I turn complex business requirements into clean, maintainable
+                software through thoughtful architecture and collaboration.
               </p>
 
               <p>
-                Outside of professional work, I'm constantly exploring emerging
-                technologies. My current focus is on{" "}
+                AI engineering is no longer a side quest — it's my daily work.
+                I've shipped{" "}
                 <span className="text-cream-100 font-medium">
-                  AI engineering, LLM-powered applications, automation, and
-                  agentic workflows
-                </span>
-                . I'm committed to continuous learning and enjoy experimenting
-                with modern tools that help developers build faster, smarter,
-                and more reliable software.
+                  RAG systems with source citations and permission-aware
+                  retrieval, prompt engineering with guardrails and response
+                  validation, and agentic automation
+                </span>{" "}
+                in production — and AI-assisted development is part of my
+                daily workflow, so I know these tools from both sides.
               </p>
             </div>
 
