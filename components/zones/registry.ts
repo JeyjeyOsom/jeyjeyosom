@@ -16,6 +16,7 @@ export const WORLD_MAP: ZoneEntry[] = [
   { id: "experience", navLabel: "Experience", zoneName: "QUEST LOG" },
   { id: "skills", navLabel: "Skills", zoneName: "INVENTORY" },
   { id: "projects", navLabel: "Projects", zoneName: "LEVEL SELECT" },
-  { id: "running", navLabel: "Running", zoneName: "RECORDS SCREEN" },
+  // Benched with the RecordsScreen render in App.tsx; restore together:
+  // { id: "running", navLabel: "Running", zoneName: "RECORDS SCREEN" },
   { id: "contact", navLabel: "Contact", zoneName: "SAVE POINT" },
 ]

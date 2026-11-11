@@ -4,7 +4,6 @@ import StatsScreen from "./components/zones/StatsScreen"
 import QuestLog from "./components/zones/QuestLog"
 import Inventory from "./components/zones/Inventory"
 import LevelSelect from "./components/zones/LevelSelect"
-import RecordsScreen from "./components/zones/RecordsScreen"
 import SavePoint from "./components/zones/SavePoint"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
@@ -27,7 +26,8 @@ function World() {
         <QuestLog />
         <Inventory />
         <LevelSelect />
-        <RecordsScreen />
+        {/* RecordsScreen (the Running Zone) is benched until the Run Data
+            totals are real — restore it here and in zones/registry.ts */}
         <SavePoint />
         <Footer />
         {!playing && <ScrollToTop />}
