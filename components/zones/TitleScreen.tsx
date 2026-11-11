@@ -1,13 +1,7 @@
 import { useRef } from "react"
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion"
-import {
-  type Px,
-  PixelRects,
-  RUNNER_SHARED,
-  RUNNER_FRAME_A,
-  RUNNER_FRAME_B,
-  RUNNER_VIEWBOX,
-} from "./sprites"
+import { type Px, PixelRects, RunCycleSprite } from "../sprites"
+import { Ground } from "../Track"
 import { usePlayMode } from "../play/PlayModeContext"
 import { useTheme } from "../ThemeContext"
 
@@ -102,7 +96,7 @@ export default function TitleScreen() {
   return (
     <section
       ref={ref}
-      id="hero"
+      id="title"
       aria-label="Title screen"
       className="scanlines relative min-h-screen overflow-hidden flex flex-col"
       style={{ background: scene.gradient }}
@@ -178,28 +172,14 @@ export default function TitleScreen() {
       </div>
 
       {/* Ground: the track the Runner lives on */}
-      <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[9vh] bg-ground pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-dusk-700" />
-        <div className="absolute top-[45%] left-0 right-0 flex gap-8 px-4">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <span key={i} className="w-6 h-1 bg-dusk-700 shrink-0" />
-          ))}
-        </div>
-      </div>
+      <Ground className="absolute bottom-0 left-0 right-0 h-[9vh]" />
 
-      {/* Runner — placeholder sprite until the custom Juan avatar replaces it.
+      {/* The Runner mid-stride on the track (race-day avatar, see sprites.tsx).
           Hidden while Play Mode's own Runner is on the track. */}
       {!playing && (
-      <div aria-hidden="true" className="sprite-run absolute bottom-[8.5vh] left-[12%] md:left-[18%] w-12 md:w-16 pointer-events-none">
-        <svg viewBox={RUNNER_VIEWBOX} className="crisp w-full" shapeRendering="crispEdges">
-          <g className="frame-a">
-            <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_A]} />
-          </g>
-          <g className="frame-b">
-            <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_B]} />
-          </g>
-        </svg>
-      </div>
+        <div aria-hidden="true" className="sprite-run absolute bottom-[8.5vh] left-[12%] md:left-[18%] w-12 md:w-16 pointer-events-none">
+          <RunCycleSprite className="w-full" />
+        </div>
       )}
 
       {/* HUD status line */}
@@ -252,20 +232,20 @@ export default function TitleScreen() {
           <a
             href="#about"
             onClick={handlePressStart}
-            className="animate-blink font-arcade text-xs md:text-sm text-gold-400 hover:text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+            className="animate-blink font-arcade text-xs md:text-sm text-gold-400 hover:text-gold-300 focus-ring"
           >
             ▸ PRESS START
           </a>
           <a
             href="#projects"
-            className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+            className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-ring"
           >
             <span className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">▸ </span>
             VIEW PROJECTS
           </a>
           <a
             href="#contact"
-            className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+            className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-ring"
           >
             <span className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">▸ </span>
             GET IN TOUCH

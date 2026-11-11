@@ -1,4 +1,5 @@
 import { Github, Linkedin, Mail } from "lucide-react"
+import { TrackDashes } from "./Track"
 
 const SOCIALS = [
   {
@@ -25,11 +26,7 @@ export default function Footer() {
       {/* Track edge */}
       <div aria-hidden="true" className="absolute top-0 left-0 right-0">
         <div className="h-1 bg-dusk-700" />
-        <div className="mt-3 flex gap-8 px-4 overflow-hidden">
-          {Array.from({ length: 48 }).map((_, i) => (
-            <span key={i} className="w-6 h-1 bg-dusk-700 shrink-0" />
-          ))}
-        </div>
+        <TrackDashes className="mt-3" />
       </div>
 
       <div className="max-w-6xl mx-auto mt-8 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -38,7 +35,7 @@ export default function Footer() {
           <p className="font-pixel font-bold text-lg tracking-wide text-cream-100">
             JUAN DEJON<span className="text-gold-400">.</span>
           </p>
-          <p className="font-arcade text-[8px] tracking-wider text-mist-300">
+          <p className="font-arcade text-[8px] tracking-wider text-cream-100">
             © {new Date().getFullYear()} — ENGINEERING WITH PURPOSE
           </p>
         </div>
@@ -51,7 +48,7 @@ export default function Footer() {
               href={social.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-mist-300 hover:text-gold-400 transition-colors duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+              className="flex items-center gap-2 text-cream-100 hover:text-gold-400 transition-colors duration-300 focus-ring"
             >
               {social.icon}
               <span className="font-arcade text-[8px] tracking-wider hidden sm:inline-block">
@@ -62,7 +59,7 @@ export default function Footer() {
         </div>
 
         {/* End credits */}
-        <p className="font-arcade text-[8px] tracking-wider text-cream-100/60">
+        <p className="font-arcade text-[8px] tracking-wider text-cream-100">
           THANKS FOR PLAYING
         </p>
       </div>

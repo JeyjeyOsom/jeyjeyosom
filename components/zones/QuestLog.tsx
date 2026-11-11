@@ -92,7 +92,7 @@ export default function QuestLog() {
           </p>
           <a
             href="#contact"
-            className="font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+            className="font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 shrink-0 focus-ring"
           >
             ▸ GET IN TOUCH
           </a>

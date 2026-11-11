@@ -26,7 +26,7 @@
   --px: 4px;
 }
 
-/* Dawn: the early-morning sunrise theme (light mode) */
+/* Dawn: the early-morning sunrise sky */
 html.dawn {
   --dusk-950: 234 241 248;
   --dusk-900: 253 250 244;
@@ -41,7 +41,7 @@ html.dawn {
   --gold-300: 126 84 7;
   --magenta-500: 193 59 110;
   --cream-100: 35 48 71;
-  --mist-300: 86 103 138;
+  --mist-300: 71 86 117;
   --ground: 159 176 206;
   --scanline-color: rgba(90, 106, 140, 0.08);
 }
@@ -76,6 +76,11 @@ body {
 
   .crisp {
     image-rendering: pixelated;
+  }
+
+  /* Keyboard focus marker shared by every interactive element */
+  .focus-ring {
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4;
   }
 
   /* CRT scanline overlay — decorative, must sit on a positioned parent */

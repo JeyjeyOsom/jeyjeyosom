@@ -206,3 +206,29 @@ export function PixelRects({ rects }: { rects: Px[] }) {
     </>
   )
 }
+
+// The Runner's two-frame run cycle; pair with the .sprite-run class (or an
+// ancestor carrying it) to animate.
+export function RunCycleSprite({
+  className,
+  style,
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <svg
+      viewBox={RUNNER_VIEWBOX}
+      className={`crisp ${className ?? ""}`}
+      shapeRendering="crispEdges"
+      style={style}
+    >
+      <g className="frame-a">
+        <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_A]} />
+      </g>
+      <g className="frame-b">
+        <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_B]} />
+      </g>
+    </svg>
+  )
+}

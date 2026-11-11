@@ -28,7 +28,7 @@ One themed region of the World corresponding to one content section (About, Skil
 _Avoid_: section, screen, area
 
 **Runner**:
-The pixel-art avatar of Juan whose position in the World mirrors scroll progress; the one asset that must be unmistakably Juan.
+The pixel-art avatar of Juan: in Play Mode his position in the World *is* the scroll position; in Browse Mode he runs in place on the Title Screen track. The one asset that must be unmistakably Juan.
 _Avoid_: player, character, sprite (for the concept; "sprite" is fine for the image asset)
 
 ### Zones

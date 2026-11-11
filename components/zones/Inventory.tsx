@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react"
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import {
   Code,
   Database,
@@ -109,7 +109,7 @@ export default function Inventory() {
             <button
               key={cat.key}
               onClick={() => setActive(cat.key)}
-              className={`relative pb-2 font-arcade text-[9px] md:text-[10px] uppercase tracking-[0.15em] transition-colors duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4 ${
+              className={`relative pb-2 font-arcade text-[9px] md:text-[10px] uppercase tracking-[0.15em] transition-colors duration-300 focus-ring ${
                 active === cat.key
                   ? "text-gold-400"
                   : "text-mist-300 hover:text-cream-100"
@@ -127,46 +127,43 @@ export default function Inventory() {
           ))}
         </nav>
 
-        {/* Item grid */}
+        {/* Item grids: every category stays in the DOM (hidden, not
+            unmounted) so the full inventory reads without interaction. */}
         <div className="min-h-[420px]">
-          <AnimatePresence mode="wait">
-            <motion.ul
-              key={active}
-              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -16 }}
-              transition={{ duration: 0.35 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-1"
-            >
-              {ITEMS[active].map((item, index) => (
-                <motion.li
-                  key={item.name}
-                  initial={reduceMotion ? false : { opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: reduceMotion ? 0 : index * 0.05 }}
-                  className="group pixel-border bg-dusk-900 p-5 md:p-6"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      aria-hidden="true"
-                      className="text-mist-300 group-hover:text-gold-400 transition-colors [&>svg]:w-5 [&>svg]:h-5"
-                    >
-                      {item.icon}
-                    </span>
-                    <h3 className="font-pixel font-bold text-lg md:text-xl text-cream-100">
-                      {item.name}
-                    </h3>
-                  </div>
-                  <p className="mt-3 font-body text-sm leading-relaxed text-mist-300">
-                    {item.info}
-                  </p>
-                  <div className="mt-4">
-                    <LevelPips name={item.name} level={item.level} />
-                  </div>
-                </motion.li>
-              ))}
-            </motion.ul>
-          </AnimatePresence>
+          {CATEGORIES.map((cat) => {
+            const isActive = cat.key === active
+            return (
+              <motion.ul
+                key={`${cat.key}-${isActive ? "in" : "out"}`}
+                initial={isActive && !reduceMotion ? { opacity: 0, y: 16 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+                className={`${isActive ? "grid" : "hidden"} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-1`}
+              >
+                {ITEMS[cat.key].map((item) => (
+                  <li key={item.name} className="group pixel-border bg-dusk-900 p-5 md:p-6">
+                    <div className="flex items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="text-mist-300 group-hover:text-gold-400 transition-colors [&>svg]:w-5 [&>svg]:h-5"
+                      >
+                        {item.icon}
+                      </span>
+                      <h3 className="font-pixel font-bold text-lg md:text-xl text-cream-100">
+                        {item.name}
+                      </h3>
+                    </div>
+                    <p className="mt-3 font-body text-sm leading-relaxed text-mist-300">
+                      {item.info}
+                    </p>
+                    <div className="mt-4">
+                      <LevelPips name={item.name} level={item.level} />
+                    </div>
+                  </li>
+                ))}
+              </motion.ul>
+            )
+          })}
         </div>
       </div>
     </section>

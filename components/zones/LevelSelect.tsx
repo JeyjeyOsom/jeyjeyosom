@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion"
 import { Github } from "lucide-react"
 import ZoneHeader from "./ZoneHeader"
-import { type Px, PixelRects } from "./sprites"
+import { type Px, PixelRects } from "../sprites"
 
 // Cartridge shell on an 18x21 grid; the label window is x3..15, y8..17.
 const PLASTIC = "#55408F"
@@ -171,7 +171,7 @@ export default function LevelSelect() {
                   href={level.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+                  className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
                 >
                   <Github size={14} aria-hidden="true" />
                   ▸ VIEW SOURCE

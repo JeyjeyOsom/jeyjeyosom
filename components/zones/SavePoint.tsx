@@ -3,7 +3,7 @@ import { useState } from "react"
 import emailjs from "emailjs-com"
 import Toast from "../ui/Toast"
 import ZoneHeader from "./ZoneHeader"
-import { type Px, PixelRects } from "./sprites"
+import { type Px, PixelRects } from "../sprites"
 
 interface Errors {
   name?: string
@@ -27,11 +27,16 @@ const CRYSTAL: Px[] = [
 const INPUT_CLASSES = `w-full bg-dusk-900 border-2 py-3 px-4 outline-none transition-colors duration-300
   font-body text-base text-cream-100 placeholder:text-mist-300/40`
 
+// emailjs client config (public by design — these ship to the browser)
+const EMAILJS_SERVICE = "service_4pb3ggh"
+const EMAILJS_TEMPLATE = "template_pywz32o"
+const EMAILJS_PUBLIC_KEY = "KYY6otaGCLsqxiMvq"
+
 export default function SavePoint() {
   const reduceMotion = useReducedMotion()
   const [form, setForm] = useState({ name: "", email: "", message: "" })
   const [errors, setErrors] = useState<Errors>({})
-  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle")
+  const [status, setStatus] = useState<"idle" | "sending">("idle")
   const [shake, setShake] = useState(false)
   const [toast, setToast] = useState({
     show: false,
@@ -70,12 +75,10 @@ export default function SavePoint() {
 
     setStatus("sending")
     try {
-      await emailjs.send("service_4pb3ggh", "template_pywz32o", form, "KYY6otaGCLsqxiMvq")
-      setStatus("success")
+      await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, form, EMAILJS_PUBLIC_KEY)
       showToast("success", "Progress saved — message sent!")
       setForm({ name: "", email: "", message: "" })
-    } catch (err) {
-      setStatus("error")
+    } catch {
       showToast("error", "Save failed. Please try again.")
     } finally {
       setStatus("idle")
@@ -218,7 +221,7 @@ export default function SavePoint() {
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="group pixel-border mx-1 bg-dusk-900 px-8 py-4 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 hover:bg-dusk-800 transition-colors disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+                className="group pixel-border mx-1 bg-dusk-900 px-8 py-4 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 hover:bg-dusk-800 transition-colors disabled:opacity-60 focus-ring"
               >
                 {status === "sending" ? "SAVING..." : "▸ SEND MESSAGE"}
               </button>

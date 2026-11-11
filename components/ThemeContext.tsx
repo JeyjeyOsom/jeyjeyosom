@@ -26,11 +26,12 @@ function initialTheme(): Theme {
     const stored = localStorage.getItem("theme")
     // Current values, plus migration from the pre-overhaul dark/light values
     if (stored === "dawn" || stored === "light") return "dawn"
-    if (stored === "dusk" || stored === "dark") return "dusk"
   } catch {
     /* storage unavailable */
   }
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "dawn" : "dusk"
+  // Dusk is the World's default sky (CONTEXT.md); Dawn is a choice, not an
+  // OS inference.
+  return "dusk"
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

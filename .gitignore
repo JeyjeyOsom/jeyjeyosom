@@ -23,6 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Strava credentials (fetch-run-data script)
+# Local secrets
 .env
 .env.*

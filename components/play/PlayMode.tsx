@@ -2,22 +2,17 @@ import { useEffect, useRef, useState } from "react"
 import { usePlayMode } from "./PlayModeContext"
 import {
   PixelRects,
+  RunCycleSprite,
   RUNNER_SHARED,
-  RUNNER_FRAME_A,
-  RUNNER_FRAME_B,
   RUNNER_STANDING,
   RUNNER_VIEWBOX,
-} from "../zones/sprites"
+} from "../sprites"
+import { Ground } from "../Track"
+import { WORLD_MAP } from "../zones/registry"
 
-const ZONE_NAMES: Record<string, string> = {
-  hero: "TITLE SCREEN",
-  about: "STATS SCREEN",
-  experience: "QUEST LOG",
-  skills: "INVENTORY",
-  projects: "LEVEL SELECT",
-  running: "RECORDS",
-  contact: "SAVE POINT",
-}
+const ZONE_NAMES: Record<string, string> = Object.fromEntries(
+  WORLD_MAP.map((z) => [z.id, z.zoneName])
+)
 
 const RUN_SPEED = 1000 // px/s of World per second of key-held
 const JUMP_VELOCITY = 760
@@ -47,7 +42,15 @@ export default function PlayMode() {
     let raf = 0
     let last = performance.now()
 
+    // The World's forms stay usable in Play Mode: typing in a field must
+    // never be hijacked into running or jumping.
+    const isTyping = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(e)) return
       switch (e.code) {
         case "ArrowRight":
         case "KeyD":
@@ -81,6 +84,7 @@ export default function PlayMode() {
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
+      if (isTyping(e)) return
       if (e.code === "ArrowRight" || e.code === "KeyD") held.fwd = false
       if (e.code === "ArrowLeft" || e.code === "KeyA") held.back = false
     }
@@ -117,7 +121,7 @@ export default function PlayMode() {
       }
 
       // Which Zone is the Runner in?
-      let current = window.scrollY < 100 ? "hero" : ""
+      let current = window.scrollY < 100 ? "title" : ""
       if (!current) {
         for (const s of sections) {
           const rect = s.getBoundingClientRect()
@@ -167,21 +171,14 @@ export default function PlayMode() {
         </p>
         <button
           onClick={exit}
-          className="font-arcade text-[9px] md:text-[10px] tracking-wider text-gold-400 hover:text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+          className="font-arcade text-[9px] md:text-[10px] tracking-wider text-gold-400 hover:text-gold-300 focus-ring"
         >
           ESC EXIT
         </button>
       </div>
 
       {/* The track the Runner travels on */}
-      <div aria-hidden="true" className="fixed bottom-0 left-0 right-0 z-40 h-[9vh] bg-ground pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-dusk-700" />
-        <div className="absolute top-[45%] left-0 right-0 flex gap-8 px-4 overflow-hidden">
-          {Array.from({ length: 48 }).map((_, i) => (
-            <span key={i} className="w-6 h-1 bg-dusk-700 shrink-0" />
-          ))}
-        </div>
-      </div>
+      <Ground className="fixed bottom-0 left-0 right-0 z-40 h-[9vh]" />
 
       {/* The Runner */}
       <div
@@ -189,25 +186,16 @@ export default function PlayMode() {
         className="fixed bottom-[8.5vh] left-[12%] md:left-[18%] z-40 w-12 md:w-16 pointer-events-none"
       >
         <div ref={jumperRef}>
-          <svg
-            viewBox={RUNNER_VIEWBOX}
-            className={`crisp w-full ${moving ? "sprite-run" : ""}`}
-            shapeRendering="crispEdges"
-            style={{ transform: facing === -1 ? "scaleX(-1)" : undefined }}
-          >
-            {moving ? (
-              <>
-                <g className="frame-a">
-                  <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_A]} />
-                </g>
-                <g className="frame-b">
-                  <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_B]} />
-                </g>
-              </>
-            ) : (
+          {moving ? (
+            <RunCycleSprite
+              className="w-full sprite-run"
+              style={{ transform: facing === -1 ? "scaleX(-1)" : undefined }}
+            />
+          ) : (
+            <svg viewBox={RUNNER_VIEWBOX} className="crisp w-full" shapeRendering="crispEdges">
               <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_STANDING]} />
-            )}
-          </svg>
+            </svg>
+          )}
         </div>
       </div>
     </>

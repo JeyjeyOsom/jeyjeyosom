@@ -3,20 +3,13 @@ import { Menu, X, Sun, Moon } from "lucide-react"
 import { smoothScrollTo } from "../utils/smoothScroll"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "./ThemeContext"
+import { WORLD_MAP } from "./zones/registry"
 
-const links = [
-  { label: "Home", href: "#hero" },
-  { label: "About", href: "#about" },
-  { label: "Experience", href: "#experience" },
-  { label: "Skills", href: "#skills" },
-  { label: "Projects", href: "#projects" },
-  { label: "Running", href: "#running" },
-  { label: "Contact", href: "#contact" },
-]
+const links = WORLD_MAP.map((zone) => ({ label: zone.navLabel, href: `#${zone.id}` }))
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [active, setActive] = useState<string>("hero")
+  const [active, setActive] = useState<string>("title")
   const [scrolled, setScrolled] = useState(false)
 
   const { theme, toggle } = useTheme()
@@ -52,12 +45,12 @@ export default function Navbar() {
       
       // Force "Home" if at the very top
       if (window.scrollY < 100) {
-        setActive("hero")
+        setActive("title")
         return
       }
 
       const sections = document.querySelectorAll("section[id]")
-      let current = "hero"
+      let current = "title"
       sections.forEach((section) => {
         const rect = section.getBoundingClientRect()
         // Active when section top is near the navbar
@@ -81,11 +74,11 @@ export default function Navbar() {
 
         {/* Logo - Fixed Home Link */}
         <a
-          href="#hero"
+          href="#title"
           onClick={(e) => {
             e.preventDefault();
-            smoothScrollTo("#hero");
-            setActive("hero");
+            smoothScrollTo("#title");
+            setActive("title");
             setMenuOpen(false);
           }}
           className="font-pixel font-bold text-xl tracking-wide text-cream-100 uppercase group"

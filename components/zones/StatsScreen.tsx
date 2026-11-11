@@ -11,7 +11,7 @@ import {
   WARMUP_HOP_AIR,
   WARMUP_HOP_GROUND,
   WARMUP_SWEEP,
-} from "./sprites"
+} from "../sprites"
 
 const STAND: Px[] = [...RUNNER_SHARED, ...RUNNER_STANDING]
 
@@ -96,7 +96,7 @@ export default function StatsScreen() {
       className="scanlines relative overflow-hidden bg-dusk-950 py-24 md:py-32 px-6"
     >
       <div className="max-w-6xl mx-auto">
-        <ZoneHeader code="ZONE 1-2 · STATS SCREEN" title="PLAYER STATS" />
+        <ZoneHeader code="ZONE 1-2" title="RUNNER STATS" />
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-12 items-start">
           {/* Character card */}
