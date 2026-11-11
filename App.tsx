@@ -3,11 +3,11 @@ import Navbar from "./components/Navbar"
 import TitleScreen from "./components/zones/TitleScreen"
 import StatsScreen from "./components/zones/StatsScreen"
 import QuestLog from "./components/zones/QuestLog"
+import Inventory from "./components/zones/Inventory"
 import Projects from "./components/Projects"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
 import Contact from "./components/Contact"
-import Skills from './components/Skills'
 import Noise from './components/Noise'
 
 export default function App() {
@@ -36,7 +36,7 @@ export default function App() {
           <TitleScreen />
           <StatsScreen />
           <QuestLog />
-          <Skills />
+          <Inventory />
           <Projects />
           <Contact />
           <Footer />
