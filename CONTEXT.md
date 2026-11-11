@@ -42,8 +42,8 @@ The About Zone, framed as a character/player card.
 _Avoid_: bio, about section
 
 **Inventory**:
-The Skills Zone, framed as an item inventory or skill tree with leveled items.
-_Avoid_: skills list
+The Skills Zone, framed as an item inventory. Items carry no self-assigned ratings: each shows its field record — the quests and levels it was used in — and the current core kit (the stack the Stats Screen bio names) is marked EQUIPPED.
+_Avoid_: skills list, skill bars, percentages, levels
 
 **Quest Log**:
 The Experience Zone: past roles as completed quests, the current role as the active quest.

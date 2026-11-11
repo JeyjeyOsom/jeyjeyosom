@@ -14,49 +14,55 @@ import ZoneHeader from "./ZoneHeader"
 
 interface Item {
   name: string
-  level: number // 0–100; shown as pips out of 10
   info: string
   icon: ReactElement
+  /** Part of the current core kit (the stack the bio names) */
+  equipped?: boolean
+  /** Field record: quests and levels where this item was actually used */
+  usedIn?: string[]
 }
 
+// No self-assigned ratings: each item carries its field record — the jobs
+// (Quest Log) and projects (Level Select) it was used in — and the current
+// core kit is marked EQUIPPED.
 const ITEMS: Record<string, Item[]> = {
   frontend: [
-    { name: "React", level: 95, info: "Used in multiple production apps", icon: <Code /> },
-    { name: "Vue.js", level: 90, info: "Strong experience in dynamic UIs", icon: <Code /> },
-    { name: "JavaScript (ES6+)", level: 95, info: "Daily driver for full-stack work", icon: <Code /> },
-    { name: "Tailwind CSS", level: 90, info: "Styled modern UIs efficiently", icon: <Palette /> },
-    { name: "Framer Motion", level: 85, info: "Smooth animations & transitions", icon: <Sparkles /> },
-    { name: "Figma", level: 80, info: "UI collaboration and prototyping", icon: <Palette /> },
+    { name: "React", info: "Used in multiple production apps", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "Dexio Group", "Project Ascension"] },
+    { name: "Vue.js", info: "Strong experience in dynamic UIs", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
+    { name: "TypeScript & JavaScript", info: "Daily driver for full-stack work", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension", "this site"] },
+    { name: "Tailwind CSS", info: "Styled modern UIs efficiently", icon: <Palette />, usedIn: ["Publicity For Good", "Project Ascension", "this site"] },
+    { name: "Framer Motion", info: "Smooth animations & transitions", icon: <Sparkles />, usedIn: ["this site"] },
+    { name: "Figma", info: "UI collaboration and prototyping", icon: <Palette /> },
   ],
   backend: [
-    { name: "Node.js", level: 95, info: "Built RESTful APIs & services", icon: <Server /> },
-    { name: "FastAPI", level: 95, info: "Built RESTful APIs & services", icon: <Server /> },
-    { name: "AdonisJS", level: 90, info: "Advanced experience in backend systems", icon: <Server /> },
-    { name: "NestJS", level: 80, info: "Modular TypeScript backend design", icon: <Server /> },
-    { name: "PostgreSQL", level: 85, info: "Optimized queries and schema design", icon: <Database /> },
-    { name: "MongoDB", level: 80, info: "Worked on document-based systems", icon: <Database /> },
-    { name: "Redis", level: 75, info: "Used for caching and rate-limiting", icon: <Database /> },
+    { name: "Node.js", info: "Built RESTful APIs & services", icon: <Server />, usedIn: ["Dexio Group", "Virtual Staffing Solutions"] },
+    { name: "FastAPI", info: "Built RESTful APIs & services", icon: <Server />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "AdonisJS", info: "Advanced experience in backend systems", icon: <Server />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
+    { name: "NestJS", info: "Modular TypeScript backend design", icon: <Server /> },
+    { name: "PostgreSQL", info: "Optimized queries and schema design", icon: <Database />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "MongoDB", info: "Worked on document-based systems", icon: <Database /> },
+    { name: "Redis", info: "Used for caching and rate-limiting", icon: <Database />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
   ],
   ai: [
-    { name: "Gemini API", level: 85, info: "Building LLM-powered applications and AI features.", icon: <Sparkles /> },
-    { name: "Claude", level: 95, info: "Architecture discussions, code reviews, and technical planning.", icon: <Sparkles /> },
-    { name: "ChatGPT", level: 90, info: "Debugging, documentation, system design, and rapid prototyping.", icon: <Sparkles /> },
-    { name: "GitHub Copilot", level: 90, info: "AI-assisted development and code generation.", icon: <Sparkles /> },
-    { name: "Agentic Workflows", level: 80, info: "Designing autonomous multi-step AI automation systems.", icon: <Sparkles /> },
+    { name: "Gemini API", info: "Building LLM-powered applications and AI features.", icon: <Sparkles />, usedIn: ["AI Brand Manager"] },
+    { name: "Claude", info: "Architecture discussions, code reviews, and technical planning.", icon: <Sparkles />, usedIn: ["this site"] },
+    { name: "ChatGPT", info: "Debugging, documentation, system design, and rapid prototyping.", icon: <Sparkles /> },
+    { name: "GitHub Copilot", info: "AI-assisted development and code generation.", icon: <Sparkles /> },
+    { name: "Agentic Workflows", info: "Designing autonomous multi-step AI automation systems.", icon: <Sparkles /> },
   ],
   devops: [
-    { name: "Git / GitHub / GitLab", level: 95, info: "Version control & CI/CD workflows", icon: <GitBranch /> },
-    { name: "Docker", level: 85, info: "Built local and production containers", icon: <Cloud /> },
-    { name: "AWS (S3)", level: 80, info: "Handled uploads & signed URLs", icon: <Cloud /> },
-    { name: "Render", level: 75, info: "Deployed Node services", icon: <Cloud /> },
-    { name: "Vercel", level: 90, info: "Deployed and optimized React apps", icon: <Cloud /> },
+    { name: "Git / GitHub / GitLab", info: "Version control & CI/CD workflows", icon: <GitBranch />, usedIn: ["every quest since 2023"] },
+    { name: "Docker", info: "Built local and production containers", icon: <Cloud />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "AWS (S3)", info: "Handled uploads & signed URLs", icon: <Cloud />, equipped: true, usedIn: ["Publicity For Good"] },
+    { name: "Render", info: "Deployed Node services", icon: <Cloud /> },
+    { name: "Vercel", info: "Deployed and optimized React apps", icon: <Cloud />, usedIn: ["Dexio Group"] },
   ],
   softskills: [
-    { name: "Communication", level: 95, info: "Effective in team and client settings", icon: <Users /> },
-    { name: "Problem Solving", level: 90, info: "Strong analytical thinking", icon: <Users /> },
-    { name: "Adaptability", level: 90, info: "Quick learner in new frameworks", icon: <Users /> },
-    { name: "Attention to Detail", level: 95, info: "Precision in both code & UI", icon: <Users /> },
-    { name: "Team Collaboration", level: 95, info: "Thrives in agile environments", icon: <Users /> },
+    { name: "Communication", info: "Effective in team and client settings", icon: <Users /> },
+    { name: "Problem Solving", info: "Strong analytical thinking", icon: <Users /> },
+    { name: "Adaptability", info: "Quick learner in new frameworks", icon: <Users /> },
+    { name: "Attention to Detail", info: "Precision in both code & UI", icon: <Users /> },
+    { name: "Team Collaboration", info: "Thrives in agile environments", icon: <Users /> },
   ],
 }
 
@@ -68,28 +74,7 @@ const CATEGORIES = [
   { key: "softskills", label: "Soft Skills" },
 ]
 
-function LevelPips({ name, level }: { name: string; level: number }) {
-  const filled = Math.floor(level / 10)
-  return (
-    <div
-      role="img"
-      aria-label={`${name} level ${filled} of 10`}
-      className="flex items-center gap-[3px]"
-    >
-      {Array.from({ length: 10 }).map((_, i) => (
-        <span
-          key={i}
-          className={`w-2 h-2.5 ${i < filled ? "bg-gold-400" : "bg-dusk-700"}`}
-        />
-      ))}
-      <span aria-hidden="true" className="ml-2 font-arcade text-[8px] text-gold-300">
-        LV{filled}
-      </span>
-    </div>
-  )
-}
-
-// Inventory — the Skills Zone: leveled items sorted into bag tabs.
+// Inventory — the Skills Zone: items sorted into bag tabs, proven by use.
 export default function Inventory() {
   const [active, setActive] = useState("frontend")
   const reduceMotion = useReducedMotion()
@@ -141,24 +126,33 @@ export default function Inventory() {
                 className={`${isActive ? "grid" : "hidden"} grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 px-1`}
               >
                 {ITEMS[cat.key].map((item) => (
-                  <li key={item.name} className="group pixel-border bg-dusk-900 p-5 md:p-6">
-                    <div className="flex items-center gap-3">
+                  <li key={item.name} className="group pixel-border bg-dusk-900 p-5 md:p-6 flex flex-col">
+                    <div className="flex items-start gap-3">
                       <span
                         aria-hidden="true"
-                        className="text-mist-300 group-hover:text-gold-400 transition-colors [&>svg]:w-5 [&>svg]:h-5"
+                        className="mt-0.5 text-mist-300 group-hover:text-gold-400 transition-colors [&>svg]:w-5 [&>svg]:h-5"
                       >
                         {item.icon}
                       </span>
                       <h3 className="font-pixel font-bold text-lg md:text-xl text-cream-100">
                         {item.name}
                       </h3>
+                      {item.equipped && (
+                        <span className="ml-auto shrink-0 bg-dusk-800 px-1.5 py-1 font-arcade text-[7px] tracking-wider text-gold-400">
+                          EQUIPPED
+                        </span>
+                      )}
                     </div>
                     <p className="mt-3 font-body text-sm leading-relaxed text-mist-300">
                       {item.info}
                     </p>
-                    <div className="mt-4">
-                      <LevelPips name={item.name} level={item.level} />
-                    </div>
+                    {item.usedIn && (
+                      <p className="mt-auto pt-4 font-body text-xs leading-relaxed text-cream-100/80">
+                        <span aria-hidden="true" className="text-gold-400">▸ </span>
+                        <span className="font-arcade text-[7px] tracking-wider text-gold-400 mr-1">FIELD RECORD</span>{" "}
+                        {item.usedIn.join(" · ")}
+                      </p>
+                    )}
                   </li>
                 ))}
               </motion.ul>
