@@ -7,6 +7,7 @@ import {
   RUNNER_FRAME_A,
   RUNNER_FRAME_B,
 } from "./sprites"
+import { usePlayMode } from "../play/PlayModeContext"
 
 // Pixel sun: row widths of a rasterized circle, 15 units across
 const SUN_ROWS: Px[] = [
@@ -36,6 +37,16 @@ const STARS: Array<[number, number, number]> = [
 export default function TitleScreen() {
   const ref = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
+  const { playing, enter } = usePlayMode()
+
+  // Press Start switches to Play Mode where a keyboard is likely present;
+  // touch devices stay in Browse Mode and follow the anchor instead.
+  const handlePressStart = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (window.matchMedia("(pointer: fine)").matches) {
+      e.preventDefault()
+      enter()
+    }
+  }
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -142,7 +153,9 @@ export default function TitleScreen() {
         </div>
       </div>
 
-      {/* Runner — placeholder sprite until the custom Juan avatar replaces it */}
+      {/* Runner — placeholder sprite until the custom Juan avatar replaces it.
+          Hidden while Play Mode's own Runner is on the track. */}
+      {!playing && (
       <div aria-hidden="true" className="sprite-run absolute bottom-[8.5vh] left-[12%] md:left-[18%] w-12 md:w-16 pointer-events-none">
         <svg viewBox="0 0 12 14" className="crisp w-full" shapeRendering="crispEdges">
           <g className="frame-a">
@@ -153,6 +166,7 @@ export default function TitleScreen() {
           </g>
         </svg>
       </div>
+      )}
 
       {/* HUD status line */}
       <div className="relative z-10 flex items-center gap-2 px-6 md:px-10 pt-24">
@@ -203,6 +217,7 @@ export default function TitleScreen() {
         >
           <a
             href="#about"
+            onClick={handlePressStart}
             className="animate-blink font-arcade text-xs md:text-sm text-gold-400 hover:text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
           >
             ▸ PRESS START
@@ -224,12 +239,6 @@ export default function TitleScreen() {
         </motion.nav>
       </motion.div>
 
-      <style>{`
-        @keyframes sprite-frame-a { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
-        @keyframes sprite-frame-b { 0%, 49% { opacity: 0 } 50%, 100% { opacity: 1 } }
-        .sprite-run .frame-a { animation: sprite-frame-a 0.5s steps(1, end) infinite; }
-        .sprite-run .frame-b { opacity: 0; animation: sprite-frame-b 0.5s steps(1, end) infinite; }
-      `}</style>
     </section>
   )
 }

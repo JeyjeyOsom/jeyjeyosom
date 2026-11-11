@@ -9,11 +9,16 @@ import SavePoint from "./components/zones/SavePoint"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
 import Noise from "./components/Noise"
+import PlayMode from "./components/play/PlayMode"
+import { PlayModeProvider, usePlayMode } from "./components/play/PlayModeContext"
 
-export default function App() {
+function World() {
+  const { playing } = usePlayMode()
+
   return (
     <div className="min-h-screen">
-      <Navbar />
+      {/* Browse chrome steps aside while the keyboard drives the World */}
+      {!playing && <Navbar />}
       <main>
         <Noise />
         <TitleScreen />
@@ -24,8 +29,17 @@ export default function App() {
         <RecordsScreen />
         <SavePoint />
         <Footer />
-        <ScrollToTop />
+        {!playing && <ScrollToTop />}
       </main>
+      <PlayMode />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <PlayModeProvider>
+      <World />
+    </PlayModeProvider>
   )
 }

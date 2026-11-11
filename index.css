@@ -67,6 +67,29 @@ body {
   }
 }
 
+/* Two-frame run cycle for any .sprite-run sprite */
+@keyframes sprite-frame-a {
+  0%, 49% { opacity: 1 }
+  50%, 100% { opacity: 0 }
+}
+@keyframes sprite-frame-b {
+  0%, 49% { opacity: 0 }
+  50%, 100% { opacity: 1 }
+}
+.sprite-run .frame-a {
+  animation: sprite-frame-a 0.5s steps(1, end) infinite;
+}
+.sprite-run .frame-b {
+  opacity: 0;
+  animation: sprite-frame-b 0.5s steps(1, end) infinite;
+}
+
+/* Play Mode: keyboard drives the scroll, so smooth scrolling must not fight
+   the per-frame scrollBy loop */
+html.play-mode {
+  scroll-behavior: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
