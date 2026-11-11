@@ -68,7 +68,7 @@ The pixel-art cover image representing one project on its level card.
 _Avoid_: thumbnail, cover image
 
 **Run Data**:
-Juan's running stats (PRs, mileage, races) as a baked JSON snapshot refreshed on a schedule from Strava, not fetched live by visitors.
+Juan's running stats (PRs, mileage, races) as a baked JSON snapshot (data/run-data.json), not fetched live by visitors. Refreshed by requesting the Huawei Health privacy export (his Watch GT5 Pro records runs there) and running scripts/import-huawei-data.mjs on the zip; races and official PRs are hand-kept in data/run-overrides.json. Strava was the original source but its API moved behind a paid subscription in June 2026.
 _Avoid_: live stats, Strava feed
 
 **Sunset-Runner Palette**:

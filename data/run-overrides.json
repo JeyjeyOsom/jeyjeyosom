@@ -1,0 +1,14 @@
+{
+  "_comment": "Hand-maintained Run Data: Huawei's export doesn't flag races, so list them here; prs listed here replace auto-detected ones (same shape). totals fields here override computed totals. Merged by scripts/import-huawei-data.mjs.",
+  "prs": [],
+  "races": [
+    {
+      "name": "Ormoc City Marathon — Trifecta Leg 2",
+      "date": "2026-01-01",
+      "distanceKm": 42.2,
+      "time": "0:00:00",
+      "_comment": "placeholder entry from the race-bib photo — fix date/distance/time, or delete"
+    }
+  ],
+  "totals": {}
+}

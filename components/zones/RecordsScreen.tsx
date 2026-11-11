@@ -2,8 +2,9 @@ import { motion, useReducedMotion } from "framer-motion"
 import ZoneHeader from "./ZoneHeader"
 import runData from "../../data/run-data.json"
 
-// Run Data is a baked snapshot refreshed via scripts/fetch-run-data.mjs,
-// never fetched live by visitors (see CONTEXT.md).
+// Run Data is a baked snapshot from the Huawei Health privacy export,
+// refreshed via scripts/import-huawei-data.mjs — never fetched live by
+// visitors (see CONTEXT.md).
 
 const STAT_TILES: Array<[string, string]> = [
   ["TOTAL DISTANCE", `${runData.totals.distanceKm.toLocaleString()} KM`],
@@ -37,7 +38,7 @@ export default function RecordsScreen() {
         {runData.placeholder && (
           <p className="mb-10 inline-flex items-center gap-2 bg-dusk-900 px-3 py-2 font-arcade text-[8px] md:text-[9px] tracking-wider text-sunset-400">
             <span aria-hidden="true" className="animate-blink inline-block w-2 h-2 bg-sunset-500" />
-            SAMPLE DATA · STRAVA SYNC PENDING
+            SAMPLE DATA · WATCH SYNC PENDING
           </p>
         )}
 
