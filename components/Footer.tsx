@@ -1,80 +1,71 @@
-import { motion } from "framer-motion"
 import { Github, Linkedin, Mail } from "lucide-react"
 
+const SOCIALS = [
+  {
+    href: "https://github.com/JeyjeyOsom",
+    icon: <Github className="w-4 h-4" aria-hidden="true" />,
+    label: "GitHub",
+  },
+  {
+    href: "https://www.linkedin.com/in/jeyjey0som96/",
+    icon: <Linkedin className="w-4 h-4" aria-hidden="true" />,
+    label: "LinkedIn",
+  },
+  {
+    href: "mailto:jrodejon@gmail.com",
+    icon: <Mail className="w-4 h-4" aria-hidden="true" />,
+    label: "Email",
+  },
+]
+
+// The World's ground closes the page, echoing the Title Screen's track.
 export default function Footer() {
-  const socials = [
-    {
-      href: "https://github.com/JeyjeyOsom",
-      icon: <Github className="w-4 h-4" />,
-      label: "GitHub",
-    },
-    {
-      href: "https://www.linkedin.com/in/jeyjey0som96/",
-      icon: <Linkedin className="w-4 h-4" />,
-      label: "LinkedIn",
-    },
-    {
-      href: "mailto:jrodejon@gmail.com",
-      icon: <Mail className="w-4 h-4" />,
-      label: "Email",
-    },
-  ]
-
   return (
-    <motion.footer
-      id="footer"
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      transition={{ duration: 1 }}
-      viewport={{ once: true }}
-      className="py-20 px-6 bg-white dark:bg-[#0a0a0a] transition-colors duration-500"
-    >
-      <div className="max-w-6xl mx-auto">
-        {/* Subtle top divider line */}
-        <div className="w-full h-[1px] bg-slate-100 dark:bg-gray-900 mb-12" />
-
-        <div className="flex flex-col md:flex-row items-center justify-between gap-10">
-          
-          {/* Left: Branding */}
-          <div className="flex flex-col items-center md:items-start space-y-2">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white">
-              Juan Dejon.
-            </p>
-            <p className="text-[10px] text-slate-400 dark:text-gray-600 uppercase tracking-widest">
-              © {new Date().getFullYear()} — Engineering with purpose.
-            </p>
-          </div>
-
-          {/* Center/Right: Social Links as Textual Buttons */}
-          <div className="flex items-center gap-8">
-            {socials.map((social) => (
-              <motion.a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-slate-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-white transition-colors duration-300 group"
-                whileHover={{ y: -2 }}
-                title={social.label}
-              >
-                <span className="p-1.5 rounded-full border border-transparent group-hover:border-slate-100 dark:group-hover:border-gray-800 transition-all">
-                  {social.icon}
-                </span>
-                <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline-block">
-                  {social.label}
-                </span>
-              </motion.a>
-            ))}
-          </div>
-
-          {/* Right: Small Tech Stack Note */}
-          <div className="hidden lg:block">
-             <p className="text-[10px] text-slate-300 dark:text-gray-800 font-serif italic">
-               Built with React & Tailwind
-             </p>
-          </div>
+    <footer id="footer" className="relative bg-[#0E0721] px-6 pt-12 pb-10">
+      {/* Track edge */}
+      <div aria-hidden="true" className="absolute top-0 left-0 right-0">
+        <div className="h-1 bg-dusk-700" />
+        <div className="mt-3 flex gap-8 px-4 overflow-hidden">
+          {Array.from({ length: 48 }).map((_, i) => (
+            <span key={i} className="w-6 h-1 bg-dusk-700 shrink-0" />
+          ))}
         </div>
       </div>
-    </motion.footer>
+
+      <div className="max-w-6xl mx-auto mt-8 flex flex-col md:flex-row items-center justify-between gap-8">
+        {/* Branding */}
+        <div className="flex flex-col items-center md:items-start gap-2">
+          <p className="font-pixel font-bold text-lg tracking-wide text-cream-100">
+            JUAN DEJON<span className="text-gold-400">.</span>
+          </p>
+          <p className="font-arcade text-[8px] tracking-wider text-mist-300">
+            © {new Date().getFullYear()} — ENGINEERING WITH PURPOSE
+          </p>
+        </div>
+
+        {/* Social links */}
+        <div className="flex items-center gap-8">
+          {SOCIALS.map((social) => (
+            <a
+              key={social.label}
+              href={social.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-mist-300 hover:text-gold-400 transition-colors duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 focus-visible:outline-offset-4"
+            >
+              {social.icon}
+              <span className="font-arcade text-[8px] tracking-wider hidden sm:inline-block">
+                {social.label.toUpperCase()}
+              </span>
+            </a>
+          ))}
+        </div>
+
+        {/* End credits */}
+        <p className="font-arcade text-[8px] tracking-wider text-dusk-600">
+          THANKS FOR PLAYING
+        </p>
+      </div>
+    </footer>
   )
 }

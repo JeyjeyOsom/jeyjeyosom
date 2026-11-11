@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react"
-import { Menu, X, Sun, Moon } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import { smoothScrollTo } from "../utils/smoothScroll"
 import { motion, AnimatePresence } from "framer-motion"
-
-interface NavbarProps {
-  dark: boolean
-  setDark: (value: boolean) => void
-}
 
 const links = [
   { label: "Home", href: "#hero" },
@@ -17,31 +12,40 @@ const links = [
   { label: "Contact", href: "#contact" },
 ]
 
-export default function Navbar({ dark, setDark }: NavbarProps) {
+export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [active, setActive] = useState<string>("hero")
   const [scrolled, setScrolled] = useState(false)
 
-// --- UPDATED: FAVICON & BROWSER THEME LOGIC ---
+  // --- FAVICON & BROWSER THEME LOGIC ---
+  // The favicon sits on the browser's chrome, so it follows the OS
+  // color scheme; the page itself is always dusk.
   useEffect(() => {
-    const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-    if (favicon) {
-      // We add a 'v' parameter with the current time to force a refresh
-      const version = new Date().getTime();
-      const themeSuffix = dark ? "#dark" : "";
-      favicon.href = `${import.meta.env.BASE_URL}icon.svg?v=${version}${themeSuffix}`;
-    }
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
 
-    // Update Mobile Browser Address Bar Color
+    const updateFavicon = () => {
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (favicon) {
+        // A 'v' parameter with the current time forces a refresh
+        const version = new Date().getTime();
+        const themeSuffix = media.matches ? "#dark" : "";
+        favicon.href = `${import.meta.env.BASE_URL}icon.svg?v=${version}${themeSuffix}`;
+      }
+    };
+    updateFavicon();
+    media.addEventListener("change", updateFavicon);
+
+    // Mobile browser address bar: always the dusk sky
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (!metaThemeColor) {
       metaThemeColor = document.createElement('meta');
       metaThemeColor.setAttribute('name', 'theme-color');
       document.head.appendChild(metaThemeColor);
     }
-    // The World's sky is always dusk, whatever the legacy sections do
     metaThemeColor.setAttribute('content', '#140B2E');
-  }, [dark]);
+
+    return () => media.removeEventListener("change", updateFavicon);
+  }, []);
 
   // --- PREVIOUS FIXES: SCROLL LOCK & SECTION DETECTION ---
   useEffect(() => {
@@ -124,26 +128,6 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
             ))}
           </div>
 
-          <div className="h-4 w-[2px] bg-dusk-700 mx-2" />
-
-          {/* Theme Toggle Button — only affects legacy sections until every Zone is ported */}
-          <button
-            onClick={() => setDark(!dark)}
-            aria-label={dark ? "Switch legacy sections to light mode" : "Switch legacy sections to dark mode"}
-            className="text-mist-300 hover:text-gold-400 transition-colors p-1"
-          >
-            <AnimatePresence mode="wait">
-              {dark ? (
-                <motion.div key="sun" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.2 }}>
-                  <Sun size={18} />
-                </motion.div>
-              ) : (
-                <motion.div key="moon" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.2 }}>
-                  <Moon size={18} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </button>
         </div>
 
         {/* Mobile Toggle Button - High Z-Index to stay visible */}
@@ -191,16 +175,6 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
               ))}
             </div>
             
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              onClick={() => setDark(!dark)}
-              className="pixel-border mt-20 mx-1 flex items-center gap-4 px-10 py-4 bg-dusk-900 text-cream-100 font-arcade text-[9px] uppercase tracking-[0.15em]"
-            >
-              {dark ? <Sun size={16} /> : <Moon size={16} />}
-              {dark ? "Light Mode" : "Dark Mode"}
-            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
