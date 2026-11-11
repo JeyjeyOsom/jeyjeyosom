@@ -6,6 +6,7 @@ import {
   RUNNER_SHARED,
   RUNNER_FRAME_A,
   RUNNER_FRAME_B,
+  RUNNER_VIEWBOX,
 } from "./sprites"
 import { usePlayMode } from "../play/PlayModeContext"
 import { useTheme } from "../ThemeContext"
@@ -190,7 +191,7 @@ export default function TitleScreen() {
           Hidden while Play Mode's own Runner is on the track. */}
       {!playing && (
       <div aria-hidden="true" className="sprite-run absolute bottom-[8.5vh] left-[12%] md:left-[18%] w-12 md:w-16 pointer-events-none">
-        <svg viewBox="0 0 12 14" className="crisp w-full" shapeRendering="crispEdges">
+        <svg viewBox={RUNNER_VIEWBOX} className="crisp w-full" shapeRendering="crispEdges">
           <g className="frame-a">
             <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_A]} />
           </g>

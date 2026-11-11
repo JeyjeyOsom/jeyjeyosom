@@ -6,6 +6,7 @@ import {
   RUNNER_FRAME_A,
   RUNNER_FRAME_B,
   RUNNER_STANDING,
+  RUNNER_VIEWBOX,
 } from "../zones/sprites"
 
 const ZONE_NAMES: Record<string, string> = {
@@ -189,7 +190,7 @@ export default function PlayMode() {
       >
         <div ref={jumperRef}>
           <svg
-            viewBox="0 0 12 14"
+            viewBox={RUNNER_VIEWBOX}
             className={`crisp w-full ${moving ? "sprite-run" : ""}`}
             shapeRendering="crispEdges"
             style={{ transform: facing === -1 ? "scaleX(-1)" : undefined }}

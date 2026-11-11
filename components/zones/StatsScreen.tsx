@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion"
 import ZoneHeader from "./ZoneHeader"
-import { PixelRects, RUNNER_SHARED, RUNNER_STANDING } from "./sprites"
+import { PixelRects, RUNNER_SHARED, RUNNER_STANDING, RUNNER_VIEWBOX } from "./sprites"
 
 const STATS: Array<[string, string]> = [
   ["CLASS", "Full Stack Developer"],
@@ -39,7 +39,7 @@ export default function StatsScreen() {
                 className="pixel-border bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6"
               >
                 <svg
-                  viewBox="0 0 12 14"
+                  viewBox={RUNNER_VIEWBOX}
                   className="crisp w-24 md:w-28"
                   shapeRendering="crispEdges"
                 >
