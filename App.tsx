@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Navbar from "./components/Navbar"
-import Hero from "./components/Hero"
+import TitleScreen from "./components/zones/TitleScreen"
 import About from "./components/About"
 import Projects from "./components/Projects"
 import ScrollToTop from "./components/ScrollToTop"
@@ -33,7 +33,7 @@ export default function App() {
         <Navbar dark={dark} setDark={setDark} />
         <main >
           <Noise />
-          <Hero />
+          <TitleScreen />
           <About />
           <Experience />
           <Skills />

@@ -29,7 +29,7 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
       // We add a 'v' parameter with the current time to force a refresh
       const version = new Date().getTime();
       const themeSuffix = dark ? "#dark" : "";
-      favicon.href = `/icon.svg?v=${version}${themeSuffix}`;
+      favicon.href = `${import.meta.env.BASE_URL}icon.svg?v=${version}${themeSuffix}`;
     }
 
     // Update Mobile Browser Address Bar Color

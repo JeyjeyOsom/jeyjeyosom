@@ -2,25 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Sunset-Runner tokens (mirror of tailwind.config.js, for plain CSS use) */
+  --dusk-950: #140b2e;
+  --dusk-900: #1d1140;
+  --dusk-800: #2b1b57;
+  --dusk-700: #3e2a73;
+  --sunset-600: #e8542f;
+  --sunset-500: #ff7a3d;
+  --gold-400: #ffc94d;
+  --gold-300: #ffe3a3;
+  --magenta-500: #c2366b;
+  --cream-100: #fff4e3;
+  --mist-300: #b9a8d9;
+  /* One pixel of the 16-bit grid at CSS scale */
+  --px: 4px;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-gray-900 text-gray-100 antialiased;
+  @apply bg-dusk-950 text-cream-100 font-body antialiased;
 }
 
 ::selection {
-  @apply bg-blue-600 text-white;
+  background-color: var(--sunset-600);
+  color: var(--cream-100);
 }
 
-/* In your global CSS file */
-::selection {
-  background-color: #4f46e5; /* Your Indigo-600 */
-  color: white;
+@layer utilities {
+  /* Stepped pixel border: four hard box-shadows notch the corners */
+  .pixel-border {
+    --pb-color: var(--dusk-700);
+    box-shadow:
+      calc(var(--px) * -1) 0 0 0 var(--pb-color),
+      var(--px) 0 0 0 var(--pb-color),
+      0 calc(var(--px) * -1) 0 0 var(--pb-color),
+      0 var(--px) 0 0 var(--pb-color);
+  }
+
+  .pixel-shadow-text {
+    text-shadow: var(--px) var(--px) 0 var(--sunset-600);
+  }
+
+  .crisp {
+    image-rendering: pixelated;
+  }
+
+  /* CRT scanline overlay — decorative, must sit on a positioned parent */
+  .scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(10, 5, 25, 0.14) 3px,
+      rgba(10, 5, 25, 0.14) 4px
+    );
+  }
 }
 
-.dark ::selection {
-  background-color: #ffffff;
-  color: #000000;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-blink,
+  .animate-twinkle,
+  .sprite-run,
+  .sprite-run * {
+    animation: none !important;
+  }
+  .scanlines::after {
+    display: none;
+  }
 }
