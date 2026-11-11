@@ -1,6 +1,81 @@
+import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import ZoneHeader from "./ZoneHeader"
-import { PixelRects, RUNNER_SHARED, RUNNER_STANDING, RUNNER_VIEWBOX } from "./sprites"
+import {
+  type Px,
+  PixelRects,
+  RUNNER_SHARED,
+  RUNNER_STANDING,
+  WARMUP_SQUAT,
+  WARMUP_LUNGE,
+  WARMUP_HOP_AIR,
+  WARMUP_HOP_GROUND,
+  WARMUP_SWEEP,
+} from "./sprites"
+
+const STAND: Px[] = [...RUNNER_SHARED, ...RUNNER_STANDING]
+
+interface WarmupStep {
+  rects: Px[]
+  dy: number // grounded frames sit 2 down; the airborne hop at 0
+  ms: number
+  label: string
+}
+
+const step = (rects: Px[], dy: number, ms: number, label: string): WarmupStep => ({
+  rects,
+  dy,
+  ms,
+  label,
+})
+const reps = (steps: WarmupStep[], n: number) => Array.from({ length: n }, () => steps).flat()
+
+// The pre-run routine: squats, walking lunges, pogo hops, hamstring sweeps.
+const ROUTINE: WarmupStep[] = [
+  ...reps([step(STAND, 2, 420, "SQUATS"), step(WARMUP_SQUAT, 2, 560, "SQUATS")], 3),
+  ...reps([step(WARMUP_LUNGE, 2, 620, "LUNGES"), step(STAND, 2, 360, "LUNGES")], 3),
+  ...reps([step(WARMUP_HOP_GROUND, 2, 200, "POGO HOPS"), step(WARMUP_HOP_AIR, 0, 240, "POGO HOPS")], 5),
+  ...reps([step(WARMUP_SWEEP, 2, 620, "SWEEPS"), step(STAND, 2, 360, "SWEEPS")], 3),
+]
+
+// The character card's idle animation: Juan warming up before the run.
+function WarmupPortrait() {
+  const reduceMotion = useReducedMotion()
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (reduceMotion) return
+    const timer = setTimeout(
+      () => setIndex((i) => (i + 1) % ROUTINE.length),
+      ROUTINE[index].ms
+    )
+    return () => clearTimeout(timer)
+  }, [index, reduceMotion])
+
+  const current = reduceMotion ? step(STAND, 2, 0, "") : ROUTINE[index]
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pixel-border relative bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6"
+    >
+      <svg
+        viewBox="0 0 16 22"
+        className="crisp w-24 md:w-28"
+        shapeRendering="crispEdges"
+      >
+        <g transform={`translate(0 ${current.dy})`}>
+          <PixelRects rects={current.rects} />
+        </g>
+      </svg>
+      {current.label && (
+        <span className="absolute left-2 bottom-1 font-arcade text-[7px] tracking-wider text-gold-300">
+          {current.label}
+        </span>
+      )}
+    </div>
+  )
+}
 
 const STATS: Array<[string, string]> = [
   ["CLASS", "Full Stack Developer"],
@@ -33,19 +108,8 @@ export default function StatsScreen() {
             className="md:col-span-5 lg:col-span-4"
           >
             <div className="pixel-border bg-dusk-900 p-6 md:p-8 mx-1">
-              {/* Portrait */}
-              <div
-                aria-hidden="true"
-                className="pixel-border bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6"
-              >
-                <svg
-                  viewBox={RUNNER_VIEWBOX}
-                  className="crisp w-24 md:w-28"
-                  shapeRendering="crispEdges"
-                >
-                  <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_STANDING]} />
-                </svg>
-              </div>
+              {/* Portrait: Juan warming up before the run */}
+              <WarmupPortrait />
 
               <h3 className="font-pixel font-bold text-2xl md:text-3xl text-cream-100">
                 JUAN DEJON
