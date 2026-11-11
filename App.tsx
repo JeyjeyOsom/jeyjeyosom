@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import Navbar from "./components/Navbar"
 import TitleScreen from "./components/zones/TitleScreen"
 import StatsScreen from "./components/zones/StatsScreen"
+import QuestLog from "./components/zones/QuestLog"
 import Projects from "./components/Projects"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
 import Contact from "./components/Contact"
 import Skills from './components/Skills'
-import Experience from './components/Experience'
 import Noise from './components/Noise'
 
 export default function App() {
@@ -35,7 +35,7 @@ export default function App() {
           <Noise />
           <TitleScreen />
           <StatsScreen />
-          <Experience />
+          <QuestLog />
           <Skills />
           <Projects />
           <Contact />
