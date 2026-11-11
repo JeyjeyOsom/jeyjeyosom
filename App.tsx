@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Navbar from "./components/Navbar"
 import TitleScreen from "./components/zones/TitleScreen"
-import About from "./components/About"
+import StatsScreen from "./components/zones/StatsScreen"
 import Projects from "./components/Projects"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
@@ -34,7 +34,7 @@ export default function App() {
         <main >
           <Noise />
           <TitleScreen />
-          <About />
+          <StatsScreen />
           <Experience />
           <Skills />
           <Projects />

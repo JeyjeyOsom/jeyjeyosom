@@ -1,46 +1,12 @@
 import { useRef } from "react"
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion"
-
-// Pixel rects as [x, y, w, h, fill] on a 12x14 grid
-type Px = [number, number, number, number, string]
-
-const SKIN = "#FFC084"
-const HAIR = "#3E2A73"
-const SHIRT = "#FF7A3D"
-const SHORTS = "#2B1B57"
-const SHOE = "#FFC94D"
-
-const RUNNER_SHARED: Px[] = [
-  [4, 0, 3, 1, HAIR],
-  [3, 1, 1, 1, HAIR],
-  [4, 1, 3, 2, SKIN],
-  [4, 3, 3, 4, SHIRT],
-  [4, 7, 3, 1, SHORTS],
-]
-
-// Frame A: full stride — legs extended, arms swinging
-const FRAME_A: Px[] = [
-  [7, 3, 1, 2, SKIN],
-  [8, 4, 1, 1, SKIN],
-  [3, 4, 1, 2, SKIN],
-  [6, 8, 1, 2, SKIN],
-  [7, 10, 1, 2, SKIN],
-  [7, 12, 2, 1, SHOE],
-  [4, 8, 1, 2, SKIN],
-  [3, 10, 1, 2, SKIN],
-  [2, 12, 2, 1, SHOE],
-]
-
-// Frame B: passing — legs under the body, one knee up
-const FRAME_B: Px[] = [
-  [7, 4, 1, 2, SKIN],
-  [3, 3, 1, 2, SKIN],
-  [5, 8, 1, 4, SKIN],
-  [5, 12, 2, 1, SHOE],
-  [6, 8, 1, 1, SKIN],
-  [7, 9, 1, 1, SKIN],
-  [7, 10, 2, 1, SHOE],
-]
+import {
+  type Px,
+  PixelRects,
+  RUNNER_SHARED,
+  RUNNER_FRAME_A,
+  RUNNER_FRAME_B,
+} from "./sprites"
 
 // Pixel sun: row widths of a rasterized circle, 15 units across
 const SUN_ROWS: Px[] = [
@@ -66,16 +32,6 @@ const STARS: Array<[number, number, number]> = [
   [46, 18, 2], [55, 26, 0], [63, 9, 1], [71, 21, 2], [79, 13, 0],
   [86, 28, 1], [92, 6, 2], [10, 34, 1], [50, 36, 0], [84, 38, 2],
 ]
-
-function PixelRects({ rects }: { rects: Px[] }) {
-  return (
-    <>
-      {rects.map(([x, y, w, h, fill], i) => (
-        <rect key={i} x={x} y={y} width={w} height={h} fill={fill} />
-      ))}
-    </>
-  )
-}
 
 export default function TitleScreen() {
   const ref = useRef<HTMLElement>(null)
@@ -190,10 +146,10 @@ export default function TitleScreen() {
       <div aria-hidden="true" className="sprite-run absolute bottom-[8.5vh] left-[12%] md:left-[18%] w-12 md:w-16 pointer-events-none">
         <svg viewBox="0 0 12 14" className="crisp w-full" shapeRendering="crispEdges">
           <g className="frame-a">
-            <PixelRects rects={[...RUNNER_SHARED, ...FRAME_A]} />
+            <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_A]} />
           </g>
           <g className="frame-b">
-            <PixelRects rects={[...RUNNER_SHARED, ...FRAME_B]} />
+            <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_B]} />
           </g>
         </svg>
       </div>
