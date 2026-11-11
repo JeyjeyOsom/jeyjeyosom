@@ -186,18 +186,19 @@ for (const [label, min, max] of PR_WINDOWS) {
 }
 
 // --- merge manual overrides (races, official PRs, corrections) ---
+// Overrides come first in their curated order; computed per-run bests only
+// fill in distances the overrides don't cover.
 let overrides = { prs: [], races: [], totals: {} }
 if (existsSync(OVERRIDES)) {
   overrides = { ...overrides, ...JSON.parse(readFileSync(OVERRIDES, "utf8")) }
 }
-for (const o of overrides.prs) {
-  const i = prs.findIndex((p) => p.label === o.label)
-  if (i > -1) prs[i] = o
-  else prs.push(o)
-}
+const mergedPrs = [
+  ...overrides.prs,
+  ...prs.filter((p) => !overrides.prs.some((o) => o.label === p.label)),
+]
 
 const snapshot = {
-  placeholder: false,
+  totalsPlaceholder: false,
   source: "huawei-health-export",
   generatedAt: new Date().toISOString(),
   totals: {
@@ -211,14 +212,14 @@ const snapshot = {
     runs: ytdRuns.length,
     distanceKm: Math.round(sum(ytdRuns, (r) => r.meters) / 1000),
   },
-  prs,
+  prs: mergedPrs,
   races: overrides.races,
 }
 
 writeFileSync(OUT, JSON.stringify(snapshot, null, 2) + "\n")
 console.log(`\nWrote ${OUT}`)
 console.log(`  ${snapshot.totals.runs} runs · ${snapshot.totals.distanceKm} km lifetime · ${snapshot.ytd.distanceKm} km this year`)
-console.log(`  PRs: ${prs.map((p) => `${p.label} ${p.time}`).join(" · ") || "none detected"}`)
+console.log(`  PRs: ${mergedPrs.map((p) => `${p.label} ${p.time}`).join(" · ") || "none detected"}`)
 if (overrides.races.length === 0) {
   console.log("  No races listed — add them to data/run-overrides.json and re-run.")
 }

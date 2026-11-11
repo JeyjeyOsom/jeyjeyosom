@@ -1,14 +1,25 @@
 {
-  "_comment": "Hand-maintained Run Data: Huawei's export doesn't flag races, so list them here; prs listed here replace auto-detected ones (same shape). totals fields here override computed totals. Merged by scripts/import-huawei-data.mjs.",
-  "prs": [],
-  "races": [
-    {
-      "name": "Ormoc City Marathon — Trifecta Leg 2",
-      "date": "2026-01-01",
-      "distanceKm": 42.2,
-      "time": "0:00:00",
-      "_comment": "placeholder entry from the race-bib photo — fix date/distance/time, or delete"
-    }
+  "_comment": "Hand-maintained Run Data: official PRs and races. prs here replace auto-detected ones (matched by label) when scripts/import-huawei-data.mjs bakes the snapshot; races come only from here. Dates may be empty strings until known.",
+  "_source": "PRs transcribed from Juan's Strava all-time Best Efforts, 2026-11-11.",
+  "prs": [
+    { "label": "400M", "time": "1:42", "date": "" },
+    { "label": "1 MILE", "time": "8:22", "date": "" },
+    { "label": "5K", "time": "28:34", "date": "" },
+    { "label": "10K", "time": "1:02:47", "date": "" },
+    { "label": "HALF MARATHON", "time": "2:30:14", "date": "" },
+    { "label": "MARATHON", "time": "6:19:51", "date": "" },
+    { "label": "50K", "time": "7:40:54", "date": "" }
   ],
+  "_otherBestEfforts": {
+    "_comment": "Not displayed, kept for the record (same Strava table).",
+    "HALF MILE": "3:59",
+    "1K": "5:08",
+    "2 MILE": "17:50",
+    "15K": "1:38:17",
+    "10 MILE": "1:45:49",
+    "20K": "2:20:37",
+    "30K": "4:24:49"
+  },
+  "races": [],
   "totals": {}
 }

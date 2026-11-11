@@ -21,6 +21,17 @@ function formatDate(iso: string) {
   })
 }
 
+interface Race {
+  name: string
+  date: string
+  distanceKm: number
+  time: string
+}
+const races: Race[] = runData.races
+
+// Dates are optional on hand-kept PRs; hide the column until one exists
+const hasPrDates = runData.prs.some((pr) => pr.date !== "")
+
 // Records Screen — the Running Zone: PRs, mileage, and races as a game
 // records table, fed by Run Data.
 export default function RecordsScreen() {
@@ -35,10 +46,10 @@ export default function RecordsScreen() {
       <div className="max-w-6xl mx-auto">
         <ZoneHeader code="ZONE 1-6" title="RECORDS" />
 
-        {runData.placeholder && (
+        {runData.totalsPlaceholder && (
           <p className="mb-10 inline-flex items-center gap-2 bg-dusk-900 px-3 py-2 font-arcade text-[8px] md:text-[9px] tracking-wider text-sunset-400">
             <span aria-hidden="true" className="animate-blink inline-block w-2 h-2 bg-sunset-500" />
-            SAMPLE DATA · WATCH SYNC PENDING
+            SAMPLE TOTALS · WATCH SYNC PENDING
           </p>
         )}
 
@@ -81,7 +92,9 @@ export default function RecordsScreen() {
                 <tr className="text-left">
                   <th scope="col" className="pb-3 font-arcade text-[8px] md:text-[9px] font-normal text-gold-400">DIST</th>
                   <th scope="col" className="pb-3 font-arcade text-[8px] md:text-[9px] font-normal text-gold-400">TIME</th>
-                  <th scope="col" className="pb-3 font-arcade text-[8px] md:text-[9px] font-normal text-gold-400 text-right">DATE</th>
+                  {hasPrDates && (
+                    <th scope="col" className="pb-3 font-arcade text-[8px] md:text-[9px] font-normal text-gold-400 text-right">DATE</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -89,7 +102,11 @@ export default function RecordsScreen() {
                   <tr key={pr.label} className="border-t-2 border-dusk-800">
                     <td className="py-3 font-body text-sm md:text-base font-semibold text-cream-100">{pr.label}</td>
                     <td className="py-3 font-pixel text-lg md:text-xl text-gold-300">{pr.time}</td>
-                    <td className="py-3 font-body text-xs md:text-sm text-mist-300 text-right">{formatDate(pr.date)}</td>
+                    {hasPrDates && (
+                      <td className="py-3 font-body text-xs md:text-sm text-mist-300 text-right">
+                        {pr.date ? formatDate(pr.date) : ""}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -107,21 +124,28 @@ export default function RecordsScreen() {
             <h3 className="font-pixel font-bold text-xl md:text-2xl text-cream-100">
               RACE RESULTS
             </h3>
-            <ol className="mt-6 space-y-5">
-              {runData.races.map((race) => (
-                <li key={`${race.name}-${race.date}`} className="border-t-2 border-dusk-800 pt-4 first:border-t-0 first:pt-0">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-                    <span className="font-body text-sm md:text-base font-semibold text-cream-100">
-                      {race.name}
-                    </span>
-                    <span className="font-pixel text-lg md:text-xl text-gold-300">{race.time}</span>
-                  </div>
-                  <p className="mt-1 font-body text-xs md:text-sm text-mist-300">
-                    {race.distanceKm} km · {formatDate(race.date)}
-                  </p>
-                </li>
-              ))}
-            </ol>
+            {races.length === 0 ? (
+              <p className="mt-6 flex items-center gap-2 font-arcade text-[8px] md:text-[9px] tracking-wider text-mist-300">
+                <span aria-hidden="true" className="animate-blink inline-block w-2 h-2 bg-dusk-700" />
+                RACE LOG AWAITING ITS FIRST ENTRY
+              </p>
+            ) : (
+              <ol className="mt-6 space-y-5">
+                {races.map((race) => (
+                  <li key={`${race.name}-${race.date}`} className="border-t-2 border-dusk-800 pt-4 first:border-t-0 first:pt-0">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                      <span className="font-body text-sm md:text-base font-semibold text-cream-100">
+                        {race.name}
+                      </span>
+                      <span className="font-pixel text-lg md:text-xl text-gold-300">{race.time}</span>
+                    </div>
+                    <p className="mt-1 font-body text-xs md:text-sm text-mist-300">
+                      {race.distanceKm} km · {formatDate(race.date)}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
           </motion.div>
         </div>
       </div>
