@@ -39,7 +39,8 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
       metaThemeColor.setAttribute('name', 'theme-color');
       document.head.appendChild(metaThemeColor);
     }
-    metaThemeColor.setAttribute('content', dark ? '#0a0a0a' : '#ffffff');
+    // The World's sky is always dusk, whatever the legacy sections do
+    metaThemeColor.setAttribute('content', '#140B2E');
   }, [dark]);
 
   // --- PREVIOUS FIXES: SCROLL LOCK & SECTION DETECTION ---
@@ -74,24 +75,24 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-      scrolled 
-        ? "py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-slate-100 dark:border-gray-900" 
-        : "py-6 bg-transparent"
+      scrolled
+        ? "py-3 bg-dusk-950/90 backdrop-blur-xl border-b-2 border-dusk-800"
+        : "py-5 bg-transparent"
     }`}>
       <div className="max-w-6xl mx-auto px-6 md:px-8 flex justify-between items-center relative z-[70]">
-        
+
         {/* Logo - Fixed Home Link */}
         <a
           href="#hero"
-          onClick={(e) => { 
-            e.preventDefault(); 
-            smoothScrollTo("#hero"); 
-            setActive("hero"); 
-            setMenuOpen(false); 
+          onClick={(e) => {
+            e.preventDefault();
+            smoothScrollTo("#hero");
+            setActive("hero");
+            setMenuOpen(false);
           }}
-          className="text-lg font-black tracking-tighter text-slate-900 dark:text-white uppercase group"
+          className="font-pixel font-bold text-xl tracking-wide text-cream-100 uppercase group"
         >
-          JD<span className="text-indigo-600 group-hover:pl-1 transition-all">.</span>
+          JD<span className="text-gold-400 group-hover:pl-1 transition-all">.</span>
         </a>
 
         {/* Desktop Navigation */}
@@ -106,29 +107,30 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
                   smoothScrollTo(link.href)
                   setActive(link.href.replace("#", ""))
                 }}
-                className={`relative text-[10px] uppercase tracking-[0.2em] font-black transition-colors duration-300 ${
+                className={`relative font-arcade text-[9px] uppercase tracking-[0.15em] transition-colors duration-300 ${
                   active === link.href.replace("#", "")
-                    ? "text-indigo-600 dark:text-white"
-                    : "text-slate-400 dark:text-gray-600 hover:text-slate-900 dark:hover:text-gray-300"
+                    ? "text-gold-400"
+                    : "text-mist-300 hover:text-cream-100"
                 }`}
               >
                 {link.label}
                 {active === link.href.replace("#", "") && (
-                  <motion.div 
+                  <motion.div
                     layoutId="navActive"
-                    className="absolute -bottom-1 left-0 w-full h-[1px] bg-indigo-600 dark:bg-white"
+                    className="absolute -bottom-2 left-0 w-full h-[3px] bg-gold-400"
                   />
                 )}
               </a>
             ))}
           </div>
 
-          <div className="h-4 w-[1px] bg-slate-200 dark:bg-gray-800 mx-2" />
+          <div className="h-4 w-[2px] bg-dusk-700 mx-2" />
 
-          {/* Theme Toggle Button */}
+          {/* Theme Toggle Button — only affects legacy sections until every Zone is ported */}
           <button
             onClick={() => setDark(!dark)}
-            className="text-slate-400 dark:text-gray-600 hover:text-indigo-600 dark:hover:text-white transition-colors p-1"
+            aria-label={dark ? "Switch legacy sections to light mode" : "Switch legacy sections to dark mode"}
+            className="text-mist-300 hover:text-gold-400 transition-colors p-1"
           >
             <AnimatePresence mode="wait">
               {dark ? (
@@ -146,7 +148,8 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
 
         {/* Mobile Toggle Button - High Z-Index to stay visible */}
         <button
-          className="md:hidden text-slate-900 dark:text-white p-2 transition-transform active:scale-90"
+          className="md:hidden text-cream-100 p-2 transition-transform active:scale-90"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <X size={26} /> : <Menu size={26} />}
@@ -160,7 +163,7 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] w-full h-[100dvh] bg-white dark:bg-[#0a0a0a] md:hidden flex flex-col items-center justify-center overflow-hidden"
+            className="scanlines fixed inset-0 z-[60] w-full h-[100dvh] bg-dusk-950 md:hidden flex flex-col items-center justify-center overflow-hidden"
           >
             <div className="flex flex-col items-center gap-10">
               {links.map((link, i) => (
@@ -176,12 +179,13 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
                     setMenuOpen(false)
                     setActive(link.href.replace("#", ""))
                   }}
-                  className={`text-4xl font-black tracking-tighter transition-all ${
-                    active === link.href.replace("#", "") 
-                      ? "text-indigo-600 scale-110" 
-                      : "text-slate-900 dark:text-white"
+                  className={`font-pixel font-bold text-3xl tracking-wide transition-all ${
+                    active === link.href.replace("#", "")
+                      ? "text-gold-400"
+                      : "text-cream-100"
                   }`}
                 >
+                  <span aria-hidden="true" className={active === link.href.replace("#", "") ? "" : "invisible"}>▸ </span>
                   {link.label}
                 </motion.a>
               ))}
@@ -192,9 +196,9 @@ export default function Navbar({ dark, setDark }: NavbarProps) {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
               onClick={() => setDark(!dark)}
-              className="mt-20 flex items-center gap-4 px-10 py-4 rounded-full border border-slate-200 dark:border-gray-800 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-[0.2em]"
+              className="pixel-border mt-20 mx-1 flex items-center gap-4 px-10 py-4 bg-dusk-900 text-cream-100 font-arcade text-[9px] uppercase tracking-[0.15em]"
             >
-              {dark ? <Sun size={18} /> : <Moon size={18} />}
+              {dark ? <Sun size={16} /> : <Moon size={16} />}
               {dark ? "Light Mode" : "Dark Mode"}
             </motion.button>
           </motion.div>

@@ -155,7 +155,7 @@ export default function TitleScreen() {
       </div>
 
       {/* HUD status line */}
-      <div className="relative z-10 flex items-center gap-2 px-6 md:px-10 pt-24 md:pt-10">
+      <div className="relative z-10 flex items-center gap-2 px-6 md:px-10 pt-24">
         <span className="animate-blink inline-block w-2 h-2 bg-gold-400" />
         <span className="font-arcade text-[9px] md:text-[10px] tracking-wider text-gold-300">
           STATUS: OPEN TO WORK
