@@ -7,10 +7,39 @@ interface Quest {
   period: string
   log: string[]
   loot: string[]
+  /** The current role — rendered as the active quest (CONTEXT.md) */
+  active?: boolean
 }
 
 // Newest first; numbering counts up from the oldest quest.
 const QUESTS: Quest[] = [
+  {
+    role: "Full Stack Developer (Freelance)",
+    company: "Fortius — Real Estate Training Platform",
+    period: "SEP 2026 – PRESENT",
+    active: true,
+    log: [
+      "Designed and delivered an AI-powered learning platform end-to-end for a real-estate client: trainers organize Google Drive materials into learning tracks, realtors work through them with live progress tracking.",
+      "Built the FastAPI backend with PostgreSQL (pgvector), Redis, and Celery, enforcing permission-aware material visibility on every request — browsing, streaming, and AI answers alike.",
+      "Developed a RAG assistant on OpenAI embeddings that answers strictly from each user's visible materials, citing the exact page, slide, or timestamp.",
+      "Implemented a media ingestion pipeline streaming 275+ Drive videos and audio files, with mid-stream failure recovery and automatic requeueing.",
+      "Shipped role-based dashboards for admins, trainers, and realtors in Next.js and React 19; deployed and operate the platform on a VPS with Docker Compose, Caddy, and GitHub Actions CI/CD.",
+    ],
+    loot: [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "FastAPI",
+      "PostgreSQL",
+      "pgvector",
+      "Redis",
+      "Celery",
+      "OpenAI API",
+      "Docker",
+      "Caddy",
+      "GitHub Actions",
+    ],
+  },
   {
     role: "Full Stack Developer",
     company: "Publicity For Good",
@@ -112,7 +141,11 @@ export default function QuestLog() {
               {/* Quest header */}
               <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                 <span className="font-arcade text-[8px] md:text-[9px] text-gold-400">
-                  QUEST {String(QUESTS.length - index).padStart(2, "0")} · COMPLETE
+                  {quest.active && (
+                    <span aria-hidden="true" className="animate-blink inline-block w-2 h-2 bg-gold-400 mr-2" />
+                  )}
+                  QUEST {String(QUESTS.length - index).padStart(2, "0")} ·{" "}
+                  {quest.active ? "IN PROGRESS" : "COMPLETE"}
                 </span>
                 <span className="font-arcade text-[8px] md:text-[9px] text-mist-300">
                   {quest.period}

@@ -27,23 +27,26 @@ interface Item {
 // core kit is marked EQUIPPED.
 const ITEMS: Record<string, Item[]> = {
   frontend: [
-    { name: "React", info: "Used in multiple production apps", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "Dexio Group", "Project Ascension"] },
+    { name: "React", info: "Used in multiple production apps", icon: <Code />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Dexio Group", "Project Ascension"] },
+    { name: "Next.js", info: "Role-based dashboards & server-rendered apps", icon: <Code />, usedIn: ["Fortius"] },
     { name: "Vue.js", info: "Strong experience in dynamic UIs", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
-    { name: "TypeScript & JavaScript", info: "Daily driver for full-stack work", icon: <Code />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension", "this site"] },
+    { name: "TypeScript & JavaScript", info: "Daily driver for full-stack work", icon: <Code />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension", "this site"] },
     { name: "Tailwind CSS", info: "Styled modern UIs efficiently", icon: <Palette />, usedIn: ["Publicity For Good", "Project Ascension", "this site"] },
     { name: "Framer Motion", info: "Smooth animations & transitions", icon: <Sparkles />, usedIn: ["this site"] },
     { name: "Figma", info: "UI collaboration and prototyping", icon: <Palette /> },
   ],
   backend: [
     { name: "Node.js", info: "Built RESTful APIs & services", icon: <Server />, usedIn: ["Dexio Group", "Virtual Staffing Solutions"] },
-    { name: "FastAPI", info: "Built RESTful APIs & services", icon: <Server />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "FastAPI", info: "Built RESTful APIs & services", icon: <Server />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension"] },
     { name: "AdonisJS", info: "Advanced experience in backend systems", icon: <Server />, equipped: true, usedIn: ["Publicity For Good", "AI Brand Manager"] },
     { name: "NestJS", info: "Modular TypeScript backend design", icon: <Server /> },
-    { name: "PostgreSQL", info: "Optimized queries and schema design", icon: <Database />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "PostgreSQL", info: "Schema design, query optimization & pgvector embeddings", icon: <Database />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension"] },
     { name: "MongoDB", info: "Worked on document-based systems", icon: <Database /> },
-    { name: "Redis", info: "Used for caching and rate-limiting", icon: <Database />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "Redis", info: "Caching, rate-limiting & task queues", icon: <Database />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension"] },
+    { name: "Celery", info: "Background jobs & media ingestion pipelines", icon: <Server />, usedIn: ["Fortius"] },
   ],
   ai: [
+    { name: "OpenAI API", info: "RAG assistants with cited, permission-aware answers.", icon: <Sparkles />, usedIn: ["Fortius"] },
     { name: "Gemini API", info: "Building LLM-powered applications and AI features.", icon: <Sparkles />, usedIn: ["AI Brand Manager"] },
     { name: "Claude", info: "Architecture discussions, code reviews, and technical planning.", icon: <Sparkles />, usedIn: ["this site"] },
     { name: "ChatGPT", info: "Debugging, documentation, system design, and rapid prototyping.", icon: <Sparkles /> },
@@ -52,8 +55,9 @@ const ITEMS: Record<string, Item[]> = {
   ],
   devops: [
     { name: "Git / GitHub / GitLab", info: "Version control & CI/CD workflows", icon: <GitBranch />, usedIn: ["every quest since 2023"] },
-    { name: "Docker", info: "Built local and production containers", icon: <Cloud />, equipped: true, usedIn: ["Publicity For Good", "Project Ascension"] },
+    { name: "Docker", info: "Containers from local dev to VPS production", icon: <Cloud />, equipped: true, usedIn: ["Fortius", "Publicity For Good", "Project Ascension"] },
     { name: "AWS (S3)", info: "Handled uploads & signed URLs", icon: <Cloud />, equipped: true, usedIn: ["Publicity For Good"] },
+    { name: "Caddy", info: "Reverse proxy & TLS for VPS deployments", icon: <Cloud />, usedIn: ["Fortius"] },
     { name: "Render", info: "Deployed Node services", icon: <Cloud /> },
     { name: "Vercel", info: "Deployed and optimized React apps", icon: <Cloud />, usedIn: ["Dexio Group"] },
   ],

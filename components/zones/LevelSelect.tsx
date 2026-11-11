@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion"
-import { Github } from "lucide-react"
+import { Github, Lock } from "lucide-react"
 import ZoneHeader from "./ZoneHeader"
 import { type Px, PixelRects } from "../sprites"
 
@@ -17,6 +17,19 @@ const CART_SHELL: Px[] = [
   [3, 7, 12, 1, PLASTIC_DK], // label inset shadow
   [3, 8, 12, 9, LABEL_BG], // label window
   [1, 19, 16, 1, PLASTIC_DK], // bottom shadow
+]
+
+// Shield with cross emblem — Fortius
+const ART_FORTIUS: Px[] = [
+  [6, 9, 6, 1, "#FFC94D"], // rim top
+  [5, 10, 1, 3, "#FFC94D"], // rim left
+  [12, 10, 1, 3, "#FFC94D"], // rim right
+  [6, 10, 6, 3, "#C2366B"], // body
+  [6, 13, 6, 1, "#C2366B"], // taper
+  [7, 14, 4, 1, "#3E2A73"], // taper shadow
+  [8, 15, 2, 1, "#3E2A73"], // point
+  [8, 10, 2, 4, "#FFE3A3"], // emblem vertical
+  [7, 11, 4, 1, "#FFE3A3"], // emblem crossbar
 ]
 
 // Rising steps — Project Ascension
@@ -56,11 +69,23 @@ interface Level {
   brief: string
   points?: string[]
   tech: string[]
-  github: string
+  github?: string
   art: Px[]
 }
 
 const LEVELS: Level[] = [
+  {
+    title: "Fortius — The Dashboard",
+    brief:
+      "An AI-powered training platform built end-to-end as freelance work for a real-estate client. Trainers organize Google Drive materials into learning tracks, realtors work through them with live progress tracking, and a RAG assistant answers questions strictly from the materials each user may see — citing the exact page, slide, or timestamp.",
+    points: [
+      "Permission-aware visibility enforced on every request — browsing, streaming, and AI answers alike",
+      "Media pipeline streaming 275+ Drive videos and audio files, with mid-stream recovery and requeueing",
+      "Deployed and operated on a VPS with Docker Compose, Caddy, and GitHub Actions CI/CD",
+    ],
+    tech: ["Next.js", "React", "TypeScript", "FastAPI", "PostgreSQL", "pgvector", "Redis", "Celery", "OpenAI API", "Docker", "Caddy"],
+    art: ART_FORTIUS,
+  },
   {
     title: "Project Ascension",
     brief:
@@ -166,16 +191,23 @@ export default function LevelSelect() {
                   ))}
                 </div>
 
-                {/* Source link */}
-                <a
-                  href={level.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
-                >
-                  <Github size={14} aria-hidden="true" />
-                  ▸ VIEW SOURCE
-                </a>
+                {/* Source link — or private marker when there is no public repo */}
+                {level.github ? (
+                  <a
+                    href={level.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
+                  >
+                    <Github size={14} aria-hidden="true" />
+                    ▸ VIEW SOURCE
+                  </a>
+                ) : (
+                  <span className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-mist-300">
+                    <Lock size={14} aria-hidden="true" />
+                    PRIVATE CLIENT BUILD
+                  </span>
+                )}
               </div>
             </motion.li>
           ))}
