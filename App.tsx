@@ -4,7 +4,7 @@ import TitleScreen from "./components/zones/TitleScreen"
 import StatsScreen from "./components/zones/StatsScreen"
 import QuestLog from "./components/zones/QuestLog"
 import Inventory from "./components/zones/Inventory"
-import Projects from "./components/Projects"
+import LevelSelect from "./components/zones/LevelSelect"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
 import Contact from "./components/Contact"
@@ -37,7 +37,7 @@ export default function App() {
           <StatsScreen />
           <QuestLog />
           <Inventory />
-          <Projects />
+          <LevelSelect />
           <Contact />
           <Footer />
           <ScrollToTop />
