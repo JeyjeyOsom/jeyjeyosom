@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Strava credentials (fetch-run-data script)
+.env
+.env.*

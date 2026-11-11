@@ -112,7 +112,7 @@ export default function SavePoint() {
       className="scanlines relative overflow-hidden bg-dusk-950 py-24 md:py-32 px-6"
     >
       <div className="max-w-6xl mx-auto">
-        <ZoneHeader code="ZONE 1-6" title="SAVE POINT" />
+        <ZoneHeader code="ZONE 1-7" title="SAVE POINT" />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
           {/* NPC dialog */}

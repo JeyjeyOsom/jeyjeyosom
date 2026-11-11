@@ -1,0 +1,24 @@
+{
+  "placeholder": true,
+  "generatedAt": "2026-11-11T00:00:00Z",
+  "totals": {
+    "runs": 128,
+    "distanceKm": 1042,
+    "elevationM": 6180,
+    "movingTimeHours": 104
+  },
+  "ytd": {
+    "runs": 61,
+    "distanceKm": 487
+  },
+  "prs": [
+    { "label": "1K", "time": "4:05", "date": "2026-03-14" },
+    { "label": "5K", "time": "23:41", "date": "2026-05-02" },
+    { "label": "10K", "time": "49:58", "date": "2026-06-20" },
+    { "label": "HALF MARATHON", "time": "1:52:30", "date": "2026-09-12" }
+  ],
+  "races": [
+    { "name": "Sample City Half Marathon", "date": "2026-09-12", "distanceKm": 21.1, "time": "1:52:30" },
+    { "name": "Sample Sunset 10K", "date": "2026-06-20", "distanceKm": 10, "time": "49:58" }
+  ]
+}

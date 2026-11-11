@@ -4,6 +4,7 @@ import StatsScreen from "./components/zones/StatsScreen"
 import QuestLog from "./components/zones/QuestLog"
 import Inventory from "./components/zones/Inventory"
 import LevelSelect from "./components/zones/LevelSelect"
+import RecordsScreen from "./components/zones/RecordsScreen"
 import SavePoint from "./components/zones/SavePoint"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
@@ -20,6 +21,7 @@ export default function App() {
         <QuestLog />
         <Inventory />
         <LevelSelect />
+        <RecordsScreen />
         <SavePoint />
         <Footer />
         <ScrollToTop />
