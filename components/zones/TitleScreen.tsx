@@ -5,25 +5,28 @@ import { Ground } from "../Track"
 import { usePlayMode } from "../play/PlayModeContext"
 import { useTheme } from "../ThemeContext"
 
-// Scene scenery per theme: the sky gradient and the landforms under it.
-// (The sun is the same pixel sun at both ends of the day; stars and lit
-// windows belong to dusk only.)
+// Scene scenery per theme: the sky gradient and the landforms under it —
+// Juan's actual training view: a big dark mountain behind hazy foothills,
+// a dense palm treeline, and a cow pasture beside the track. (The sun is
+// the same pixel sun at both ends of the day; stars belong to dusk only.)
 const SCENES = {
   dusk: {
     gradient: `linear-gradient(to bottom,
-      #140B2E 0%, #140B2E 26%,
-      #1D1140 26%, #1D1140 40%,
-      #2B1B57 40%, #2B1B57 52%,
-      #3E2A73 52%, #3E2A73 61%,
-      #C2366B 61%, #C2366B 69%,
-      #E8542F 69%, #E8542F 77%,
-      #FF7A3D 77%, #FF7A3D 85%,
-      #FFC94D 85%, #FFC94D 100%)`,
-    ridgeFar: "#3E2A73",
-    ridgeMid: "#2B1B57",
-    skyline: "#0E0721",
+      #7E5E74 0%, #7E5E74 26%,
+      #8A6579 26%, #8A6579 40%,
+      #966D7E 40%, #966D7E 52%,
+      #A37684 52%, #A37684 61%,
+      #B08089 61%, #B08089 69%,
+      #BD8B8E 69%, #BD8B8E 77%,
+      #C79792 77%, #C79792 85%,
+      #D0A396 85%, #D0A396 100%)`,
+    ridgeFar: "#4D3A59",
+    ridgeMid: "#6E5675",
+    canopy: "#1D2F21",
+    grass: "#44573B",
+    grassDark: "#39492F",
+    grassLight: "#54684A",
     stars: true,
-    windows: true,
   },
   dawn: {
     gradient: `linear-gradient(to bottom,
@@ -35,11 +38,13 @@ const SCENES = {
       #F9B98F 69%, #F9B98F 77%,
       #FBCF8F 77%, #FBCF8F 85%,
       #FDE7B0 85%, #FDE7B0 100%)`,
-    ridgeFar: "#8CA3CB",
-    ridgeMid: "#A9BBDA",
-    skyline: "#6E82A8",
+    ridgeFar: "#71809F",
+    ridgeMid: "#9DAECB",
+    canopy: "#4E6B58",
+    grass: "#7E9468",
+    grassDark: "#6D8158",
+    grassLight: "#90A67B",
     stars: false,
-    windows: false,
   },
 } as const
 
@@ -60,6 +65,64 @@ const SUN_ROWS: Px[] = [
   [1, 12, 13, 1, "#FF7A3D"],
   [2, 13, 11, 1, "#FF7A3D"],
   [3, 14, 9, 1, "#FF7A3D"],
+]
+
+// The pasture herd: a white cow facing the Runner, and a tan one grazing.
+const COW_FRONT: Px[] = [
+  [0, 1, 2, 2, "#D9CCB8"], // left ear
+  [8, 1, 2, 2, "#D9CCB8"], // right ear
+  [3, 0, 4, 4, "#F2EADB"], // head
+  [3, 1, 1, 1, "#4A4038"], // eyes
+  [6, 1, 1, 1, "#4A4038"],
+  [3, 3, 4, 1, "#C9A5A0"], // muzzle
+  [1, 4, 8, 4, "#F2EADB"], // shoulders
+  [1, 7, 8, 1, "#D9CCB8"], // belly shade
+  [2, 8, 2, 3, "#E4D9C6"], // legs
+  [6, 8, 2, 3, "#E4D9C6"],
+  [2, 11, 2, 1, "#8A7A66"], // hooves
+  [6, 11, 2, 1, "#8A7A66"],
+]
+
+const COW_GRAZE: Px[] = [
+  [0, 0, 1, 3, "#D9C8B2"],  // tail
+  [1, 0, 10, 5, "#E8DAC5"], // body
+  [10, 1, 2, 3, "#E8DAC5"], // neck sloping down
+  [11, 3, 3, 4, "#E0D0B8"], // head lowered to the grass
+  [11, 3, 1, 1, "#4A4038"], // eye
+  [12, 7, 2, 1, "#B99F91"], // muzzle
+  [1, 4, 10, 1, "#CDBAA0"], // belly shade
+  [2, 5, 2, 4, "#DCCBB4"],  // legs
+  [5, 5, 1, 4, "#DCCBB4"],
+  [8, 5, 2, 4, "#DCCBB4"],
+  [2, 9, 2, 1, "#8A7A66"],  // hooves
+  [8, 9, 2, 1, "#8A7A66"],
+]
+
+// Crown-center x positions of the palms poking above the canopy
+const PALMS = [34, 92, 150, 216, 288]
+
+// One pixel palm silhouette: trunk down into the canopy, fronds fanning out
+function palmRects(x: number): Array<[number, number, number, number]> {
+  return [
+    [x, 6, 2, 12],
+    [x - 6, 4, 5, 2],
+    [x + 3, 4, 5, 2],
+    [x - 4, 2, 4, 2],
+    [x + 2, 2, 4, 2],
+    [x - 1, 1, 4, 2],
+    [x - 7, 6, 2, 2],
+    [x + 7, 6, 2, 2],
+  ]
+}
+
+// Pasture texture: darker patches and lighter tufts over the base grass
+const GRASS_DARK: Array<[number, number, number, number]> = [
+  [14, 6, 22, 3], [60, 14, 28, 4], [120, 4, 18, 3],
+  [168, 10, 26, 4], [228, 6, 20, 3], [282, 13, 24, 4],
+]
+const GRASS_LIGHT: Array<[number, number, number, number]> = [
+  [40, 3, 10, 2], [100, 9, 12, 2], [150, 16, 10, 2],
+  [210, 3, 12, 2], [258, 9, 10, 2], [300, 5, 8, 2],
 ]
 
 const STARS: Array<[number, number, number]> = [
@@ -89,7 +152,8 @@ export default function TitleScreen() {
   })
   const ySun = useTransform(scrollYProgress, [0, 1], [0, 140])
   const yFar = useTransform(scrollYProgress, [0, 1], [0, 90])
-  const yMid = useTransform(scrollYProgress, [0, 1], [0, 45])
+  const yMid = useTransform(scrollYProgress, [0, 1], [0, 55])
+  const yTree = useTransform(scrollYProgress, [0, 1], [0, 28])
   const yContent = useTransform(scrollYProgress, [0, 1], [0, 70])
   const fadeContent = useTransform(scrollYProgress, [0, 0.7], [1, 0])
 
@@ -114,60 +178,87 @@ export default function TitleScreen() {
         </div>
       )}
 
-      {/* Sun */}
+      {/* Sun — sinking behind the ridges and treeline */}
       <motion.div
         aria-hidden="true"
         style={{ y: reduceMotion ? 0 : ySun }}
-        className="absolute right-[8%] md:right-[14%] bottom-[16vh] w-32 md:w-52 pointer-events-none"
+        className="absolute right-[10%] md:right-[14%] bottom-[23vh] w-28 md:w-44 pointer-events-none"
       >
         <svg viewBox="0 0 15 15" className="crisp w-full" shapeRendering="crispEdges">
           <PixelRects rects={SUN_ROWS} />
         </svg>
       </motion.div>
 
-      {/* Far ridge */}
+      {/* Far ridge — the big mountain, peak left of center */}
       <motion.div
         aria-hidden="true"
         style={{ y: reduceMotion ? 0 : yFar }}
-        className="absolute bottom-[13vh] left-0 right-0 pointer-events-none"
+        className="absolute bottom-[26vh] left-0 right-0 pointer-events-none"
       >
         <svg viewBox="0 0 320 48" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[18vh]">
           <path
             fill={scene.ridgeFar}
-            d="M0,48 V30 h14 v-6 h12 v-6 h10 v6 h16 v-10 h12 v-4 h12 v8 h18 v6 h20 v-12 h14 v-6 h12 v10 h16 v6 h22 v-8 h14 v-6 h12 v10 h18 v4 h16 v-10 h14 v-4 h12 v12 h16 v6 h20 V48 Z"
+            d="M0,48 V36 h12 v-4 h10 v-3 h12 v-4 h10 v3 h10 v-7 h10 v-5 h10 v-4 h8 v-5 h8 v-3 h8 v-2 h10 v3 h8 v-4 h10 v2 h8 v5 h10 v4 h8 v-2 h10 v6 h10 v3 h12 v5 h10 v-3 h12 v6 h12 v3 h12 v4 h14 v-2 h12 v4 h12 v-3 h10 v4 h12 v-2 h10 v2 h20 V48 Z"
           />
         </svg>
       </motion.div>
 
-      {/* Mid ridge */}
+      {/* Mid ridge — hazy foothills at the mountain's base */}
       <motion.div
         aria-hidden="true"
         style={{ y: reduceMotion ? 0 : yMid }}
-        className="absolute bottom-[11vh] left-0 right-0 pointer-events-none"
+        className="absolute bottom-[24vh] left-0 right-0 pointer-events-none"
       >
-        <svg viewBox="0 0 320 40" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[14vh]">
+        <svg viewBox="0 0 320 40" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[13vh]">
           <path
             fill={scene.ridgeMid}
-            d="M0,40 V24 h18 v-8 h14 v-6 h16 v8 h20 v-4 h16 v10 h24 v-12 h18 v-6 h14 v12 h22 v4 h26 v-10 h16 v-6 h18 v12 h20 v6 h24 v-8 h18 v8 h16 V40 Z"
+            d="M0,40 V26 h16 v-4 h18 v-3 h16 v5 h20 v-6 h18 v-3 h16 v4 h22 v5 h18 v-7 h20 v-3 h18 v6 h22 v-4 h20 v6 h18 v-5 h20 v4 h18 v3 h40 V40 Z"
           />
         </svg>
       </motion.div>
 
-      {/* Skyline — the builder's city */}
-      <div aria-hidden="true" className="absolute bottom-[9vh] left-0 right-0 pointer-events-none">
-        <svg viewBox="0 0 320 36" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[11vh]">
+      {/* Treeline — dense canopy with palms poking above it */}
+      <motion.div
+        aria-hidden="true"
+        style={{ y: reduceMotion ? 0 : yTree }}
+        className="absolute bottom-[17vh] left-0 right-0 pointer-events-none"
+      >
+        <svg viewBox="0 0 320 36" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[13vh]">
+          {PALMS.map((px) =>
+            palmRects(px).map(([x, y, w, h], i) => (
+              <rect key={`${px}-${i}`} x={x} y={y} width={w} height={h} fill={scene.canopy} />
+            ))
+          )}
           <path
-            fill={scene.skyline}
-            d="M0,36 V22 h10 v-8 h8 v8 h6 v-14 h2 v-4 h2 v4 h2 v14 h8 v-6 h10 v6 h8 v-12 h12 v12 h6 v-8 h10 v8 h12 v-16 h2 v-3 h2 v3 h2 v16 h10 v-6 h12 v6 h8 v-10 h10 v10 h10 v-14 h12 v14 h8 v-8 h12 v8 h8 v-12 h2 v-4 h2 v4 h2 v12 h12 v-6 h10 v6 h10 v-10 h12 v10 h8 v-14 h10 v14 h10 v-8 h12 v8 h8 V36 Z"
+            fill={scene.canopy}
+            d="M0,36 V16 h10 v-3 h12 v2 h10 v-4 h14 v3 h12 v-2 h10 v4 h12 v-5 h12 v3 h10 v-2 h14 v4 h12 v-3 h10 v2 h12 v-4 h12 v3 h10 v-2 h14 v4 h10 v-3 h12 v2 h12 v-4 h10 v3 h14 v-2 h10 v4 h12 v-3 h12 v2 h10 v-2 h32 V36 Z"
           />
-          {/* Lit windows — dusk only; morning windows are dark */}
-          {scene.windows && [
-            [12, 26], [30, 16], [52, 24], [66, 20], [84, 22], [103, 14],
-            [122, 26], [140, 22], [158, 18], [178, 24], [200, 20], [224, 26],
-            [243, 22], [262, 20], [284, 24], [300, 22],
-          ].map(([x, y], i) => (
-            <rect key={i} x={x} y={y} width="2" height="2" fill="#FFC94D" />
+        </svg>
+      </motion.div>
+
+      {/* Pasture — the field between the treeline and the track */}
+      <div aria-hidden="true" className="absolute bottom-[9vh] left-0 right-0 pointer-events-none">
+        <svg viewBox="0 0 320 24" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[9vh]">
+          <rect x="0" y="0" width="320" height="24" fill={scene.grass} />
+          <rect x="0" y="0" width="320" height="2" fill={scene.grassLight} />
+          {GRASS_DARK.map(([x, y, w, h], i) => (
+            <rect key={`d${i}`} x={x} y={y} width={w} height={h} fill={scene.grassDark} />
           ))}
+          {GRASS_LIGHT.map(([x, y, w, h], i) => (
+            <rect key={`l${i}`} x={x} y={y} width={w} height={h} fill={scene.grassLight} />
+          ))}
+        </svg>
+      </div>
+
+      {/* The herd */}
+      <div aria-hidden="true" className="absolute bottom-[13vh] left-[40%] w-7 md:w-9 pointer-events-none">
+        <svg viewBox="0 0 10 12" className="crisp w-full" shapeRendering="crispEdges">
+          <PixelRects rects={COW_FRONT} />
+        </svg>
+      </div>
+      <div aria-hidden="true" className="absolute bottom-[11.5vh] left-[58%] w-11 md:w-14 pointer-events-none">
+        <svg viewBox="0 0 14 10" className="crisp w-full" shapeRendering="crispEdges">
+          <PixelRects rects={COW_GRAZE} />
         </svg>
       </div>
 
