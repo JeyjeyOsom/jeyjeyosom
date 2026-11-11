@@ -159,6 +159,14 @@ export default function SavePoint() {
               >
                 jrodejon@gmail.com
               </a>
+              <p className="pt-4 font-arcade text-[8px] md:text-[9px] text-gold-400">RESUME</p>
+              <a
+                href={`${import.meta.env.BASE_URL}Juan_Dejon_Resume.pdf`}
+                download="Juan_Dejon_Resume.pdf"
+                className="inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
+              >
+                ▸ DOWNLOAD PDF
+              </a>
             </motion.div>
           </div>
 

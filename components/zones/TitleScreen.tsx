@@ -250,6 +250,14 @@ export default function TitleScreen() {
             <span className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">▸ </span>
             GET IN TOUCH
           </a>
+          <a
+            href={`${import.meta.env.BASE_URL}Juan_Dejon_Resume.pdf`}
+            download="Juan_Dejon_Resume.pdf"
+            className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-ring"
+          >
+            <span className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">▸ </span>
+            DOWNLOAD RESUME
+          </a>
         </motion.nav>
       </motion.div>
 
