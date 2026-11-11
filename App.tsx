@@ -5,9 +5,9 @@ import StatsScreen from "./components/zones/StatsScreen"
 import QuestLog from "./components/zones/QuestLog"
 import Inventory from "./components/zones/Inventory"
 import LevelSelect from "./components/zones/LevelSelect"
+import SavePoint from "./components/zones/SavePoint"
 import ScrollToTop from "./components/ScrollToTop"
 import Footer from "./components/Footer"
-import Contact from "./components/Contact"
 import Noise from './components/Noise'
 
 export default function App() {
@@ -38,7 +38,7 @@ export default function App() {
           <QuestLog />
           <Inventory />
           <LevelSelect />
-          <Contact />
+          <SavePoint />
           <Footer />
           <ScrollToTop />
         </main>
