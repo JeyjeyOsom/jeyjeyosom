@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react"
-import { Menu, X } from "lucide-react"
+import { Menu, X, Sun, Moon } from "lucide-react"
 import { smoothScrollTo } from "../utils/smoothScroll"
 import { motion, AnimatePresence } from "framer-motion"
+import { useTheme } from "./ThemeContext"
 
 const links = [
   { label: "Home", href: "#hero" },
@@ -18,9 +19,11 @@ export default function Navbar() {
   const [active, setActive] = useState<string>("hero")
   const [scrolled, setScrolled] = useState(false)
 
-  // --- FAVICON & BROWSER THEME LOGIC ---
-  // The favicon sits on the browser's chrome, so it follows the OS
-  // color scheme; the page itself is always dusk.
+  const { theme, toggle } = useTheme()
+
+  // --- FAVICON LOGIC ---
+  // The favicon sits on the browser's chrome, so it follows the OS color
+  // scheme, not the site theme. (The theme-color meta lives in ThemeContext.)
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -35,16 +38,6 @@ export default function Navbar() {
     };
     updateFavicon();
     media.addEventListener("change", updateFavicon);
-
-    // Mobile browser address bar: always the dusk sky
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (!metaThemeColor) {
-      metaThemeColor = document.createElement('meta');
-      metaThemeColor.setAttribute('name', 'theme-color');
-      document.head.appendChild(metaThemeColor);
-    }
-    metaThemeColor.setAttribute('content', '#140B2E');
-
     return () => media.removeEventListener("change", updateFavicon);
   }, []);
 
@@ -129,6 +122,26 @@ export default function Navbar() {
             ))}
           </div>
 
+          <div className="h-4 w-[2px] bg-dusk-700 mx-2" />
+
+          {/* Theme toggle: dusk (sunset) ↔ dawn (sunrise) */}
+          <button
+            onClick={toggle}
+            aria-label={theme === "dusk" ? "Switch to dawn theme" : "Switch to dusk theme"}
+            className="text-mist-300 hover:text-gold-400 transition-colors p-1"
+          >
+            <AnimatePresence mode="wait">
+              {theme === "dusk" ? (
+                <motion.div key="sun" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.2 }}>
+                  <Sun size={18} />
+                </motion.div>
+              ) : (
+                <motion.div key="moon" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={{ duration: 0.2 }}>
+                  <Moon size={18} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </button>
         </div>
 
         {/* Mobile Toggle Button - High Z-Index to stay visible */}
@@ -175,7 +188,17 @@ export default function Navbar() {
                 </motion.a>
               ))}
             </div>
-            
+
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              onClick={toggle}
+              className="pixel-border mt-20 mx-1 flex items-center gap-4 px-10 py-4 bg-dusk-900 text-cream-100 font-arcade text-[9px] uppercase tracking-[0.15em]"
+            >
+              {theme === "dusk" ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === "dusk" ? "Dawn Mode" : "Dusk Mode"}
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>

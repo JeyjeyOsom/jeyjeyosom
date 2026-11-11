@@ -21,7 +21,7 @@ const SOCIALS = [
 // The World's ground closes the page, echoing the Title Screen's track.
 export default function Footer() {
   return (
-    <footer id="footer" className="relative bg-[#0E0721] px-6 pt-12 pb-10">
+    <footer id="footer" className="relative bg-ground px-6 pt-12 pb-10">
       {/* Track edge */}
       <div aria-hidden="true" className="absolute top-0 left-0 right-0">
         <div className="h-1 bg-dusk-700" />
@@ -62,7 +62,7 @@ export default function Footer() {
         </div>
 
         {/* End credits */}
-        <p className="font-arcade text-[8px] tracking-wider text-dusk-600">
+        <p className="font-arcade text-[8px] tracking-wider text-cream-100/60">
           THANKS FOR PLAYING
         </p>
       </div>

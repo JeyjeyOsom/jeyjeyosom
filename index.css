@@ -2,21 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Sunset-Runner tokens as RGB triplets so Tailwind can apply alpha.
+   Token names are ROLES named after the default dusk theme; html.dawn
+   re-points every role at the early-morning sunrise palette. */
 :root {
-  /* Sunset-Runner tokens (mirror of tailwind.config.js, for plain CSS use) */
-  --dusk-950: #140b2e;
-  --dusk-900: #1d1140;
-  --dusk-800: #2b1b57;
-  --dusk-700: #3e2a73;
-  --sunset-600: #e8542f;
-  --sunset-500: #ff7a3d;
-  --gold-400: #ffc94d;
-  --gold-300: #ffe3a3;
-  --magenta-500: #c2366b;
-  --cream-100: #fff4e3;
-  --mist-300: #b9a8d9;
+  --dusk-950: 20 11 46; /* page background        */
+  --dusk-900: 29 17 64; /* panel background       */
+  --dusk-800: 43 27 87; /* chip / inset           */
+  --dusk-700: 62 42 115; /* borders, pixel-border  */
+  --dusk-600: 85 64 143; /* muted accent           */
+  --sunset-600: 232 84 47;
+  --sunset-500: 255 122 61;
+  --sunset-400: 255 160 92;
+  --sunset-300: 255 192 132;
+  --gold-400: 255 201 77;
+  --gold-300: 255 227 163;
+  --magenta-500: 194 54 107;
+  --cream-100: 255 244 227; /* primary text         */
+  --mist-300: 185 168 217; /* secondary text        */
+  --ground: 14 7 33; /* the Runner's track     */
+  --scanline-color: rgba(10, 5, 25, 0.14);
   /* One pixel of the 16-bit grid at CSS scale */
   --px: 4px;
+}
+
+/* Dawn: the early-morning sunrise theme (light mode) */
+html.dawn {
+  --dusk-950: 234 241 248;
+  --dusk-900: 253 250 244;
+  --dusk-800: 227 233 245;
+  --dusk-700: 195 205 227;
+  --dusk-600: 147 165 200;
+  --sunset-600: 209 74 36;
+  --sunset-500: 224 92 38;
+  --sunset-400: 199 92 23;
+  --sunset-300: 232 155 98;
+  --gold-400: 154 106 13;
+  --gold-300: 126 84 7;
+  --magenta-500: 193 59 110;
+  --cream-100: 35 48 71;
+  --mist-300: 86 103 138;
+  --ground: 159 176 206;
+  --scanline-color: rgba(90, 106, 140, 0.08);
 }
 
 html {
@@ -28,14 +55,14 @@ body {
 }
 
 ::selection {
-  background-color: var(--sunset-600);
-  color: var(--cream-100);
+  background-color: rgb(var(--sunset-600));
+  color: rgb(var(--cream-100));
 }
 
 @layer utilities {
   /* Stepped pixel border: four hard box-shadows notch the corners */
   .pixel-border {
-    --pb-color: var(--dusk-700);
+    --pb-color: rgb(var(--dusk-700));
     box-shadow:
       calc(var(--px) * -1) 0 0 0 var(--pb-color),
       var(--px) 0 0 0 var(--pb-color),
@@ -44,7 +71,7 @@ body {
   }
 
   .pixel-shadow-text {
-    text-shadow: var(--px) var(--px) 0 var(--sunset-600);
+    text-shadow: var(--px) var(--px) 0 rgb(var(--sunset-600));
   }
 
   .crisp {
@@ -61,8 +88,8 @@ body {
       to bottom,
       transparent 0px,
       transparent 3px,
-      rgba(10, 5, 25, 0.14) 3px,
-      rgba(10, 5, 25, 0.14) 4px
+      var(--scanline-color) 3px,
+      var(--scanline-color) 4px
     );
   }
 }

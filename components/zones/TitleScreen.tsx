@@ -8,6 +8,45 @@ import {
   RUNNER_FRAME_B,
 } from "./sprites"
 import { usePlayMode } from "../play/PlayModeContext"
+import { useTheme } from "../ThemeContext"
+
+// Scene scenery per theme: the sky gradient and the landforms under it.
+// (The sun is the same pixel sun at both ends of the day; stars and lit
+// windows belong to dusk only.)
+const SCENES = {
+  dusk: {
+    gradient: `linear-gradient(to bottom,
+      #140B2E 0%, #140B2E 26%,
+      #1D1140 26%, #1D1140 40%,
+      #2B1B57 40%, #2B1B57 52%,
+      #3E2A73 52%, #3E2A73 61%,
+      #C2366B 61%, #C2366B 69%,
+      #E8542F 69%, #E8542F 77%,
+      #FF7A3D 77%, #FF7A3D 85%,
+      #FFC94D 85%, #FFC94D 100%)`,
+    ridgeFar: "#3E2A73",
+    ridgeMid: "#2B1B57",
+    skyline: "#0E0721",
+    stars: true,
+    windows: true,
+  },
+  dawn: {
+    gradient: `linear-gradient(to bottom,
+      #AFC8E8 0%, #AFC8E8 26%,
+      #C3D4EC 26%, #C3D4EC 40%,
+      #DCE3F2 40%, #DCE3F2 52%,
+      #EFDFE4 52%, #EFDFE4 61%,
+      #F6C8C0 61%, #F6C8C0 69%,
+      #F9B98F 69%, #F9B98F 77%,
+      #FBCF8F 77%, #FBCF8F 85%,
+      #FDE7B0 85%, #FDE7B0 100%)`,
+    ridgeFar: "#8CA3CB",
+    ridgeMid: "#A9BBDA",
+    skyline: "#6E82A8",
+    stars: false,
+    windows: false,
+  },
+} as const
 
 // Pixel sun: row widths of a rasterized circle, 15 units across
 const SUN_ROWS: Px[] = [
@@ -38,6 +77,8 @@ export default function TitleScreen() {
   const ref = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
   const { playing, enter } = usePlayMode()
+  const { theme } = useTheme()
+  const scene = SCENES[theme]
 
   // Press Start switches to Play Mode where a keyboard is likely present;
   // touch devices stay in Browse Mode and follow the anchor instead.
@@ -63,28 +104,20 @@ export default function TitleScreen() {
       id="hero"
       aria-label="Title screen"
       className="scanlines relative min-h-screen overflow-hidden flex flex-col"
-      style={{
-        background: `linear-gradient(to bottom,
-          #140B2E 0%, #140B2E 26%,
-          #1D1140 26%, #1D1140 40%,
-          #2B1B57 40%, #2B1B57 52%,
-          #3E2A73 52%, #3E2A73 61%,
-          #C2366B 61%, #C2366B 69%,
-          #E8542F 69%, #E8542F 77%,
-          #FF7A3D 77%, #FF7A3D 85%,
-          #FFC94D 85%, #FFC94D 100%)`,
-      }}
+      style={{ background: scene.gradient }}
     >
       {/* Stars */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        {STARS.map(([left, top, phase], i) => (
-          <span
-            key={i}
-            className="animate-twinkle absolute w-[3px] h-[3px] bg-cream-100"
-            style={{ left: `${left}%`, top: `${top}%`, animationDelay: `${phase * 0.8}s` }}
-          />
-        ))}
-      </div>
+      {scene.stars && (
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          {STARS.map(([left, top, phase], i) => (
+            <span
+              key={i}
+              className="animate-twinkle absolute w-[3px] h-[3px] bg-[#FFF4E3]"
+              style={{ left: `${left}%`, top: `${top}%`, animationDelay: `${phase * 0.8}s` }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Sun */}
       <motion.div
@@ -105,7 +138,7 @@ export default function TitleScreen() {
       >
         <svg viewBox="0 0 320 48" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[18vh]">
           <path
-            fill="#3E2A73"
+            fill={scene.ridgeFar}
             d="M0,48 V30 h14 v-6 h12 v-6 h10 v6 h16 v-10 h12 v-4 h12 v8 h18 v6 h20 v-12 h14 v-6 h12 v10 h16 v6 h22 v-8 h14 v-6 h12 v10 h18 v4 h16 v-10 h14 v-4 h12 v12 h16 v6 h20 V48 Z"
           />
         </svg>
@@ -119,7 +152,7 @@ export default function TitleScreen() {
       >
         <svg viewBox="0 0 320 40" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[14vh]">
           <path
-            fill="#2B1B57"
+            fill={scene.ridgeMid}
             d="M0,40 V24 h18 v-8 h14 v-6 h16 v8 h20 v-4 h16 v10 h24 v-12 h18 v-6 h14 v12 h22 v4 h26 v-10 h16 v-6 h18 v12 h20 v6 h24 v-8 h18 v8 h16 V40 Z"
           />
         </svg>
@@ -129,11 +162,11 @@ export default function TitleScreen() {
       <div aria-hidden="true" className="absolute bottom-[9vh] left-0 right-0 pointer-events-none">
         <svg viewBox="0 0 320 36" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[11vh]">
           <path
-            fill="#0E0721"
+            fill={scene.skyline}
             d="M0,36 V22 h10 v-8 h8 v8 h6 v-14 h2 v-4 h2 v4 h2 v14 h8 v-6 h10 v6 h8 v-12 h12 v12 h6 v-8 h10 v8 h12 v-16 h2 v-3 h2 v3 h2 v16 h10 v-6 h12 v6 h8 v-10 h10 v10 h10 v-14 h12 v14 h8 v-8 h12 v8 h8 v-12 h2 v-4 h2 v4 h2 v12 h12 v-6 h10 v6 h10 v-10 h12 v10 h8 v-14 h10 v14 h10 v-8 h12 v8 h8 V36 Z"
           />
-          {/* Lit windows */}
-          {[
+          {/* Lit windows — dusk only; morning windows are dark */}
+          {scene.windows && [
             [12, 26], [30, 16], [52, 24], [66, 20], [84, 22], [103, 14],
             [122, 26], [140, 22], [158, 18], [178, 24], [200, 20], [224, 26],
             [243, 22], [262, 20], [284, 24], [300, 22],
@@ -144,7 +177,7 @@ export default function TitleScreen() {
       </div>
 
       {/* Ground: the track the Runner lives on */}
-      <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[9vh] bg-[#0E0721] pointer-events-none">
+      <div aria-hidden="true" className="absolute bottom-0 left-0 right-0 h-[9vh] bg-ground pointer-events-none">
         <div className="absolute top-0 left-0 right-0 h-1 bg-dusk-700" />
         <div className="absolute top-[45%] left-0 right-0 flex gap-8 px-4">
           {Array.from({ length: 24 }).map((_, i) => (

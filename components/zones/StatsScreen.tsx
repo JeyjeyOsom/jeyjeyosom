@@ -37,7 +37,6 @@ export default function StatsScreen() {
               <div
                 aria-hidden="true"
                 className="pixel-border bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6"
-                style={{ "--pb-color": "var(--dusk-700)" } as React.CSSProperties}
               >
                 <svg
                   viewBox="0 0 12 14"

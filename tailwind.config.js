@@ -12,38 +12,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Sunset-Runner Palette (see CONTEXT.md)
+        // Sunset-Runner Palette roles (see CONTEXT.md). Values live as RGB
+        // triplets in index.css :root (dusk) and html.dawn (sunrise).
         dusk: {
-          950: "#140B2E",
-          900: "#1D1140",
-          800: "#2B1B57",
-          700: "#3E2A73",
-          600: "#55408F",
+          950: "rgb(var(--dusk-950) / <alpha-value>)",
+          900: "rgb(var(--dusk-900) / <alpha-value>)",
+          800: "rgb(var(--dusk-800) / <alpha-value>)",
+          700: "rgb(var(--dusk-700) / <alpha-value>)",
+          600: "rgb(var(--dusk-600) / <alpha-value>)",
         },
         sunset: {
-          600: "#E8542F",
-          500: "#FF7A3D",
-          400: "#FFA05C",
-          300: "#FFC084",
+          600: "rgb(var(--sunset-600) / <alpha-value>)",
+          500: "rgb(var(--sunset-500) / <alpha-value>)",
+          400: "rgb(var(--sunset-400) / <alpha-value>)",
+          300: "rgb(var(--sunset-300) / <alpha-value>)",
         },
         gold: {
-          400: "#FFC94D",
-          300: "#FFE3A3",
+          400: "rgb(var(--gold-400) / <alpha-value>)",
+          300: "rgb(var(--gold-300) / <alpha-value>)",
         },
         magenta: {
-          500: "#C2366B",
+          500: "rgb(var(--magenta-500) / <alpha-value>)",
         },
         cream: {
-          100: "#FFF4E3",
+          100: "rgb(var(--cream-100) / <alpha-value>)",
         },
         mist: {
-          300: "#B9A8D9",
+          300: "rgb(var(--mist-300) / <alpha-value>)",
         },
-        // Legacy brand kept until every Zone is ported
-        brand: {
-          500: "#3B82F6",
-          600: "#2563EB",
-        },
+        ground: "rgb(var(--ground) / <alpha-value>)",
       },
       fontFamily: {
         pixel: ['"Pixelify Sans"', "sans-serif"],

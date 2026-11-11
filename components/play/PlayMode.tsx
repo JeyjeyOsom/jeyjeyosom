@@ -173,7 +173,7 @@ export default function PlayMode() {
       </div>
 
       {/* The track the Runner travels on */}
-      <div aria-hidden="true" className="fixed bottom-0 left-0 right-0 z-40 h-[9vh] bg-[#0E0721] pointer-events-none">
+      <div aria-hidden="true" className="fixed bottom-0 left-0 right-0 z-40 h-[9vh] bg-ground pointer-events-none">
         <div className="absolute top-0 left-0 right-0 h-1 bg-dusk-700" />
         <div className="absolute top-[45%] left-0 right-0 flex gap-8 px-4 overflow-hidden">
           {Array.from({ length: 48 }).map((_, i) => (

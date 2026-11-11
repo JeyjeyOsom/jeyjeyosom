@@ -72,5 +72,5 @@ Juan's running stats (PRs, mileage, races) as a baked JSON snapshot refreshed on
 _Avoid_: live stats, Strava feed
 
 **Sunset-Runner Palette**:
-The project's own 16-bit palette: a dusk-gradient world of warm oranges and purples over dark UI chrome, deliberately not borrowed from any existing game.
-_Avoid_: synthwave, vaporwave
+The project's own 16-bit palette, deliberately not borrowed from any existing game. It has two skies: **Dusk** (the default dark theme: warm oranges and purples over dark UI chrome) and **Dawn** (the light theme: an early-morning sunrise of pale blues, rose, and amber). Palette tokens are roles named after the dusk theme (`dusk-950` = page background, `cream-100` = primary text, …) whose values live as CSS variables in index.css; `html.dawn` re-points every role.
+_Avoid_: synthwave, vaporwave, dark mode/light mode (say Dusk and Dawn)
