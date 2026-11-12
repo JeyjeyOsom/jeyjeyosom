@@ -15,24 +15,18 @@ export default function Navbar() {
   const { theme, toggle } = useTheme()
 
   // --- FAVICON LOGIC ---
-  // The favicon sits on the browser's chrome, so it follows the OS color
-  // scheme, not the site theme. (The theme-color meta lives in ThemeContext.)
+  // The favicon follows the World's sky: cream letters under dusk, navy
+  // under dawn (the fragment picks the state inside icon.svg). Before React
+  // mounts, the SVG's own media query gives an OS-scheme default. The
+  // theme-color meta lives in ThemeContext.
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const updateFavicon = () => {
-      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-      if (favicon) {
-        // A 'v' parameter with the current time forces a refresh
-        const version = new Date().getTime();
-        const themeSuffix = media.matches ? "#dark" : "";
-        favicon.href = `${import.meta.env.BASE_URL}icon.svg?v=${version}${themeSuffix}`;
-      }
-    };
-    updateFavicon();
-    media.addEventListener("change", updateFavicon);
-    return () => media.removeEventListener("change", updateFavicon);
-  }, []);
+    const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+    if (favicon) {
+      // A 'v' parameter with the current time forces a refresh
+      const version = new Date().getTime();
+      favicon.href = `${import.meta.env.BASE_URL}icon.svg?v=${version}#${theme}`;
+    }
+  }, [theme]);
 
   // --- PREVIOUS FIXES: SCROLL LOCK & SECTION DETECTION ---
   useEffect(() => {
