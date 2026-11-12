@@ -181,14 +181,6 @@ html.dawn .night-light {
   animation: stumble-flash 0.15s steps(1, end) 8;
 }
 
-/* Dropped Gels fly up and vanish — they are not recoverable */
-@keyframes gel-scatter {
-  0% { transform: translate(0, 0); opacity: 1; }
-  100% { transform: translate(var(--fly-x, 0px), -70px); opacity: 0; }
-}
-.gel-scatter {
-  animation: gel-scatter 0.6s ease-out forwards;
-}
 
 /* While the sky cycles (html.theme-cycling, set by ThemeContext), the token
    flip that lands mid-cycle eases instead of snapping. Duration must stay
@@ -219,9 +211,8 @@ html.play-mode {
   .sprite-run *,
   .sprite-graze *,
   .palm-fronds,
-  /* Gels stay collectible, just still; PlayMode spawns no hazards */
+  /* PlayMode spawns neither Gels nor hazards under reduced motion */
   .gel-bob,
-  .gel-scatter,
   .runner-stumble,
   /* parked at left: 100%, i.e. off-screen */
   .traffic-vehicle {

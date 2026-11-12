@@ -64,16 +64,20 @@ _Avoid_: contact section, footer form
 ### Play Mode mechanics
 
 **Gel**:
-The World's collectible: an energy gel drawn as a small gold pixel packet, laid out in clusters at Zone boundaries (with one jump arc per corridor). Collected by touch in Play Mode only; invisible in Browse Mode. The HUD counts them as `GELS n/total`, and the Save Point acknowledges the harvest.
+The World's collectible and the run's score: an energy gel drawn as a small gold pixel packet, streamed endlessly at the Runner (ground runs and jump arcs) while he runs, faster as the run goes on. The count accumulates without cap, survives Esc within a visit, and resets on Retry or page load. Play Mode only; invisible in Browse Mode. The Save Point acknowledges the score.
 _Avoid_: coins, points, pickups
 
 **Oncoming Traffic**:
-Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk).
-_Avoid_: enemies, obstacles (they never block progress)
+Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running — slow at first, faster as the run clock builds; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk). The World's scroll speed never changes: difficulty ramps the stream, Zones stay readable.
+_Avoid_: enemies, obstacles (they never block World progress)
 
 **Stumble**:
-What a Traffic hit costs: up to 3 Gels scatter and vanish, the Runner flashes briefly invincible, and nothing else happens — no knockback, no lost progress, no game over. At zero Gels a hit is only the flash.
-_Avoid_: death, damage, game over
+What a Traffic hit costs: one notch off the Health Bar, behind a brief invincibility flash — no knockback, no lost Gels, no lost World progress.
+_Avoid_: death, damage numbers
+
+**Health Bar**:
+Three notches of HP in the Play Mode HUD. It never recovers mid-run; at zero the run ends in Game Over, where Retry starts a fresh run (full health, score zero, slow stream) and the Runner's place in the World is kept.
+_Avoid_: lives, hearts, respawn
 
 ### Assets & data
 

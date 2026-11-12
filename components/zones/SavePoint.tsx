@@ -6,12 +6,12 @@ import ZoneHeader from "./ZoneHeader"
 import { type Px, PixelRects } from "../sprites"
 import { usePlayMode } from "../play/PlayModeContext"
 
-// The Save Point acknowledges the run's Gel harvest — Play Mode only.
-function gelLine(carried: number, total: number): string {
-  if (carried === 0) return `NO GELS IN THE POUCH — THE ROAD BEHIND YOU HOLDS ${total}.`
-  if (carried === total) return `ALL ${total} GELS — FULLY FUELED. REMARKABLE RUN.`
-  if (carried >= Math.ceil((total * 2) / 3)) return `QUITE THE HARVEST: ${carried}/${total} GELS SAVED.`
-  return `${carried}/${total} GELS SAVED. THE REST ARE STILL OUT THERE.`
+// The Save Point acknowledges the run's Gel score — Play Mode only.
+function gelLine(carried: number): string {
+  if (carried === 0) return "NO GELS YET — THE ROAD AHEAD IS PAVED WITH THEM."
+  if (carried < 25) return `${carried} GELS IN THE POUCH. KEEP RUNNING.`
+  if (carried < 60) return `QUITE THE HARVEST: ${carried} GELS SAVED.`
+  return `${carried} GELS?! FULLY FUELED AND THEN SOME. REMARKABLE RUN.`
 }
 
 interface Errors {
@@ -152,9 +152,9 @@ export default function SavePoint() {
                   <span className="text-sunset-400 font-semibold">Let's build</span>{" "}
                   something remarkable together.
                 </p>
-                {playing && run.total > 0 && (
+                {playing && (
                   <p className="mt-4 font-arcade text-[8px] md:text-[9px] leading-relaxed text-gold-300">
-                    {gelLine(run.carried, run.total)}
+                    {gelLine(run.carried)}
                   </p>
                 )}
               </div>

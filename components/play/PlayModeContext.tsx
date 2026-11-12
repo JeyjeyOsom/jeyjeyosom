@@ -8,75 +8,71 @@ import {
   type ReactNode,
 } from "react"
 
-// The run's harvest: Gels collected across the World (CONTEXT.md). It lives
-// here, not in PlayMode, because it must survive Esc and re-entry — a
-// detour into Browse Mode is not the run's end. A page load starts a fresh
-// run; nothing persists.
-interface RunState {
-  /** Gels in the pouch right now (Stumbles subtract from this) */
-  carried: number
-  /** How many Gels the World holds, set once PlayMode lays them out */
-  total: number
-  /** Which Gels have been picked up — they never respawn within a visit */
-  ids: ReadonlySet<string>
-}
+// The run's state: Gels are the score of an endless run and accumulate
+// without cap; the Health Bar never recovers mid-run. Both live here, not
+// in PlayMode, because they must survive Esc and re-entry — a detour into
+// Browse Mode is not the run's end. A Retry (after Game Over) or a page
+// load starts fresh.
+export const MAX_HEALTH = 3
 
 interface PlayModeState {
   playing: boolean
   enter: () => void
   exit: () => void
-  run: RunState
-  collect: (id: string) => void
-  /** A Stumble: drop up to n carried Gels; returns how many actually fell */
-  drop: (n: number) => number
-  setTotal: (n: number) => void
+  run: { carried: number }
+  health: number
+  collect: () => void
+  /** A Stumble: one notch off the Health Bar; returns what's left */
+  damage: () => number
+  /** Retry after Game Over: fresh score, full Health Bar */
+  resetRun: () => void
 }
 
 const PlayModeCtx = createContext<PlayModeState>({
   playing: false,
   enter: () => {},
   exit: () => {},
-  run: { carried: 0, total: 0, ids: new Set() },
+  run: { carried: 0 },
+  health: MAX_HEALTH,
   collect: () => {},
-  drop: () => 0,
-  setTotal: () => {},
+  damage: () => MAX_HEALTH,
+  resetRun: () => {},
 })
 
 export function PlayModeProvider({ children }: { children: ReactNode }) {
   const [playing, setPlaying] = useState(false)
-  const [run, setRun] = useState<RunState>({ carried: 0, total: 0, ids: new Set() })
+  const [carried, setCarried] = useState(0)
+  const [health, setHealth] = useState(MAX_HEALTH)
 
-  // Synchronous mirror so drop() can report how many fell from inside a
-  // requestAnimationFrame tick without waiting for a render.
-  const runRef = useRef(run)
-  runRef.current = run
+  // Synchronous mirror so damage() can report the remaining health from
+  // inside a requestAnimationFrame tick without waiting for a render.
+  const healthRef = useRef(health)
+  healthRef.current = health
 
   // Stable identities: PlayMode's input/physics effect depends on these, so
-  // a new function per run-state change would tear the whole loop down on
-  // every Gel pickup (resetting the jump mid-air, clearing hazards).
+  // a new function per state change would tear the whole loop down on
+  // every pickup (resetting the jump mid-air, clearing hazards).
   const enter = useCallback(() => setPlaying(true), [])
   const exit = useCallback(() => setPlaying(false), [])
+  const collect = useCallback(() => setCarried((c) => c + 1), [])
 
-  const collect = useCallback((id: string) => {
-    setRun((r) => {
-      if (r.ids.has(id)) return r
-      return { ...r, carried: r.carried + 1, ids: new Set(r.ids).add(id) }
-    })
+  const damage = useCallback(() => {
+    const left = Math.max(0, healthRef.current - 1)
+    healthRef.current = left
+    setHealth(left)
+    return left
   }, [])
 
-  const drop = useCallback((n: number) => {
-    const fell = Math.min(n, runRef.current.carried)
-    if (fell > 0) setRun((r) => ({ ...r, carried: Math.max(0, r.carried - n) }))
-    return fell
+  const resetRun = useCallback(() => {
+    setCarried(0)
+    healthRef.current = MAX_HEALTH
+    setHealth(MAX_HEALTH)
   }, [])
 
-  const setTotal = useCallback((total: number) => {
-    setRun((r) => (r.total === total ? r : { ...r, total }))
-  }, [])
-
+  const run = useMemo(() => ({ carried }), [carried])
   const value = useMemo(
-    () => ({ playing, enter, exit, run, collect, drop, setTotal }),
-    [playing, enter, exit, run, collect, drop, setTotal]
+    () => ({ playing, enter, exit, run, health, collect, damage, resetRun }),
+    [playing, enter, exit, run, health, collect, damage, resetRun]
   )
   return <PlayModeCtx.Provider value={value}>{children}</PlayModeCtx.Provider>
 }
