@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react"
-import { Menu, X, Sun, Moon } from "lucide-react"
+import { Menu, X, Sun, Moon, Volume2, VolumeX } from "lucide-react"
 import { smoothScrollTo } from "../utils/smoothScroll"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "./ThemeContext"
+import { useSound } from "./SoundContext"
 import { WORLD_MAP } from "./zones/registry"
 
 const links = WORLD_MAP.map((zone) => ({ label: zone.navLabel, href: `#${zone.id}` }))
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
 
   const { theme, toggle } = useTheme()
+  const { muted, toggleMuted } = useSound()
 
   // --- FAVICON LOGIC ---
   // The favicon follows the World's sky: cream letters under dusk, navy
@@ -129,6 +131,15 @@ export default function Navbar() {
               )}
             </AnimatePresence>
           </button>
+
+          {/* Sound toggle: the arcade BGM and SFX */}
+          <button
+            onClick={toggleMuted}
+            aria-label={muted ? "Unmute sound" : "Mute sound"}
+            className="text-mist-300 hover:text-gold-400 transition-colors p-1"
+          >
+            {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
         </div>
 
         {/* Mobile Toggle Button - High Z-Index to stay visible */}
@@ -185,6 +196,17 @@ export default function Navbar() {
             >
               {theme === "dusk" ? <Sun size={16} /> : <Moon size={16} />}
               {theme === "dusk" ? "Dawn Mode" : "Dusk Mode"}
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.45 }}
+              onClick={toggleMuted}
+              className="pixel-border mt-8 mx-1 flex items-center gap-4 px-10 py-4 bg-dusk-900 text-cream-100 font-arcade text-[9px] uppercase tracking-[0.15em]"
+            >
+              {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {muted ? "Sound Off" : "Sound On"}
             </motion.button>
           </motion.div>
         )}

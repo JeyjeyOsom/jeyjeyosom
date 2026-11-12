@@ -11,6 +11,7 @@ import Noise from "./components/Noise"
 import PlayMode from "./components/play/PlayMode"
 import { PlayModeProvider, usePlayMode } from "./components/play/PlayModeContext"
 import { ThemeProvider } from "./components/ThemeContext"
+import { SoundProvider } from "./components/SoundContext"
 
 function World() {
   const { playing } = usePlayMode()
@@ -40,9 +41,11 @@ function World() {
 export default function App() {
   return (
     <ThemeProvider>
-      <PlayModeProvider>
-        <World />
-      </PlayModeProvider>
+      <SoundProvider>
+        <PlayModeProvider>
+          <World />
+        </PlayModeProvider>
+      </SoundProvider>
     </ThemeProvider>
   )
 }
