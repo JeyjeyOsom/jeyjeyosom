@@ -199,6 +199,17 @@ export const WARMUP_SWEEP: Px[] = [
   [13, 17, 1, 1, SHOE], // toe tipped up
 ]
 
+// A Gel — the World's collectible energy gel, drawn as a small gold packet
+// with a tear cap and a shine, on a 6x8 grid (CONTEXT.md: Gel).
+export const GEL: Px[] = [
+  [2, 0, 2, 1, "#9A6A0D"], // tear cap
+  [1, 1, 4, 1, "#C98F1B"], // neck
+  [0, 2, 6, 6, "#FFC94D"], // packet body
+  [4, 3, 1, 4, "#E0A82E"], // right shade
+  [0, 7, 6, 1, "#E0A82E"], // bottom shade
+  [1, 3, 1, 2, "#FFF4E3"], // shine
+]
+
 // The headlamp switched on: a bright lamp pixel plus a short beam ahead of
 // the Runner. Overlay it on any pose inside a .night-light group — the dawn
 // sky switches it off (index.css), the dusk sky leaves it lit.

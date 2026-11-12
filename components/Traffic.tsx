@@ -1,9 +1,10 @@
-// Oncoming traffic on the World's road: pixel cars and a motorcycle in the
-// far lane, headed the other way (right to left, toward the Runner). Like
-// the Runner, vehicle colors are identities, not theme roles. Headlight
-// beams and lit lamps sit in .night-light groups: on under the dusk sky,
-// off under dawn (index.css). Movement comes from .traffic-vehicle; all
-// vehicles share one duration so the lane never shows an overtake.
+// Oncoming Traffic (CONTEXT.md): pixel cars and a motorcycle headed the
+// other way, right to left. On the Title Screen (the default export) they
+// are decoration in the far lane; Play Mode imports VEHICLE_SPECS and
+// VehicleSprite to run them through the Runner's lane as jumpable hazards.
+// Like the Runner, vehicle colors are identities, not theme roles.
+// Headlight beams and lit lamps sit in .night-light groups: on under the
+// dusk sky, off under dawn (index.css).
 
 import type { CSSProperties } from "react"
 import { type Px, PixelRects } from "./sprites"
@@ -68,16 +69,41 @@ const MOTO_LIT: Px[] = [
   [0, 4, 4, 4, BEAM_FAR],
 ]
 
-function Vehicle({
-  viewBox,
-  rects,
-  lit,
-  sizeClass,
-  delay,
-}: {
+export interface VehicleSpec {
   viewBox: string
   rects: Px[]
   lit: Px[]
+  /** viewBox size in sprite units */
+  w: number
+  h: number
+  /** where the vehicle body starts (units) — left of this is beam space,
+      which must not count toward collision */
+  bodyStart: number
+}
+
+export const VEHICLE_SPECS: VehicleSpec[] = [
+  { viewBox: "0 0 38 12", rects: carRects("#B6453A", "#8E332C"), lit: CAR_LIT, w: 38, h: 12, bodyStart: 12 },
+  { viewBox: "0 0 26 12", rects: MOTO_RECTS, lit: MOTO_LIT, w: 26, h: 12, bodyStart: 10 },
+  { viewBox: "0 0 38 12", rects: carRects("#3F6E8C", "#2F5269"), lit: CAR_LIT, w: 38, h: 12, bodyStart: 12 },
+]
+
+export function VehicleSprite({ spec, className }: { spec: VehicleSpec; className?: string }) {
+  return (
+    <svg viewBox={spec.viewBox} className={`crisp ${className ?? ""}`} shapeRendering="crispEdges">
+      <PixelRects rects={spec.rects} />
+      <g className="night-light">
+        <PixelRects rects={spec.lit} />
+      </g>
+    </svg>
+  )
+}
+
+function Vehicle({
+  spec,
+  sizeClass,
+  delay,
+}: {
+  spec: VehicleSpec
   sizeClass: string
   delay: string
 }) {
@@ -86,12 +112,7 @@ function Vehicle({
       className={`traffic-vehicle ${sizeClass}`}
       style={{ "--pass-delay": delay } as CSSProperties}
     >
-      <svg viewBox={viewBox} className="crisp h-full w-auto" shapeRendering="crispEdges">
-        <PixelRects rects={rects} />
-        <g className="night-light">
-          <PixelRects rects={lit} />
-        </g>
-      </svg>
+      <VehicleSprite spec={spec} className="h-full w-auto" />
     </div>
   )
 }
@@ -101,27 +122,9 @@ export default function Traffic() {
     <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[9vh] pointer-events-none">
       {/* Sized to the Runner's art grid (~same px per sprite unit), so a
           car's roof reaches about two-thirds of his height */}
-      <Vehicle
-        viewBox="0 0 38 12"
-        rects={carRects("#B6453A", "#8E332C")}
-        lit={CAR_LIT}
-        sizeClass="bottom-[56%] h-[6.5vh]"
-        delay="0s"
-      />
-      <Vehicle
-        viewBox="0 0 26 12"
-        rects={MOTO_RECTS}
-        lit={MOTO_LIT}
-        sizeClass="bottom-[56%] h-[5.5vh]"
-        delay="-3.2s"
-      />
-      <Vehicle
-        viewBox="0 0 38 12"
-        rects={carRects("#3F6E8C", "#2F5269")}
-        lit={CAR_LIT}
-        sizeClass="bottom-[56%] h-[6.5vh]"
-        delay="-6.4s"
-      />
+      <Vehicle spec={VEHICLE_SPECS[0]} sizeClass="bottom-[56%] h-[6.5vh]" delay="0s" />
+      <Vehicle spec={VEHICLE_SPECS[1]} sizeClass="bottom-[56%] h-[5.5vh]" delay="-3.2s" />
+      <Vehicle spec={VEHICLE_SPECS[2]} sizeClass="bottom-[56%] h-[6.5vh]" delay="-6.4s" />
     </div>
   )
 }

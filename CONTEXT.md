@@ -61,6 +61,20 @@ _Avoid_: Strava section, fitness section
 The Contact Zone: the contact form framed as saving your progress / NPC dialog.
 _Avoid_: contact section, footer form
 
+### Play Mode mechanics
+
+**Gel**:
+The World's collectible: an energy gel drawn as a small gold pixel packet, laid out in clusters at Zone boundaries (with one jump arc per corridor). Collected by touch in Play Mode only; invisible in Browse Mode. The HUD counts them as `GELS n/total`, and the Save Point acknowledges the harvest.
+_Avoid_: coins, points, pickups
+
+**Oncoming Traffic**:
+Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk).
+_Avoid_: enemies, obstacles (they never block progress)
+
+**Stumble**:
+What a Traffic hit costs: up to 3 Gels scatter and vanish, the Runner flashes briefly invincible, and nothing else happens — no knockback, no lost progress, no game over. At zero Gels a hit is only the flash.
+_Avoid_: death, damage, game over
+
 ### Assets & data
 
 **Cartridge Art**:

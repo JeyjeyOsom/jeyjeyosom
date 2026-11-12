@@ -504,8 +504,11 @@ export default function TitleScreen() {
       )}
 
       {/* Oncoming traffic in the far lane — drawn over the Runner so the
-          road reads nearer to the viewer than the roadside he runs on */}
-      <Traffic />
+          road reads nearer to the viewer than the roadside he runs on.
+          Hidden in Play Mode like the Browse Runner: the hazard traffic on
+          the fixed road is the only traffic there, otherwise both roads
+          show near-identical vehicles at different speeds. */}
+      {!playing && <Traffic />}
 
       {/* HUD status line */}
       <div className="relative z-10 flex items-center gap-2 px-6 md:px-10 pt-24">
