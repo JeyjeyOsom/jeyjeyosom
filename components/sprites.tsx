@@ -9,6 +9,7 @@ export type Px = [number, number, number, number, string]
 
 const CAP = "#23222E"
 const SHADES = "#4A5468"
+export const LAMP = "#6E7892" // headlamp housing; HEADLAMP_LIT is keyed to it
 const SKIN = "#C68A4E"
 const SHIRT_O = "#FF9A4A"
 const SHIRT_B = "#7EC8E8"
@@ -26,6 +27,7 @@ export const RUNNER_SHARED: Px[] = [
   [5, 2, 5, 1, CAP],
   [10, 2, 3, 1, CAP], // brim
   [9, 1, 2, 1, SHADES], // shades resting on the cap front
+  [11, 1, 1, 1, LAMP], // headlamp clipped to the cap (lit via HEADLAMP_LIT)
   [6, 3, 5, 1, SKIN], // face
   [6, 4, 4, 1, SKIN], // jaw
   [5, 5, 6, 1, SHIRT_O],
@@ -197,6 +199,15 @@ export const WARMUP_SWEEP: Px[] = [
   [13, 17, 1, 1, SHOE], // toe tipped up
 ]
 
+// The headlamp switched on: a bright lamp pixel plus a short beam ahead of
+// the Runner. Overlay it on any pose inside a .night-light group — the dawn
+// sky switches it off (index.css), the dusk sky leaves it lit.
+export const HEADLAMP_LIT: Px[] = [
+  [11, 1, 1, 1, "#FFE3A3"],
+  [12, 0, 2, 3, "rgba(255,227,163,0.45)"],
+  [14, 0, 2, 4, "rgba(255,227,163,0.22)"],
+]
+
 export function PixelRects({ rects }: { rects: Px[] }) {
   return (
     <>
@@ -228,6 +239,9 @@ export function RunCycleSprite({
       </g>
       <g className="frame-b">
         <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_FRAME_B]} />
+      </g>
+      <g className="night-light">
+        <PixelRects rects={HEADLAMP_LIT} />
       </g>
     </svg>
   )

@@ -3,18 +3,34 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 
 export type Theme = "dusk" | "dawn"
 
+// The World's clock only runs forward: dusk reaches dawn by passing through
+// night, and dawn reaches dusk by passing through midday. While a cycle is
+// in flight the Title Screen plays the sky; the palette tokens flip at
+// CYCLE_FLIP, once the destination sky is bright (or dark) enough for the
+// destination text colors to read.
+export type CycleDirection = "dusk-to-dawn" | "dawn-to-dusk"
+export const CYCLE_MS = 2800
+export const CYCLE_MID = 0.45 // deepest night / highest sun
+export const CYCLE_FLIP = 0.72 // when the tokens flip
+
 interface ThemeState {
   theme: Theme
+  cycle: CycleDirection | null
   toggle: () => void
 }
 
-const ThemeCtx = createContext<ThemeState>({ theme: "dusk", toggle: () => {} })
+const ThemeCtx = createContext<ThemeState>({
+  theme: "dusk",
+  cycle: null,
+  toggle: () => {},
+})
 
 const THEME_COLOR: Record<Theme, string> = {
   dusk: "#140B2E",
@@ -36,6 +52,13 @@ function initialTheme(): Theme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(initialTheme)
+  const [cycle, setCycle] = useState<CycleDirection | null>(null)
+  const timers = useRef<number[]>([])
+
+  useEffect(() => {
+    const pending = timers.current
+    return () => pending.forEach(window.clearTimeout)
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.toggle("dawn", theme === "dawn")
@@ -55,13 +78,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     meta.setAttribute("content", THEME_COLOR[theme])
   }, [theme])
 
-  const value = useMemo(
-    () => ({
+  // index.css eases the token flip only while this class is on
+  useEffect(() => {
+    document.documentElement.classList.toggle("theme-cycling", cycle !== null)
+  }, [cycle])
+
+  const value = useMemo(() => {
+    const flip = () => setTheme((t) => (t === "dusk" ? "dawn" : "dusk"))
+    return {
       theme,
-      toggle: () => setTheme((t) => (t === "dusk" ? "dawn" : "dusk")),
-    }),
-    [theme]
-  )
+      cycle,
+      toggle: () => {
+        if (cycle) return // one sky cycle at a time
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          flip()
+          return
+        }
+        setCycle(theme === "dusk" ? "dusk-to-dawn" : "dawn-to-dusk")
+        timers.current.push(
+          window.setTimeout(flip, CYCLE_MS * CYCLE_FLIP),
+          window.setTimeout(() => setCycle(null), CYCLE_MS)
+        )
+      },
+    }
+  }, [theme, cycle])
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>
 }
 

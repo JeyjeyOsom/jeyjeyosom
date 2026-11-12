@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { usePlayMode } from "./PlayModeContext"
 import {
+  HEADLAMP_LIT,
   PixelRects,
   RunCycleSprite,
   RUNNER_SHARED,
@@ -194,6 +195,9 @@ export default function PlayMode() {
           ) : (
             <svg viewBox={RUNNER_VIEWBOX} className="crisp w-full" shapeRendering="crispEdges">
               <PixelRects rects={[...RUNNER_SHARED, ...RUNNER_STANDING]} />
+              <g className="night-light">
+                <PixelRects rects={HEADLAMP_LIT} />
+              </g>
             </svg>
           )}
         </div>

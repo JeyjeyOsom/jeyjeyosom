@@ -2,8 +2,9 @@ import { useRef } from "react"
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion"
 import { type Px, PixelRects, RunCycleSprite } from "../sprites"
 import { Ground } from "../Track"
+import Traffic from "../Traffic"
 import { usePlayMode } from "../play/PlayModeContext"
-import { useTheme } from "../ThemeContext"
+import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
 
 // Scene scenery per theme: the sky gradient and the landforms under it —
 // Juan's actual training view: a big dark mountain behind hazy foothills,
@@ -48,6 +49,66 @@ const SCENES = {
   },
 } as const
 
+// The skies the World passes through while cycling — never resting states.
+// Dusk reaches dawn through NIGHT; dawn reaches dusk through NOON. The
+// gradients share the dusk/dawn stop structure exactly so framer-motion can
+// interpolate between them.
+type SceneColors = {
+  gradient: string
+  ridgeFar: string
+  ridgeMid: string
+  canopy: string
+  grass: string
+  grassDark: string
+  grassLight: string
+}
+
+const NIGHT: SceneColors = {
+  gradient: `linear-gradient(to bottom,
+    #0D0726 0%, #0D0726 26%,
+    #110A2E 26%, #110A2E 40%,
+    #150E36 40%, #150E36 52%,
+    #1A123F 52%, #1A123F 61%,
+    #201749 61%, #201749 69%,
+    #271D54 69%, #271D54 77%,
+    #2F245F 77%, #2F245F 85%,
+    #382C6B 85%, #382C6B 100%)`,
+  ridgeFar: "#1C1535",
+  ridgeMid: "#2A2047",
+  canopy: "#0E1811",
+  grass: "#222D1C",
+  grassDark: "#1B2516",
+  grassLight: "#2C3A24",
+}
+
+const NOON: SceneColors = {
+  gradient: `linear-gradient(to bottom,
+    #4E9BE4 0%, #4E9BE4 26%,
+    #63AAEA 26%, #63AAEA 40%,
+    #79B9EF 40%, #79B9EF 52%,
+    #90C7F3 52%, #90C7F3 61%,
+    #A8D4F6 61%, #A8D4F6 69%,
+    #BFE0F8 69%, #BFE0F8 77%,
+    #D5EAFA 77%, #D5EAFA 85%,
+    #E8F3FC 85%, #E8F3FC 100%)`,
+  ridgeFar: "#5A7FA6",
+  ridgeMid: "#8AA9C9",
+  canopy: "#2F5C3E",
+  grass: "#61904F",
+  grassDark: "#527C42",
+  grassLight: "#74A661",
+}
+
+const CYCLE_PATH: Record<
+  "dusk-to-dawn" | "dawn-to-dusk",
+  [SceneColors, SceneColors, SceneColors]
+> = {
+  "dusk-to-dawn": [SCENES.dusk, NIGHT, SCENES.dawn],
+  "dawn-to-dusk": [SCENES.dawn, NOON, SCENES.dusk],
+}
+
+const CYCLE_S = CYCLE_MS / 1000
+
 // Pixel sun: row widths of a rasterized circle, 15 units across
 const SUN_ROWS: Px[] = [
   [5, 0, 5, 1, "#FFE3A3"],
@@ -67,7 +128,10 @@ const SUN_ROWS: Px[] = [
   [3, 14, 9, 1, "#FF7A3D"],
 ]
 
-// The pasture herd: a white cow facing the Runner, and a tan one grazing.
+// The pasture herd, forever grazing. Each cow is a two-frame cycle
+// (.sprite-graze): frame A is its dominant pose, frame B the brief
+// counter-pose — the white cow faces the Runner and dips to chew, the tan
+// one works the grass and lifts its head now and then.
 const COW_FRONT: Px[] = [
   [0, 1, 2, 2, "#D9CCB8"], // left ear
   [8, 1, 2, 2, "#D9CCB8"], // right ear
@@ -83,28 +147,59 @@ const COW_FRONT: Px[] = [
   [6, 11, 2, 1, "#8A7A66"],
 ]
 
-const COW_GRAZE: Px[] = [
-  [0, 0, 1, 3, "#D9C8B2"],  // tail
-  [1, 0, 10, 5, "#E8DAC5"], // body
-  [10, 1, 2, 3, "#E8DAC5"], // neck sloping down
-  [11, 3, 3, 4, "#E0D0B8"], // head lowered to the grass
-  [11, 3, 1, 1, "#4A4038"], // eye
-  [12, 7, 2, 1, "#B99F91"], // muzzle
-  [1, 4, 10, 1, "#CDBAA0"], // belly shade
-  [2, 5, 2, 4, "#DCCBB4"],  // legs
-  [5, 5, 1, 4, "#DCCBB4"],
-  [8, 5, 2, 4, "#DCCBB4"],
-  [2, 9, 2, 1, "#8A7A66"],  // hooves
-  [8, 9, 2, 1, "#8A7A66"],
+// Head cluster dropped one pixel: mid-chew
+const COW_FRONT_CHEW: Px[] = [
+  [0, 2, 2, 2, "#D9CCB8"],
+  [8, 2, 2, 2, "#D9CCB8"],
+  [3, 1, 4, 4, "#F2EADB"],
+  [3, 2, 1, 1, "#4A4038"],
+  [6, 2, 1, 1, "#4A4038"],
+  [3, 4, 4, 1, "#C9A5A0"],
+  [1, 4, 8, 4, "#F2EADB"],
+  [1, 7, 8, 1, "#D9CCB8"],
+  [2, 8, 2, 3, "#E4D9C6"],
+  [6, 8, 2, 3, "#E4D9C6"],
+  [2, 11, 2, 1, "#8A7A66"],
+  [6, 11, 2, 1, "#8A7A66"],
+]
+
+// Tan cow on a 14x12 grid (two head rows above the body for the lift)
+const COW_GRAZE_BODY: Px[] = [
+  [0, 2, 1, 3, "#D9C8B2"],  // tail
+  [1, 2, 10, 5, "#E8DAC5"], // body
+  [1, 6, 10, 1, "#CDBAA0"], // belly shade
+  [2, 7, 2, 4, "#DCCBB4"],  // legs
+  [5, 7, 1, 4, "#DCCBB4"],
+  [8, 7, 2, 4, "#DCCBB4"],
+  [2, 11, 2, 1, "#8A7A66"], // hooves
+  [8, 11, 2, 1, "#8A7A66"],
+]
+
+const COW_GRAZE_DOWN: Px[] = [
+  ...COW_GRAZE_BODY,
+  [10, 3, 2, 3, "#E8DAC5"], // neck sloping down
+  [11, 5, 3, 4, "#E0D0B8"], // head lowered to the grass
+  [11, 5, 1, 1, "#4A4038"], // eye
+  [12, 9, 2, 1, "#B99F91"], // muzzle
+]
+
+const COW_GRAZE_UP: Px[] = [
+  ...COW_GRAZE_BODY,
+  [10, 0, 2, 4, "#E8DAC5"], // neck raised
+  [11, 0, 3, 2, "#E0D0B8"], // head up, looking out
+  [12, 0, 1, 1, "#4A4038"], // eye
+  [13, 1, 1, 1, "#B99F91"], // muzzle
 ]
 
 // Crown-center x positions of the palms poking above the canopy
 const PALMS = [34, 92, 150, 216, 288]
 
-// One pixel palm silhouette: trunk down into the canopy, fronds fanning out
-function palmRects(x: number): Array<[number, number, number, number]> {
+// One pixel palm silhouette: trunk down into the canopy, fronds fanning
+// out. The fronds are separate from the trunk so the wind can move them
+// (.palm-fronds, index.css).
+const palmTrunk = (x: number): [number, number, number, number] => [x, 6, 2, 12]
+function palmFronds(x: number): Array<[number, number, number, number]> {
   return [
-    [x, 6, 2, 12],
     [x - 6, 4, 5, 2],
     [x + 3, 4, 5, 2],
     [x - 4, 2, 4, 2],
@@ -135,8 +230,69 @@ export default function TitleScreen() {
   const ref = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
   const { playing, enter } = usePlayMode()
-  const { theme } = useTheme()
+  const { theme, cycle } = useTheme()
   const scene = SCENES[theme]
+
+  // While a cycle is in flight, every scene color follows a three-stop
+  // keyframe path (from sky → NIGHT or NOON → to sky); at rest it holds the
+  // current scene's value. `cycle` is never set under reduced motion.
+  const path = cycle ? CYCLE_PATH[cycle] : null
+  const skyColor = (key: keyof SceneColors) =>
+    path ? path.map((s) => s[key]) : scene[key]
+  const skyTransition = path
+    ? { duration: CYCLE_S, times: [0, CYCLE_MID, 1], ease: "easeInOut" as const }
+    : { duration: 0 }
+
+  // The sun rests where the sky says it should: low on the right at dusk
+  // (where it sets), low on the left at dawn (where it rose). Dusk→dawn it
+  // sets below the right horizon, crosses unseen during the night, and
+  // rises on the left; dawn→dusk it arcs high across the noon sky from
+  // left to right. Horizontal position combines `left` (% of the span
+  // container) with x (% of the sun's own width) so both anchors land
+  // exactly at every viewport width.
+  const SUN_REST = {
+    dusk: { left: "100%", x: "-100%", y: "0vh" },
+    dawn: { left: "0%", x: "0%", y: "0vh" },
+  }
+  const sunAnimate = !cycle
+    ? SUN_REST[theme]
+    : cycle === "dusk-to-dawn"
+      ? {
+          left: ["100%", "100%", "0%", "0%"],
+          x: ["-100%", "-100%", "0%", "0%"],
+          y: ["0vh", "60vh", "60vh", "0vh"],
+        }
+      : {
+          left: ["0%", "100%"],
+          x: ["0%", "-100%"],
+          y: ["0vh", "-30vh", "0vh"],
+        }
+  const sunTransition = !cycle
+    ? { duration: 0 }
+    : cycle === "dusk-to-dawn"
+      ? { duration: CYCLE_S, times: [0, 0.38, 0.62, 1], ease: "easeInOut" as const }
+      : {
+          left: { duration: CYCLE_S, ease: "easeInOut" as const },
+          x: { duration: CYCLE_S, ease: "easeInOut" as const },
+          y: {
+            duration: CYCLE_S,
+            times: [0, 0.5, 1],
+            ease: ["easeOut", "easeIn"] as const,
+          },
+        }
+
+  // Stars hold through the night pass and fade with the sunrise; on the way
+  // to dusk they only appear once the sky has darkened.
+  const starsAnimate = !cycle
+    ? { opacity: 1 }
+    : cycle === "dusk-to-dawn"
+      ? { opacity: [1, 1, 0] }
+      : { opacity: [0, 0, 1] }
+  const starsTransition = !cycle
+    ? { duration: 0 }
+    : cycle === "dusk-to-dawn"
+      ? { duration: CYCLE_S, times: [0, 0.55, 1] }
+      : { duration: CYCLE_S, times: [0, 0.68, 1] }
 
   // Press Start switches to Play Mode where a keyboard is likely present;
   // touch devices stay in Browse Mode and follow the anchor instead.
@@ -158,16 +314,24 @@ export default function TitleScreen() {
   const fadeContent = useTransform(scrollYProgress, [0, 0.7], [1, 0])
 
   return (
-    <section
+    <motion.section
       ref={ref}
       id="title"
       aria-label="Title screen"
       className="scanlines relative min-h-screen overflow-hidden flex flex-col"
-      style={{ background: scene.gradient }}
+      initial={false}
+      animate={{ background: skyColor("gradient") }}
+      transition={skyTransition}
     >
-      {/* Stars */}
-      {scene.stars && (
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+      {/* Stars — kept mounted through a cycle so they can fade in or out */}
+      {(scene.stars || cycle) && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          aria-hidden="true"
+          initial={false}
+          animate={starsAnimate}
+          transition={starsTransition}
+        >
           {STARS.map(([left, top, phase], i) => (
             <span
               key={i}
@@ -175,18 +339,41 @@ export default function TitleScreen() {
               style={{ left: `${left}%`, top: `${top}%`, animationDelay: `${phase * 0.8}s` }}
             />
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {/* Sun — sinking behind the ridges and treeline */}
+      {/* A shooting star crosses during the night pass */}
+      {cycle === "dusk-to-dawn" && (
+        <motion.span
+          aria-hidden="true"
+          className="absolute left-[62%] top-[10%] w-[3px] h-[3px] bg-[#FFF4E3] pointer-events-none"
+          style={{
+            boxShadow:
+              "3px -2px 0 0 rgba(255,244,227,0.6), 6px -4px 0 0 rgba(255,244,227,0.3)",
+          }}
+          initial={{ x: 0, y: 0, opacity: 0 }}
+          animate={{ x: -180, y: 100, opacity: [0, 1, 1, 0] }}
+          transition={{ delay: CYCLE_S * 0.4, duration: 0.75, ease: "easeOut" }}
+        />
+      )}
+
+      {/* Sun — right of the ridge at dusk, left of it at dawn; the outer div
+          is the full span it travels, the inner div is the sun itself */}
       <motion.div
         aria-hidden="true"
         style={{ y: reduceMotion ? 0 : ySun }}
-        className="absolute right-[10%] md:right-[14%] bottom-[23vh] w-28 md:w-44 pointer-events-none"
+        className="absolute left-[10%] right-[10%] md:left-[14%] md:right-[14%] bottom-[23vh] pointer-events-none"
       >
-        <svg viewBox="0 0 15 15" className="crisp w-full" shapeRendering="crispEdges">
-          <PixelRects rects={SUN_ROWS} />
-        </svg>
+        <motion.div
+          className="absolute bottom-0 w-28 md:w-44"
+          initial={false}
+          animate={sunAnimate}
+          transition={sunTransition}
+        >
+          <svg viewBox="0 0 15 15" className="crisp w-full" shapeRendering="crispEdges">
+            <PixelRects rects={SUN_ROWS} />
+          </svg>
+        </motion.div>
       </motion.div>
 
       {/* Far ridge — the big mountain, peak left of center */}
@@ -196,8 +383,10 @@ export default function TitleScreen() {
         className="absolute bottom-[26vh] left-0 right-0 pointer-events-none"
       >
         <svg viewBox="0 0 320 48" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[18vh]">
-          <path
-            fill={scene.ridgeFar}
+          <motion.path
+            initial={false}
+            animate={{ fill: skyColor("ridgeFar") }}
+            transition={skyTransition}
             d="M0,48 V36 h12 v-4 h10 v-3 h12 v-4 h10 v3 h10 v-7 h10 v-5 h10 v-4 h8 v-5 h8 v-3 h8 v-2 h10 v3 h8 v-4 h10 v2 h8 v5 h10 v4 h8 v-2 h10 v6 h10 v3 h12 v5 h10 v-3 h12 v6 h12 v3 h12 v4 h14 v-2 h12 v4 h12 v-3 h10 v4 h12 v-2 h10 v2 h20 V48 Z"
           />
         </svg>
@@ -210,8 +399,10 @@ export default function TitleScreen() {
         className="absolute bottom-[24vh] left-0 right-0 pointer-events-none"
       >
         <svg viewBox="0 0 320 40" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[13vh]">
-          <path
-            fill={scene.ridgeMid}
+          <motion.path
+            initial={false}
+            animate={{ fill: skyColor("ridgeMid") }}
+            transition={skyTransition}
             d="M0,40 V26 h16 v-4 h18 v-3 h16 v5 h20 v-6 h18 v-3 h16 v4 h22 v5 h18 v-7 h20 v-3 h18 v6 h22 v-4 h20 v6 h18 v-5 h20 v4 h18 v3 h40 V40 Z"
           />
         </svg>
@@ -224,41 +415,80 @@ export default function TitleScreen() {
         className="absolute bottom-[17vh] left-0 right-0 pointer-events-none"
       >
         <svg viewBox="0 0 320 36" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[13vh]">
-          {PALMS.map((px) =>
-            palmRects(px).map(([x, y, w, h], i) => (
-              <rect key={`${px}-${i}`} x={x} y={y} width={w} height={h} fill={scene.canopy} />
-            ))
-          )}
-          <path
-            fill={scene.canopy}
-            d="M0,36 V16 h10 v-3 h12 v2 h10 v-4 h14 v3 h12 v-2 h10 v4 h12 v-5 h12 v3 h10 v-2 h14 v4 h12 v-3 h10 v2 h12 v-4 h12 v3 h10 v-2 h14 v4 h10 v-3 h12 v2 h12 v-4 h10 v3 h14 v-2 h10 v4 h12 v-3 h12 v2 h10 v-2 h32 V36 Z"
-          />
+          <motion.g
+            initial={false}
+            animate={{ fill: skyColor("canopy") }}
+            transition={skyTransition}
+          >
+            {PALMS.map((px, pi) => (
+              <g key={px}>
+                <rect
+                  x={palmTrunk(px)[0]}
+                  y={palmTrunk(px)[1]}
+                  width={palmTrunk(px)[2]}
+                  height={palmTrunk(px)[3]}
+                />
+                <g
+                  className="palm-fronds"
+                  style={{ animationDelay: `${pi * -0.9}s` }}
+                >
+                  {palmFronds(px).map(([x, y, w, h], i) => (
+                    <rect key={`${px}-${i}`} x={x} y={y} width={w} height={h} />
+                  ))}
+                </g>
+              </g>
+            ))}
+            <path d="M0,36 V16 h10 v-3 h12 v2 h10 v-4 h14 v3 h12 v-2 h10 v4 h12 v-5 h12 v3 h10 v-2 h14 v4 h12 v-3 h10 v2 h12 v-4 h12 v3 h10 v-2 h14 v4 h10 v-3 h12 v2 h12 v-4 h10 v3 h14 v-2 h10 v4 h12 v-3 h12 v2 h10 v-2 h32 V36 Z" />
+          </motion.g>
         </svg>
       </motion.div>
 
       {/* Pasture — the field between the treeline and the track */}
       <div aria-hidden="true" className="absolute bottom-[9vh] left-0 right-0 pointer-events-none">
         <svg viewBox="0 0 320 24" preserveAspectRatio="none" shapeRendering="crispEdges" className="w-full h-[9vh]">
-          <rect x="0" y="0" width="320" height="24" fill={scene.grass} />
-          <rect x="0" y="0" width="320" height="2" fill={scene.grassLight} />
-          {GRASS_DARK.map(([x, y, w, h], i) => (
-            <rect key={`d${i}`} x={x} y={y} width={w} height={h} fill={scene.grassDark} />
-          ))}
-          {GRASS_LIGHT.map(([x, y, w, h], i) => (
-            <rect key={`l${i}`} x={x} y={y} width={w} height={h} fill={scene.grassLight} />
-          ))}
+          <motion.rect
+            x="0" y="0" width="320" height="24"
+            initial={false}
+            animate={{ fill: skyColor("grass") }}
+            transition={skyTransition}
+          />
+          <motion.g
+            initial={false}
+            animate={{ fill: skyColor("grassDark") }}
+            transition={skyTransition}
+          >
+            {GRASS_DARK.map(([x, y, w, h], i) => (
+              <rect key={`d${i}`} x={x} y={y} width={w} height={h} />
+            ))}
+          </motion.g>
+          <motion.g
+            initial={false}
+            animate={{ fill: skyColor("grassLight") }}
+            transition={skyTransition}
+          >
+            <rect x="0" y="0" width="320" height="2" />
+            {GRASS_LIGHT.map(([x, y, w, h], i) => (
+              <rect key={`l${i}`} x={x} y={y} width={w} height={h} />
+            ))}
+          </motion.g>
         </svg>
       </div>
 
       {/* The herd */}
-      <div aria-hidden="true" className="absolute bottom-[13vh] left-[40%] w-7 md:w-9 pointer-events-none">
+      <div aria-hidden="true" className="sprite-graze absolute bottom-[13vh] left-[40%] w-7 md:w-9 pointer-events-none">
         <svg viewBox="0 0 10 12" className="crisp w-full" shapeRendering="crispEdges">
-          <PixelRects rects={COW_FRONT} />
+          <g className="frame-a"><PixelRects rects={COW_FRONT} /></g>
+          <g className="frame-b"><PixelRects rects={COW_FRONT_CHEW} /></g>
         </svg>
       </div>
-      <div aria-hidden="true" className="absolute bottom-[11.5vh] left-[58%] w-11 md:w-14 pointer-events-none">
-        <svg viewBox="0 0 14 10" className="crisp w-full" shapeRendering="crispEdges">
-          <PixelRects rects={COW_GRAZE} />
+      <div
+        aria-hidden="true"
+        className="sprite-graze absolute bottom-[11.5vh] left-[58%] w-11 md:w-14 pointer-events-none"
+        style={{ "--graze-delay": "-1.4s" } as React.CSSProperties}
+      >
+        <svg viewBox="0 0 14 12" className="crisp w-full" shapeRendering="crispEdges">
+          <g className="frame-a"><PixelRects rects={COW_GRAZE_DOWN} /></g>
+          <g className="frame-b"><PixelRects rects={COW_GRAZE_UP} /></g>
         </svg>
       </div>
 
@@ -272,6 +502,10 @@ export default function TitleScreen() {
           <RunCycleSprite className="w-full" />
         </div>
       )}
+
+      {/* Oncoming traffic in the far lane — drawn over the Runner so the
+          road reads nearer to the viewer than the roadside he runs on */}
+      <Traffic />
 
       {/* HUD status line */}
       <div className="relative z-10 flex items-center gap-2 px-6 md:px-10 pt-24">
@@ -352,6 +586,6 @@ export default function TitleScreen() {
         </motion.nav>
       </motion.div>
 
-    </section>
+    </motion.section>
   )
 }

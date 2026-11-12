@@ -11,6 +11,8 @@ import {
   WARMUP_HOP_AIR,
   WARMUP_HOP_GROUND,
   WARMUP_SWEEP,
+  HEADLAMP_LIT,
+  LAMP,
 } from "../sprites"
 
 const STAND: Px[] = [...RUNNER_SHARED, ...RUNNER_STANDING]
@@ -54,6 +56,16 @@ function WarmupPortrait() {
 
   const current = reduceMotion ? step(STAND, 2, 0, "") : ROUTINE[index]
 
+  // Each pose bakes its own body shift into its rects, so the lit overlay
+  // can't sit at the standing lamp position: find the lamp housing pixel in
+  // this pose and move HEADLAMP_LIT onto it.
+  const housing = current.rects.find(
+    ([, , w, h, fill]) => w === 1 && h === 1 && fill === LAMP
+  )
+  const [lampDx, lampDy] = housing
+    ? [housing[0] - HEADLAMP_LIT[0][0], housing[1] - HEADLAMP_LIT[0][1]]
+    : [0, 0]
+
   return (
     <div
       aria-hidden="true"
@@ -66,6 +78,10 @@ function WarmupPortrait() {
       >
         <g transform={`translate(0 ${current.dy})`}>
           <PixelRects rects={current.rects} />
+          {/* The headlamp rides the pose's shift so it stays on the cap */}
+          <g className="night-light" transform={`translate(${lampDx} ${lampDy})`}>
+            <PixelRects rects={HEADLAMP_LIT} />
+          </g>
         </g>
       </svg>
       {current.label && (
