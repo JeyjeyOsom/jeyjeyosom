@@ -219,6 +219,132 @@ export const HEADLAMP_LIT: Px[] = [
   [14, 0, 2, 4, "rgba(255,227,163,0.22)"],
 ]
 
+// ---- Close-Up bust (CONTEXT.md: Close-Up) ----
+// The Runner's detailed 48x64 portrait, drawn from the same race photo as
+// the small sprite: cap with shades on the brim and the headlamp, earbud,
+// orange→blue singlet, bib 42087, arm blinker. Identity colors shared with
+// the Runner; extra tones are shading only. Authored as row segments
+// ([x0, x1, color], inclusive) because 300+ raw rects would be unreadable.
+
+const CAP_HI = "#34323F"
+const SHADE_FRAME = "#5E6880"
+const SHADE_LENS = "#39415A"
+const SHADE_GLINT = "#A8B2C8"
+const LAMP_LENS = "#B23A3A"
+const SKIN_SH = "#A4703C"
+const SKIN_HI = "#D69B5F"
+const BROW = "#3A2A1E"
+const MOUTH = "#6B3A26"
+const SHIRT_O_SH = "#E07E35"
+const SHIRT_B_SH = "#5FA8CC"
+const BIB_SH = "#E3D9C6"
+const INK = "#2E3442"
+const BLINKER = "#E8483F"
+
+type BustSeg = [number, number, string]
+type BustRow = [number, ...BustSeg[]]
+
+// prettier-ignore
+const BUST_ROWS: BustRow[] = [
+  [1,  [19,28,CAP]],
+  [2,  [16,31,CAP]],
+  [3,  [15,32,CAP], [17,21,CAP_HI]],
+  [4,  [14,33,CAP], [16,20,CAP_HI]],
+  [5,  [13,34,CAP], [15,18,CAP_HI]],
+  [6,  [13,34,CAP], [15,17,CAP_HI]],
+  [7,  [12,35,CAP], [14,16,CAP_HI], [22,25,BIB]],
+  [8,  [12,35,CAP]],
+  [9,  [12,35,CAP], [20,27,LAMP]],
+  [10, [12,35,CAP], [20,20,LAMP], [21,26,LAMP_LENS], [27,27,LAMP]],
+  [11, [12,35,CAP], [20,27,LAMP]],
+  [12, [12,35,CAP], [14,14,SHADE_FRAME], [15,21,SHADE_LENS], [16,16,SHADE_GLINT], [22,25,SHADE_FRAME], [26,32,SHADE_LENS], [27,27,SHADE_GLINT], [33,33,SHADE_FRAME]],
+  [13, [12,35,CAP], [14,14,SHADE_FRAME], [15,21,SHADE_LENS], [26,32,SHADE_LENS], [33,33,SHADE_FRAME]],
+  [14, [10,37,CAP]],
+  [15, [11,36,CAP]],
+  [16, [15,32,SKIN_SH]],
+  [17, [15,32,SKIN], [17,20,SKIN_HI]],
+  [18, [14,33,SKIN], [17,19,SKIN_HI]],
+  [19, [12,35,SKIN], [17,18,SKIN_HI]],
+  [20, [12,35,SKIN], [17,21,BROW], [26,30,BROW], [34,35,BIB]],
+  [21, [12,35,SKIN], [34,35,BIB]],
+  [22, [13,34,SKIN], [17,17,BIB], [18,19,INK], [20,20,BIB], [27,27,BIB], [28,29,INK], [30,30,BIB]],
+  [23, [14,33,SKIN], [18,19,INK], [28,29,INK]],
+  [24, [14,33,SKIN], [23,24,SKIN_SH], [33,33,SKIN_SH]],
+  [25, [14,33,SKIN], [15,16,SKIN_HI], [23,24,SKIN_SH], [32,33,SKIN_SH]],
+  [26, [14,33,SKIN], [32,33,SKIN_SH]],
+  [27, [14,33,SKIN], [20,27,MOUTH], [32,33,SKIN_SH]],
+  [28, [15,32,SKIN], [19,19,MOUTH], [20,27,BIB], [28,28,MOUTH]],
+  [29, [15,32,SKIN], [20,27,MOUTH]],
+  [30, [16,31,SKIN]],
+  [31, [17,30,SKIN_SH]],
+  [32, [19,28,SKIN_SH]],
+  [33, [19,28,SKIN]],
+  [34, [19,28,SKIN]],
+  [35, [15,18,SHIRT_O], [19,28,SKIN], [29,32,SHIRT_O]],
+  [36, [13,18,SHIRT_O], [19,28,SKIN], [29,34,SHIRT_O]],
+  [37, [9,18,SHIRT_O],  [19,28,SKIN], [29,38,SHIRT_O]],
+  [38, [6,19,SHIRT_O],  [20,27,SKIN], [28,41,SHIRT_O]],
+  [39, [4,19,SHIRT_O],  [20,27,SHIRT_O_SH], [28,43,SHIRT_O]],
+  [40, [3,44,SHIRT_O]],
+  [41, [2,45,SHIRT_O]],
+  [42, [2,2,SHIRT_O_SH], [3,44,SHIRT_O], [45,45,SHIRT_O_SH]],
+  [43, [2,2,SHIRT_O_SH], [3,8,SHIRT_O], [9,9,SHIRT_O_SH], [10,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,44,SHIRT_O], [45,45,SHIRT_O_SH]],
+  [44, [2,8,SKIN], [9,9,SHIRT_O_SH], [10,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,45,SKIN]],
+  [45, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_O_SH], [10,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [46, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_O_SH], [10,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,45,BIB]],
+  [47, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_O_SH], [10,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,40,BIB], [41,43,BLINKER], [44,45,BIB]],
+  [48, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_O_SH], [10,13,SHIRT_O], [14,17,SHIRT_B], [18,21,SHIRT_O], [22,25,SHIRT_B], [26,29,SHIRT_O], [30,33,SHIRT_B], [34,37,SHIRT_O], [38,38,SHIRT_O_SH], [39,45,BIB]],
+  [49, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,11,SHIRT_B], [12,13,SHIRT_O], [14,19,SHIRT_B], [20,21,SHIRT_O], [22,27,SHIRT_B], [28,29,SHIRT_O], [30,35,SHIRT_B], [36,37,SHIRT_O], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [50, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,37,SHIRT_B], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [51, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,37,SHIRT_B], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [52, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,12,SHIRT_B], [13,34,BIB], [35,37,SHIRT_B], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [62, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,12,SHIRT_B], [13,34,BIB_SH], [35,37,SHIRT_B], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+  [63, [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,37,SHIRT_B], [38,38,SHIRT_B_SH], [39,39,SKIN_SH], [40,45,SKIN]],
+]
+
+// Bib body rows 53-61 share one shape; the number overlays them.
+const BUST_BIB_ROW: BustSeg[] = [
+  [2,7,SKIN], [8,8,SKIN_SH], [9,9,SHIRT_B_SH], [10,12,SHIRT_B],
+  [13,33,BIB], [34,34,BIB_SH], [35,37,SHIRT_B], [38,38,SHIRT_B_SH],
+  [39,39,SKIN_SH], [40,45,SKIN],
+]
+
+// Bib number 42087 in a 3x5 pixel font, rows 55-59.
+const BUST_DIGITS: Record<string, string[]> = {
+  "4": ["1.1", "1.1", "111", "..1", "..1"],
+  "2": ["111", "..1", "111", "1..", "111"],
+  "0": ["111", "1.1", "1.1", "1.1", "111"],
+  "8": ["111", "1.1", "111", "1.1", "111"],
+  "7": ["111", "..1", "..1", "..1", "..1"],
+}
+
+function compileBust(): Px[] {
+  const rects: Px[] = []
+  const rows: BustRow[] = [
+    ...BUST_ROWS,
+    ...Array.from({ length: 9 }, (_, i): BustRow => [53 + i, ...BUST_BIB_ROW]),
+  ]
+  for (const [y, ...segs] of rows)
+    for (const [x0, x1, fill] of segs) rects.push([x0, y, x1 - x0 + 1, 1, fill])
+  Array.from("42087").forEach((d, i) =>
+    BUST_DIGITS[d].forEach((row, dy) => {
+      for (let dx = 0; dx < 3; dx++)
+        if (row[dx] === "1") rects.push([15 + i * 4 + dx, 55 + dy, 1, 1, INK])
+    })
+  )
+  return rects
+}
+
+export const BUST_VIEWBOX = "0 0 48 64"
+export const RUNNER_BUST: Px[] = compileBust()
+
+// The bust's headlamp switched on: bright lens plus a soft halo, under the
+// same .night-light contract as HEADLAMP_LIT (lit at Dusk, off at Dawn).
+export const BUST_LAMP_LIT: Px[] = [
+  [21, 10, 6, 1, "#FFE3A3"],
+  [19, 8, 10, 4, "rgba(255,227,163,0.25)"],
+]
+
 export function PixelRects({ rects }: { rects: Px[] }) {
   return (
     <>

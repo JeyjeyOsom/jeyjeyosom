@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import ZoneHeader from "./ZoneHeader"
+import CloseUp from "./CloseUp"
 import {
   type Px,
   PixelRects,
@@ -69,7 +70,7 @@ function WarmupPortrait() {
   return (
     <div
       aria-hidden="true"
-      className="pixel-border relative bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6"
+      className="pixel-border relative bg-dusk-800 mx-1 mt-1 mb-6 flex items-end justify-center pt-6 transition-colors group-hover:bg-dusk-700"
     >
       <svg
         viewBox="0 0 16 22"
@@ -89,6 +90,9 @@ function WarmupPortrait() {
           {current.label}
         </span>
       )}
+      <span className="animate-blink absolute right-2 bottom-1 font-arcade text-[7px] tracking-wider text-gold-300 [animation-duration:1.8s]">
+        INSPECT
+      </span>
     </div>
   )
 }
@@ -104,6 +108,12 @@ const STATS: Array<[string, string]> = [
 // later Zones copy its header/panel structure.
 export default function StatsScreen() {
   const reduceMotion = useReducedMotion()
+  const [closeUpOpen, setCloseUpOpen] = useState(false)
+  const inspectRef = useRef<HTMLButtonElement>(null)
+  const closeCloseUp = useCallback(() => {
+    setCloseUpOpen(false)
+    inspectRef.current?.focus()
+  }, [])
 
   return (
     <section
@@ -124,8 +134,17 @@ export default function StatsScreen() {
             className="md:col-span-5 lg:col-span-4"
           >
             <div className="pixel-border bg-dusk-900 p-6 md:p-8 mx-1">
-              {/* Portrait: Juan warming up before the run */}
-              <WarmupPortrait />
+              {/* Portrait: Juan warming up before the run. Clicking it
+                  opens the Close-Up (CONTEXT.md). */}
+              <button
+                ref={inspectRef}
+                type="button"
+                onClick={() => setCloseUpOpen(true)}
+                aria-label="Inspect the Runner: open the Close-Up"
+                className="focus-ring group block w-full"
+              >
+                <WarmupPortrait />
+              </button>
 
               <h3 className="font-pixel font-bold text-2xl md:text-3xl text-cream-100">
                 JUAN DEJON
@@ -209,6 +228,8 @@ export default function StatsScreen() {
           </motion.div>
         </div>
       </div>
+
+      <CloseUp open={closeUpOpen} onClose={closeCloseUp} />
     </section>
   )
 }

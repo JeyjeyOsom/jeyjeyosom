@@ -41,6 +41,10 @@ _Avoid_: hero, landing
 The About Zone, framed as a character/player card.
 _Avoid_: bio, about section
 
+**Close-Up**:
+The dialog opened by the INSPECT chip on the Stats Screen portrait: the Runner's detailed pixel bust beside the actual race photo he was drawn from, the bust vouching "Yep, that's me!" — the proof of the Runner's "unmistakably Juan" clause. Works in both Modes; the photo is the one real photograph in the World.
+_Avoid_: lightbox, popup, photo viewer
+
 **Inventory**:
 The Skills Zone, framed as an item inventory. Items carry no self-assigned ratings: each shows its field record — the quests and levels it was used in — and the current core kit (the stack the Stats Screen bio names) is marked EQUIPPED.
 _Avoid_: skills list, skill bars, percentages, levels
