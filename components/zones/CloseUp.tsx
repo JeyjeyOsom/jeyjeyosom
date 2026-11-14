@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import {
   PixelRects,
   RUNNER_BUST,
   BUST_LAMP_LIT,
+  BUST_SKEPTIC,
   BUST_VIEWBOX,
 } from "../sprites"
 
@@ -18,9 +19,13 @@ interface CloseUpProps {
 export default function CloseUp({ open, onClose }: CloseUpProps) {
   const reduceMotion = useReducedMotion()
   const closeRef = useRef<HTMLButtonElement>(null)
+  // Hovering the bananas in the photo: the bust turns skeptical and the
+  // bubble owns up to them.
+  const [onBananas, setOnBananas] = useState(false)
 
   useEffect(() => {
     if (!open) return
+    setOnBananas(false)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
     closeRef.current?.focus()
@@ -91,6 +96,7 @@ export default function CloseUp({ open, onClose }: CloseUpProps) {
                   aria-hidden="true"
                 >
                   <PixelRects rects={RUNNER_BUST} />
+                  {onBananas && <PixelRects rects={BUST_SKEPTIC} />}
                   <g className="night-light">
                     <PixelRects rects={BUST_LAMP_LIT} />
                   </g>
@@ -98,7 +104,7 @@ export default function CloseUp({ open, onClose }: CloseUpProps) {
 
                 <div className="pixel-border absolute -top-5 right-0 md:-right-4 bg-dusk-800 px-4 py-2">
                   <p className="font-body text-sm md:text-base font-semibold text-cream-100 whitespace-nowrap">
-                    Yep, that&apos;s me!
+                    {onBananas ? "Yep, those are my bananas!" : "Yep, that's me!"}
                   </p>
                   {/* Stair-stepped pixel tail pointing at the photo:
                       rightward on wide screens, downward when stacked */}
@@ -123,13 +129,22 @@ export default function CloseUp({ open, onClose }: CloseUpProps) {
 
               {/* The actual race photo the Runner was drawn from */}
               <figure className="mx-1">
-                <div className="pixel-border bg-dusk-800 p-1">
+                <div className="pixel-border relative bg-dusk-800 p-1">
                   <img
                     src={`${import.meta.env.BASE_URL}me.jpg`}
                     alt="Juan Dejon running the Ormoc City Marathon at night: black cap with a headlamp, orange and blue race singlet, bib 42087"
                     className="block w-full"
                     width={600}
                     height={600}
+                  />
+                  {/* Invisible hotspot over the bananas in his left hand
+                      (bottom-left of the photo); hovering it flips the
+                      bubble and the bust's expression */}
+                  <div
+                    aria-hidden="true"
+                    className="absolute left-[22%] top-[72%] h-[24%] w-[28%] cursor-pointer"
+                    onMouseEnter={() => setOnBananas(true)}
+                    onMouseLeave={() => setOnBananas(false)}
                   />
                 </div>
                 <figcaption className="mt-3 text-center font-arcade text-[8px] md:text-[9px] tracking-wider text-gold-300">

@@ -345,6 +345,23 @@ export const BUST_LAMP_LIT: Px[] = [
   [19, 8, 10, 4, "rgba(255,227,163,0.25)"],
 ]
 
+// The bust's skeptical face (🤨), overlaid while the visitor hovers the
+// bananas in the race photo: one brow cocked high, the other pressing its
+// eye into a squint, the open grin flattened to an unimpressed line. Each
+// SKIN rect repaints a resting-face pixel so the overlay fully replaces
+// brows, left eye, and mouth.
+export const BUST_SKEPTIC: Px[] = [
+  [17, 20, 5, 1, SKIN],
+  [26, 20, 5, 1, SKIN], // resting brows erased
+  [26, 18, 5, 1, BROW], // right brow raised toward the photo
+  [17, 21, 5, 1, BROW], // left brow lowered
+  [17, 22, 4, 1, SKIN], // left eye squinted to its row-23 ink line
+  [20, 27, 8, 1, SKIN],
+  [19, 28, 10, 1, SKIN],
+  [20, 29, 8, 1, SKIN], // grin erased
+  [20, 28, 7, 1, MOUTH], // flat mouth
+]
+
 export function PixelRects({ rects }: { rects: Px[] }) {
   return (
     <>
