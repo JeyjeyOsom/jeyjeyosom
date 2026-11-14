@@ -16,14 +16,13 @@ const QUESTS: Quest[] = [
   {
     role: "Full Stack Developer (Freelance)",
     company: "Fortius — Real Estate Training Platform",
-    period: "SEP 2026 – PRESENT",
-    active: true,
+    period: "SEP 2026 – NOV 2026",
     log: [
       "Designed and delivered an AI-powered learning platform end-to-end for a real-estate client: trainers organize Google Drive materials into learning tracks, realtors work through them with live progress tracking.",
       "Built the FastAPI backend with PostgreSQL (pgvector), Redis, and Celery, enforcing permission-aware material visibility on every request — browsing, streaming, and AI answers alike.",
       "Developed a RAG assistant on OpenAI embeddings that answers strictly from each user's visible materials, citing the exact page, slide, or timestamp.",
       "Implemented a media ingestion pipeline streaming 275+ Drive videos and audio files, with mid-stream failure recovery and automatic requeueing.",
-      "Shipped role-based dashboards for admins, trainers, and realtors in Next.js and React 19; deployed and operate the platform on a VPS with Docker Compose, Caddy, and GitHub Actions CI/CD.",
+      "Shipped role-based dashboards for admins, trainers, and realtors in Next.js and React 19; deployed and operated the platform on a VPS with Docker Compose, Caddy, and GitHub Actions CI/CD.",
     ],
     loot: [
       "Next.js",
