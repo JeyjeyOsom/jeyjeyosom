@@ -12,15 +12,19 @@ import PlayMode from "./components/play/PlayMode"
 import { PlayModeProvider, usePlayMode } from "./components/play/PlayModeContext"
 import { ThemeProvider } from "./components/ThemeContext"
 import { SoundProvider } from "./components/SoundContext"
+import { RoamProvider, useRoam } from "./components/roam/RoamContext"
+import RoamLayer from "./components/roam/RoamLayer"
 
 function World() {
   const { playing } = usePlayMode()
+  // While the Overworld covers the page, the page is out of reach
+  const { covering } = useRoam()
 
   return (
     <div className="min-h-screen">
       {/* Browse chrome steps aside while the keyboard drives the World */}
-      {!playing && <Navbar />}
-      <main>
+      {!playing && !covering && <Navbar />}
+      <main inert={covering}>
         <Noise />
         <TitleScreen />
         <StatsScreen />
@@ -34,6 +38,7 @@ function World() {
         {!playing && <ScrollToTop />}
       </main>
       <PlayMode />
+      <RoamLayer />
     </div>
   )
 }
@@ -43,7 +48,9 @@ export default function App() {
     <ThemeProvider>
       <SoundProvider>
         <PlayModeProvider>
-          <World />
+          <RoamProvider>
+            <World />
+          </RoamProvider>
         </PlayModeProvider>
       </SoundProvider>
     </ThemeProvider>

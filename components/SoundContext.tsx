@@ -86,12 +86,47 @@ const TRACKS: Record<SoundMode, Track> = {
   },
 }
 
+// Roam Mode's effects: short square-wave cues, each with a minimum gap so
+// a held key or a jittery trigger can't stack them (folio-2025's sound
+// registry, minus the files)
+export type RoamSfx = "door" | "warp" | "prompt" | "jump" | "menu"
+
+interface SfxNote {
+  /** start offset, s */
+  at: number
+  dur: number
+  type: OscillatorType
+  from: number
+  /** glide target, Hz */
+  to?: number
+  gain: number
+}
+
+const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
+  // a door opening: three falling notes
+  door: {
+    gap: 0.4,
+    notes: [
+      { at: 0, dur: 0.08, type: "square", from: midi(84), gain: 0.09 },
+      { at: 0.08, dur: 0.08, type: "square", from: midi(79), gain: 0.09 },
+      { at: 0.16, dur: 0.16, type: "square", from: midi(72), gain: 0.09 },
+    ],
+  },
+  // fast travel: a rising sweep
+  warp: { gap: 0.4, notes: [{ at: 0, dur: 0.3, type: "square", from: 260, to: 1300, gain: 0.07 }] },
+  // a Landmark's door is in reach
+  prompt: { gap: 0.3, notes: [{ at: 0, dur: 0.06, type: "square", from: midi(81), gain: 0.04 }] },
+  jump: { gap: 0.15, notes: [{ at: 0, dur: 0.09, type: "triangle", from: 420, to: 760, gain: 0.08 }] },
+  menu: { gap: 0.08, notes: [{ at: 0, dur: 0.03, type: "square", from: midi(88), gain: 0.04 }] },
+}
+
 interface SoundState {
   muted: boolean
   toggleMuted: () => void
   playGel: () => void
   playStumble: () => void
   playGameOver: () => void
+  playSfx: (name: RoamSfx) => void
   setMode: (mode: SoundMode) => void
 }
 
@@ -101,6 +136,7 @@ const SoundCtx = createContext<SoundState>({
   playGel: () => {},
   playStumble: () => {},
   playGameOver: () => {},
+  playSfx: () => {},
   setMode: () => {},
 })
 
@@ -398,9 +434,33 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const lastSfx = useRef<Partial<Record<RoamSfx, number>>>({})
+  const playSfx = useCallback((name: RoamSfx) => {
+    const ctx = sfxReady()
+    const sfx = sfxGainRef.current
+    if (!ctx || !sfx) return
+    const cue = ROAM_SFX[name]
+    const t0 = ctx.currentTime
+    if (t0 - (lastSfx.current[name] ?? -1) < cue.gap) return
+    lastSfx.current[name] = t0
+    for (const n of cue.notes) {
+      const o = ctx.createOscillator()
+      o.type = n.type
+      o.frequency.setValueAtTime(n.from, t0 + n.at)
+      if (n.to) o.frequency.exponentialRampToValueAtTime(n.to, t0 + n.at + n.dur)
+      const g = ctx.createGain()
+      g.gain.setValueAtTime(n.gain, t0 + n.at)
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + n.at + n.dur)
+      o.connect(g)
+      g.connect(sfx)
+      o.start(t0 + n.at)
+      o.stop(t0 + n.at + n.dur + 0.02)
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ muted, toggleMuted, playGel, playStumble, playGameOver, setMode }),
-    [muted, toggleMuted, playGel, playStumble, playGameOver, setMode]
+    () => ({ muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, setMode }),
+    [muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, setMode]
   )
   return <SoundCtx.Provider value={value}>{children}</SoundCtx.Provider>
 }

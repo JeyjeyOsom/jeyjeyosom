@@ -1,7 +1,9 @@
 import { motion, useReducedMotion } from "framer-motion"
-import { Github, Lock } from "lucide-react"
+import { Gamepad2, Github, Lock } from "lucide-react"
 import ZoneHeader from "./ZoneHeader"
 import { type Px, PixelRects } from "../sprites"
+import { ROAM_HASH, useRoam } from "../roam/RoamContext"
+import { preloadRoamMode } from "../roam/world"
 
 // Cartridge shell on an 18x21 grid; the label window is x3..15, y8..17.
 const PLASTIC = "#55408F"
@@ -64,6 +66,24 @@ const ART_SUNSET: Px[] = [
   [12, 14, 1, 1, "#FFC94D"],
 ]
 
+// The loop road on an island, a palm, the Runner — Roam Mode
+const ART_OVERWORLD: Px[] = [
+  [3, 8, 12, 9, "#3D5A8C"], // sea
+  [5, 10, 8, 1, "#E8D2A2"], // sand
+  [4, 11, 10, 4, "#E8D2A2"],
+  [5, 15, 8, 1, "#E8D2A2"],
+  [5, 11, 8, 4, "#6E9A55"], // grass
+  [6, 11, 6, 1, "#4E4A5E"], // the loop road
+  [6, 14, 6, 1, "#4E4A5E"],
+  [6, 12, 1, 2, "#4E4A5E"],
+  [11, 12, 1, 2, "#4E4A5E"],
+  [8, 11, 1, 1, "#FFC94D"], // the Runner, out on his lap
+  [12, 9, 1, 3, "#8F6C4B"], // palm trunk
+  [11, 8, 3, 1, "#4F8F4A"], // fronds
+  [10, 9, 1, 1, "#4F8F4A"],
+  [13, 9, 1, 1, "#4F8F4A"],
+]
+
 interface Level {
   title: string
   brief: string
@@ -71,6 +91,8 @@ interface Level {
   tech: string[]
   github?: string
   art: Px[]
+  /** the level is Roam Mode itself, playable from its card */
+  play?: boolean
 }
 
 const LEVELS: Level[] = [
@@ -115,6 +137,20 @@ const LEVELS: Level[] = [
     github: "https://github.com/JeyjeyOsom/jeyjeyosom",
     art: ART_SUNSET,
   },
+  {
+    title: "The Overworld",
+    brief:
+      "Roam Mode for this site: the Runner loose on a 3D pixel-art island drawn from my training route, where every Landmark is a door back into the page. It renders with three.js on WebGL2 at a low resolution scaled up with hard pixels, and every shape is generated in TypeScript: no model files, no physics engine.",
+    points: [
+      "Loads as its own chunk only when a visitor steps in, so the page stays light for everyone else",
+      "Doors, the address bar and the Back button keep the page and the island in step",
+      "Designed after a source-level study of bruno-simon.com, borrowing patterns, never assets",
+    ],
+    tech: ["three.js", "WebGL2", "TypeScript", "React", "Vite"],
+    github: "https://github.com/JeyjeyOsom/jeyjeyosom",
+    art: ART_OVERWORLD,
+    play: true,
+  },
 ]
 
 function Cartridge({ art }: { art: Px[] }) {
@@ -128,6 +164,7 @@ function Cartridge({ art }: { art: Px[] }) {
 // Level Select — the Projects Zone: each project a level card with cartridge art.
 export default function LevelSelect() {
   const reduceMotion = useReducedMotion()
+  const roam = useRoam()
 
   return (
     <section
@@ -191,23 +228,49 @@ export default function LevelSelect() {
                   ))}
                 </div>
 
-                {/* Source link — or private marker when there is no public repo */}
-                {level.github ? (
-                  <a
-                    href={level.github}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
-                  >
-                    <Github size={14} aria-hidden="true" />
-                    ▸ VIEW SOURCE
-                  </a>
-                ) : (
-                  <span className="mt-6 inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-mist-300">
-                    <Lock size={14} aria-hidden="true" />
-                    PRIVATE CLIENT BUILD
-                  </span>
-                )}
+                <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3">
+                  {/* Roam Mode's card plays it, where a keyboard and WebGL2 are */}
+                  {level.play &&
+                    (roam.eligible ? (
+                      roam.view === "off" && (
+                        <a
+                          href={ROAM_HASH}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            roam.enter("projects")
+                          }}
+                          onPointerEnter={preloadRoamMode}
+                          onFocus={preloadRoamMode}
+                          className="inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-sunset-400 hover:text-gold-300 focus-ring"
+                        >
+                          <Gamepad2 size={14} aria-hidden="true" />
+                          ▸ PLAY
+                        </a>
+                      )
+                    ) : (
+                      <span className="font-arcade text-[9px] md:text-[10px] text-mist-300">
+                        PLAYS WITH A KEYBOARD AND WEBGL2
+                      </span>
+                    ))}
+
+                  {/* Source link — or private marker when there is no public repo */}
+                  {level.github ? (
+                    <a
+                      href={level.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
+                    >
+                      <Github size={14} aria-hidden="true" />
+                      ▸ VIEW SOURCE
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 font-arcade text-[9px] md:text-[10px] text-mist-300">
+                      <Lock size={14} aria-hidden="true" />
+                      PRIVATE CLIENT BUILD
+                    </span>
+                  )}
+                </div>
               </div>
             </motion.li>
           ))}

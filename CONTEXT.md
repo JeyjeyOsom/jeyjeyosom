@@ -14,6 +14,10 @@ _Avoid_: normal mode, static mode, recruiter mode
 The opt-in experience entered via Press Start, where keyboard input drives the Runner through the World instead of scrolling.
 _Avoid_: game mode, interactive mode
 
+**Roam Mode**:
+The opt-in experience where the keyboard moves the Runner freely around the Overworld: a third Mode beside Browse Mode and Play Mode, with its own entrances.
+_Avoid_: 3D mode, explore mode, free roam, game mode
+
 **Press Start**:
 The visible invitation on the Title Screen that switches a visitor from Browse Mode to Play Mode.
 
@@ -27,8 +31,16 @@ _Avoid_: map, page, site
 One themed region of the World corresponding to one content section (About, Skills, Experience, Projects, Running, Contact).
 _Avoid_: section, screen, area
 
+**Overworld**:
+The 3D pixel-art island the Runner roams in Roam Mode: a picture of Juan's training route, a loop road with one Landmark per Zone in the World's order. It holds no content of its own, and its sky is the World's: Dusk or Dawn.
+_Avoid_: 3D world, map, hub, island, level
+
+**Landmark**:
+The structure in the Overworld that stands for one Zone and is the door to it: opening a Landmark leaves the Overworld for Browse Mode at that Zone. Coming back puts the Runner at the Landmark of whichever Zone is then on screen, so scrolling the World moves him along the road.
+_Avoid_: building, portal, gate, checkpoint, interactive point
+
 **Runner**:
-The pixel-art avatar of Juan: in Play Mode his position in the World *is* the scroll position; in Browse Mode he runs in place on the Title Screen track. The one asset that must be unmistakably Juan.
+The pixel-art avatar of Juan: in Play Mode his position in the World *is* the scroll position; in Browse Mode he runs in place on the Title Screen track; in Roam Mode he moves freely around the Overworld. The one asset that must be unmistakably Juan.
 _Avoid_: player, character, sprite (for the concept; "sprite" is fine for the image asset)
 
 ### Zones
@@ -72,7 +84,7 @@ The World's collectible and the run's score: an energy gel drawn as a small gold
 _Avoid_: coins, points, pickups
 
 **Oncoming Traffic**:
-Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running — slow at first, faster as the run clock builds; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk). The World's scroll speed never changes: difficulty ramps the stream, Zones stay readable.
+Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running — slow at first, faster as the run clock builds; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. In the Overworld, cars lap the loop road against the Runner and wait whenever he is in their way. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk). The World's scroll speed never changes: difficulty ramps the stream, Zones stay readable.
 _Avoid_: enemies, obstacles (they never block World progress)
 
 **Stumble**:
@@ -82,6 +94,12 @@ _Avoid_: death, damage numbers
 **Health Bar**:
 Three notches of HP in the Play Mode HUD. It never recovers mid-run; at zero the run ends in Game Over, where Retry starts a fresh run (full health, score zero, slow stream) and the Runner's place in the World is kept.
 _Avoid_: lives, hearts, respawn
+
+### Roam Mode mechanics
+
+**Pace**:
+The Runner's current speed in the Overworld, shown in minutes per kilometre the way a running watch shows it.
+_Avoid_: speed, speedometer, km/h
 
 ### Assets & data
 
