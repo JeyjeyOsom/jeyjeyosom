@@ -20,6 +20,7 @@ import {
 } from "../../sprites"
 import { CARTRIDGE_ART } from "../../cartridges"
 import { drawText, textPx, textWidth } from "./font"
+import { formatLap } from "./lap"
 import { CAMERA_PITCH, GROUND_PIXEL } from "./level"
 import { C } from "./props"
 import { type Box, centered, extrudePx } from "./voxels"
@@ -41,6 +42,9 @@ export interface PartClock {
   still: boolean
   /** seconds since the Runner last took something here */
   since: number
+  /** the Lap on his watch, if one is running, and the best Lap kept */
+  lap: number | null
+  best: number | null
 }
 
 export interface LandmarkPart {
@@ -198,8 +202,8 @@ function titleArch(): LandmarkModel {
     ...checker(-2.05, 2.55, 4, 3, 0.2, C.ink, C.cream),
     ...checker(2.05 - 8 * PX, 2.55, 4, 3, 0.2, C.ink, C.cream),
     // the race clock's housing
-    centered(0, 3.53, 0, 1.75, 0.72, 0.36, C.ink),
-    centered(0, 3.53, 0, 1.85, 0.06, 0.42, C.purpleDark)
+    centered(0, 3.53, 0, 1.85, 0.72, 0.36, C.ink),
+    centered(0, 3.53, 0, 1.95, 0.06, 0.42, C.purpleDark)
   )
   // the start line and the timing mat behind it
   for (let i = 0; i < 12; i++) {
@@ -252,19 +256,29 @@ function titleArch(): LandmarkModel {
     ],
     screens: [
       {
-        // the race clock: time since the Overworld opened
-        cols: 23,
+        // the race clock: the Lap running, else the best Lap, else the
+        // time since the Overworld opened
+        cols: 25,
         rows: 7,
         at: [0, 3.53 + 0.36, 0.19],
-        fps: 4,
+        fps: 10,
         draw: (g, c) => {
           g.fillStyle = "#23222E"
-          g.fillRect(0, 0, 23, 7)
-          const s = Math.floor(c.elapsed)
-          const mm = String(Math.floor(s / 60) % 100).padStart(2, "0")
-          const ss = String(s % 60).padStart(2, "0")
-          const colon = Math.floor(c.t * 2) % 2 === 0 || c.wake < 0.5 ? ":" : " "
-          drawText(g, `${mm}${colon}${ss}`, 2, 1, c.wake > 0.5 ? "#FFE3A3" : "#FFC94D")
+          g.fillRect(0, 0, 25, 7)
+          let text: string
+          let color = c.wake > 0.5 ? "#FFE3A3" : "#FFC94D"
+          if (c.lap !== null) {
+            text = formatLap(c.lap)
+          } else if (c.best !== null) {
+            const showBest = Math.floor(c.t / 1.5) % 2 === 0 || c.still
+            text = showBest ? "BEST" : formatLap(c.best)
+            color = "#7EC8E8"
+          } else {
+            const s = Math.floor(c.elapsed)
+            const colon = Math.floor(c.t * 2) % 2 === 0 || c.still ? ":" : " "
+            text = `${String(Math.floor(s / 60) % 100).padStart(2, "0")}${colon}${String(s % 60).padStart(2, "0")}`
+          }
+          drawText(g, text, Math.floor((25 - textWidth(text)) / 2), 1, color)
         },
       },
     ],

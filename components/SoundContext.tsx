@@ -89,7 +89,20 @@ const TRACKS: Record<SoundMode, Track> = {
 // Roam Mode's effects: short square-wave cues, each with a minimum gap so
 // a held key or a jittery trigger can't stack them (folio-2025's sound
 // registry, minus the files)
-export type RoamSfx = "door" | "warp" | "prompt" | "jump" | "menu" | "moo" | "flap" | "splash" | "cup" | "horn"
+export type RoamSfx =
+  | "door"
+  | "warp"
+  | "prompt"
+  | "jump"
+  | "menu"
+  | "moo"
+  | "flap"
+  | "splash"
+  | "cup"
+  | "horn"
+  | "stone"
+  | "lap"
+  | "best"
 
 interface SfxNote {
   /** start offset, s */
@@ -148,6 +161,34 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
     notes: [
       { at: 0, dur: 0.05, type: "square", from: midi(84), gain: 0.05 },
       { at: 0.06, dur: 0.08, type: "square", from: midi(91), gain: 0.05 },
+    ],
+  },
+  // a year stone grinding up out of the verge
+  stone: {
+    gap: 0.5,
+    notes: [
+      { at: 0, dur: 0.35, type: "triangle", from: 70, to: 110, gain: 0.08 },
+      { at: 0.3, dur: 0.12, type: "square", from: midi(76), gain: 0.035 },
+    ],
+  },
+  // a Lap done: a quick rising arpeggio
+  lap: {
+    gap: 1,
+    notes: [
+      { at: 0, dur: 0.07, type: "square", from: midi(72), gain: 0.05 },
+      { at: 0.08, dur: 0.07, type: "square", from: midi(76), gain: 0.05 },
+      { at: 0.16, dur: 0.14, type: "square", from: midi(79), gain: 0.05 },
+    ],
+  },
+  // a new best Lap: the arpeggio, then the octave held
+  best: {
+    gap: 1,
+    notes: [
+      { at: 0, dur: 0.07, type: "square", from: midi(72), gain: 0.06 },
+      { at: 0.08, dur: 0.07, type: "square", from: midi(76), gain: 0.06 },
+      { at: 0.16, dur: 0.07, type: "square", from: midi(79), gain: 0.06 },
+      { at: 0.24, dur: 0.4, type: "square", from: midi(84), gain: 0.06 },
+      { at: 0.24, dur: 0.4, type: "triangle", from: midi(60), gain: 0.08 },
     ],
   },
   // a car waiting on the Runner: two polite beeps

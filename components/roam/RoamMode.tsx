@@ -5,7 +5,8 @@ import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
 import { useSound } from "../SoundContext"
 import { WORLD_MAP } from "../zones/registry"
 import { scrollToZone, zoneName } from "./world"
-import { DEFAULT_LOOK, type FrameReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
+import { DEFAULT_LOOK, type FrameReport, type LapReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
+import { formatLap } from "./overworld/lap"
 import { RoamMap, RoamMenu } from "./RoamPanels"
 import { RoamCover } from "./RoamScreens"
 
@@ -141,6 +142,10 @@ export default function RoamMode() {
   const [moved, setMoved] = useState(false)
   const [panel, setPanel] = useState<Panel>("none")
   const [frameMs, setFrameMs] = useState(0)
+  const [lap, setLap] = useState<LapReport | null>(null)
+  const [lapDone, setLapDone] = useState<{ time: number; newBest: boolean } | null>(null)
+  const [year, setYear] = useState<number | null>(null)
+  const lapDoneTimer = useRef(0)
   const [look, setLook] = useState<Look>(loadLook)
 
   // Latest values for the engine's callbacks and the queued transitions
@@ -186,6 +191,17 @@ export default function RoamMode() {
       onMoved: () => setMoved(true),
       onJump: () => latest.current.playSfx("jump"),
       onSfx: (name) => latest.current.playSfx(name),
+      onLap: (report) => {
+        setLap(report.running || report.best !== null ? report : null)
+        if (report.finished) {
+          const done = report.finished
+          latest.current.playSfx(done.newBest ? "best" : "lap")
+          setLapDone(done)
+          window.clearTimeout(lapDoneTimer.current)
+          lapDoneTimer.current = window.setTimeout(() => setLapDone(null), 3600)
+        }
+      },
+      onYear: setYear,
       onFrame: (report: FrameReport) => {
         const w = window.innerWidth
         const h = window.innerHeight
@@ -233,6 +249,7 @@ export default function RoamMode() {
       engine.dispose()
       engineRef.current = null
       delete debug.__overworld
+      window.clearTimeout(lapDoneTimer.current)
     }
     // the engine is built once per visit to Roam Mode
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -492,9 +509,30 @@ export default function RoamMode() {
           <div className="fixed inset-x-0 top-0 z-[65] flex items-start justify-between gap-3 px-4 md:px-6 py-3">
             <div className="pixel-border bg-dusk-950/90 mx-1 px-3 py-2">
               <p className="font-arcade text-[9px] md:text-[10px] text-gold-400">THE OVERWORLD</p>
-              <p className="mt-2 font-arcade text-[8px] text-mist-300">NEAR {zoneName(nearest)}</p>
+              <p className="mt-2 font-arcade text-[8px] text-mist-300">
+                {year !== null ? (
+                  <>
+                    QUEST ROAD · <span className="text-gold-300">{year}</span>
+                  </>
+                ) : (
+                  <>NEAR {zoneName(nearest)}</>
+                )}
+              </p>
             </div>
             <div className="flex items-start gap-3">
+              {lap && (
+                <div className="pixel-border bg-dusk-950/90 mx-1 px-3 py-2 text-right">
+                  <p className="font-arcade text-[8px] text-mist-300">
+                    LAP{" "}
+                    <span className="text-[10px] md:text-[11px] text-gold-300 tabular-nums">
+                      {lap.running ? formatLap(lap.time) : "-:--.-"}
+                    </span>
+                  </p>
+                  <p className="mt-2 font-arcade text-[8px] text-mist-300">
+                    BEST <span className="text-sunset-300 tabular-nums">{lap.best !== null ? formatLap(lap.best) : "-:--.-"}</span>
+                  </p>
+                </div>
+              )}
               <div className="pixel-border bg-dusk-950/90 mx-1 px-3 py-2 text-right">
                 <p className="font-arcade text-[8px] text-mist-300">PACE</p>
                 <p className="mt-2 font-arcade text-[10px] md:text-[11px] text-gold-300">
@@ -524,6 +562,21 @@ export default function RoamMode() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* a Lap just done */}
+          <div aria-live="polite" className="fixed inset-x-0 top-24 z-[65] flex justify-center px-4 pointer-events-none">
+            {lapDone && (
+              <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[10px] md:text-[11px] text-cream-100 text-center leading-relaxed">
+                LAP <span className="text-gold-300">{formatLap(lapDone.time)}</span>
+                {lapDone.newBest && (
+                  <>
+                    <br />
+                    <span className="text-gold-400 animate-blink">NEW BEST!</span>
+                  </>
+                )}
+              </p>
+            )}
           </div>
 
           <div aria-live="polite" className="fixed inset-x-0 bottom-6 z-[65] flex justify-center px-4 pointer-events-none">

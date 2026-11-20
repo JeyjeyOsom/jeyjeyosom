@@ -176,6 +176,39 @@ export function roadDistance(x: number, z: number): number {
   return Math.abs(outside + inside - r)
 }
 
+/** How far along the lap the road's nearest point to (x, z) lies */
+export function loopS(x: number, z: number): number {
+  let best = Infinity
+  let bestS = 0
+  let acc = 0
+  for (const seg of SEGMENTS) {
+    let along: number
+    let px: number
+    let pz: number
+    if (seg.kind === "line") {
+      along = Math.min(Math.max((x - seg.x0) * seg.tx + (z - seg.z0) * seg.tz, 0), seg.length)
+      px = seg.x0 + seg.tx * along
+      pz = seg.z0 + seg.tz * along
+    } else {
+      // the arc's angle falls as it is run: a = a0 - along / r
+      let delta = (seg.a0 - Math.atan2(z - seg.cz, x - seg.cx)) % (Math.PI * 2)
+      if (delta < 0) delta += Math.PI * 2
+      const span = seg.length / ROAD.r
+      if (delta > span) delta = delta > span + (Math.PI * 2 - span) / 2 ? 0 : span
+      along = delta * ROAD.r
+      px = seg.cx + Math.cos(seg.a0 - delta) * ROAD.r
+      pz = seg.cz + Math.sin(seg.a0 - delta) * ROAD.r
+    }
+    const d = Math.hypot(x - px, z - pz)
+    if (d < best) {
+      best = d
+      bestS = acc + along
+    }
+    acc += seg.length
+  }
+  return bestS
+}
+
 // ---- Landmarks ----
 // One per Zone, along the road in the World's order. Each stands beside the
 // road and, like buildings in a 16-bit game, faces the camera (south), with

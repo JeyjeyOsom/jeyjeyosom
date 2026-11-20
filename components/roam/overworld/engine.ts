@@ -91,6 +91,9 @@ import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky
 import { boxesGeometry, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife, type LifeSfx } from "./life"
+import { type LapFinish, LapTimer } from "./lap"
+import { QuestRoad } from "./questroad"
+import { QUESTS, questStartYear } from "../../zones/quests"
 
 // Palette colours go to the screen exactly as written: no colour
 // management between the hex codes and the framebuffer.
@@ -121,7 +124,16 @@ export interface FrameReport {
   runner: { x: number; y: number }
 }
 
-export type OverworldSfx = LifeSfx | "horn"
+export type OverworldSfx = LifeSfx | "horn" | "stone"
+
+export interface LapReport {
+  running: boolean
+  /** seconds into the Lap, to the tenth */
+  time: number
+  best: number | null
+  /** the Lap that just ended, if one did */
+  finished: LapFinish | null
+}
 
 export interface OverworldCallbacks {
   /** the Landmark whose door the Runner is at, or null */
@@ -135,6 +147,10 @@ export interface OverworldCallbacks {
   onJump: () => void
   /** a sound from something in view */
   onSfx: (name: OverworldSfx) => void
+  /** the Lap on his watch changed (at most every tenth of a second) */
+  onLap: (report: LapReport) => void
+  /** the year to show while he runs the Quest Road, or null off it */
+  onYear: (year: number | null) => void
   onFrame: (report: FrameReport) => void
   onFrameTime: (ms: number) => void
   onContextLost: () => void
@@ -271,6 +287,12 @@ export class Overworld {
   }> = []
   private readonly openedAt = performance.now()
   private life: IslandLife | null = null
+  private readonly lap = new LapTimer()
+  private lastLapReport = ""
+  private questRoad: QuestRoad | null = null
+  private lastYear: number | null | undefined = undefined
+  private readonly ghostMesh: THREE.Mesh
+  private readonly ghostTex: THREE.Texture
   /** whole-pixel wind in grass, flowers, reeds and palm crowns */
   private readonly swayTime = { value: 0 }
   private readonly swayMats: THREE.MeshToonMaterial[] = []
@@ -441,11 +463,34 @@ export class Overworld {
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
     this.lampPool.scale.set(3.2, 1, 2.2)
     this.scene.add(this.lampPool)
+    this.questRoad = new QuestRoad(this.scene, {
+      years: QUESTS.map(questStartYear).filter((y): y is number => y !== null),
+      occluder: this.occluderMat,
+      solid: this.solidMat,
+      shadow: this.shadowMat,
+      flatDisc: () => this.flatDisc(),
+      solids: this.solids,
+      reduceMotion: this.reduceMotion,
+    })
 
     const runnerGeo = new THREE.PlaneGeometry(1, SPRITE_H)
     runnerGeo.translate(0, SPRITE_H / 2, 0)
     this.runnerMesh = new THREE.Mesh(runnerGeo, this.runnerMat)
     this.runnerMesh.renderOrder = 2
+    // the Ghost: the same sprite sheet, every other pixel, in pale lilac
+    this.ghostTex = this.runnerTex.clone()
+    this.ghostTex.needsUpdate = true
+    const ghostMat = new THREE.MeshBasicMaterial({ map: this.ghostTex, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xd8cdff })
+    ghostMat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <alphatest_fragment>",
+        "#include <alphatest_fragment>\n if (mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), 2.0) < 0.5) discard;"
+      )
+    }
+    this.ghostMesh = new THREE.Mesh(runnerGeo, ghostMat)
+    this.ghostMesh.renderOrder = 2
+    this.ghostMesh.visible = false
+    this.scene.add(this.ghostMesh)
     this.runnerShadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
     this.scene.add(this.runnerMesh, this.runnerShadow)
     this.stirStations(0, performance.now(), true)
@@ -510,6 +555,7 @@ export class Overworld {
     const l = this.landmarks.find((m) => m.zoneId === zoneId) ?? this.landmarks[0]
     if (!l) return
     this.runner = newRunner(l.door.x, l.door.z, facing)
+    this.lap.reset()
     this.pan.set(0, 0, 0)
     this.focus.set(this.runner.x + this.axes.up.x * LOOK_AHEAD, 0, this.runner.z + this.axes.up.z * LOOK_AHEAD)
     this.stuck = { timer: 0, origin: { x: l.door.x, z: l.door.z }, on: false }
@@ -589,6 +635,7 @@ export class Overworld {
     this.gradient.dispose()
     this.runnerTex.dispose()
     this.waterTex.dispose()
+    this.ghostTex.dispose()
     for (const st of this.stations) for (const sc of st.screens) sc.tex.dispose()
     this.renderer.dispose()
     this.renderer.forceContextLoss()
@@ -1196,6 +1243,40 @@ export class Overworld {
     cancelAnimationFrame(this.raf)
   }
 
+  /** Time the Lap; report it to the HUD at most every tenth of a second */
+  private updateLap(dt: number) {
+    const r = this.runner
+    const finished = this.lap.update(dt, r.x, r.z, this.inputEnabled)
+    const report: LapReport = {
+      running: this.lap.running,
+      time: Math.floor(this.lap.time * 10) / 10,
+      best: this.lap.best,
+      finished,
+    }
+    const key = `${report.running}|${report.time}|${report.best}`
+    if (finished || key !== this.lastLapReport) {
+      this.lastLapReport = key
+      this.cb.onLap(report)
+    }
+  }
+
+  /** The Ghost retraces the best Lap at the same time into the Lap */
+  private updateGhost(now: number) {
+    const g = this.lap.running ? this.lap.ghostAt(this.lap.time) : null
+    this.ghostMesh.visible = !!g
+    if (!g) return
+    const facing: Facing =
+      Math.abs(g.dx) >= Math.abs(g.dz) * 0.8 ? (g.dx >= 0 ? "right" : "left") : g.dz < 0 ? "up" : "down"
+    const moving = Math.hypot(g.dx, g.dz) > 0.02
+    const pose: Pose = !moving ? "stand" : this.reduceMotion ? "a" : Math.floor(now / 130) % 2 ? "a" : "b"
+    const col = FACING_SET[facing] * POSES.length + POSES.indexOf(pose)
+    this.ghostTex.offset.set(col / FRAME_COLS, 0.5)
+    const pos = this.snapToPixels(g.x, g.z)
+    this.ghostMesh.position.set(pos.x, 0, pos.z)
+    this.ghostMesh.scale.x = facing === "left" ? -1 : 1
+    this.ghostMesh.rotation.y = this.runnerMesh.rotation.y
+  }
+
   /** Play a sound only if its source is on screen, more or less */
   private sfxAt(name: OverworldSfx, at: Vec2) {
     if (Math.abs(at.x - this.focus.x) < 14 && Math.abs(at.z - this.focus.z) < 12) this.cb.onSfx(name)
@@ -1250,6 +1331,7 @@ export class Overworld {
     }
 
     this.updateStuck(dt, r.moving)
+    this.updateLap(dt)
 
     // camera: glide after the Runner; moving brings a panned view home
     if (r.moving) this.pan.multiplyScalar(Math.exp(-dt * 6))
@@ -1345,6 +1427,23 @@ export class Overworld {
       focus: { x: this.focus.x, z: this.focus.z },
     })
     this.jumped = this.landed = false
+    this.updateGhost(now)
+    if (this.questRoad && r) {
+      const { year, rising } = this.questRoad.update(now / 1000, r.x, r.z)
+      for (const at of rising) {
+        this.sfxAt("stone", at)
+        if (!this.reduceMotion) {
+          for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2
+            this.life?.particles.spawn({ x: at.x + Math.cos(a) * 0.5, y: 0.05, z: at.z + Math.sin(a) * 0.3, vx: Math.cos(a) * 1.2, vy: 1, vz: Math.sin(a) * 0.6, max: 0.6, size: 0.125, gravity: 2, color: 0xc9b98f })
+          }
+        }
+      }
+      if (year !== this.lastYear) {
+        this.lastYear = year
+        this.cb.onYear(year)
+      }
+    }
     if (this.reduceMotion) return
     // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
@@ -1374,7 +1473,16 @@ export class Overworld {
       const inView = Math.abs(st.centre.x - this.focus.x) < 18 && Math.abs(st.centre.z - this.focus.z) < 16
       if (!first && !inView) continue
       const since = st.zoneId === "skills" && this.life ? this.life.sinceCup(now / 1000) : Infinity
-      const clock: PartClock = { t, wake: st.wake, lit: this.lampsLit, elapsed, still: this.reduceMotion, since }
+      const clock: PartClock = {
+        t,
+        wake: st.wake,
+        lit: this.lampsLit,
+        elapsed,
+        still: this.reduceMotion,
+        since,
+        lap: this.lap.running ? this.lap.time : null,
+        best: this.lap.best,
+      }
       if (first || !this.reduceMotion) {
         for (const { mesh, part } of st.parts) {
           if (part.duskOnly) mesh.visible = this.lampsLit

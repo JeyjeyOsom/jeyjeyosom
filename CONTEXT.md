@@ -101,6 +101,18 @@ _Avoid_: lives, hearts, respawn
 The Runner's current speed in the Overworld, shown in minutes per kilometre the way a running watch shows it.
 _Avoid_: speed, speedometer, km/h
 
+**Lap**:
+One circuit of the Overworld's loop road in the running direction, from the start/finish line at the Title Screen's Landmark back to it, timed on the Runner's watch. Eight checkpoints along the road must be passed in order, on the road, so cutting across the island doesn't count; a door, fast travel or a respawn drops the Lap in progress. The best Lap is kept in the visitor's browser.
+_Avoid_: race, round, time trial
+
+**Ghost**:
+The dithered copy of the Runner that retraces the visitor's best Lap while they run another, so they can race themselves.
+_Avoid_: replay, shadow
+
+**Quest Road**:
+The stretch of loop road before the Quest Log's Landmark, where a standing stone carved with the year each quest began rises from the verge as the Runner passes, oldest first, and the HUD counts the years while he is on it. Only the years come from the Quest Log; its content stays on the page.
+_Avoid_: timeline, career path
+
 ### Assets & data
 
 **Cartridge Art**:

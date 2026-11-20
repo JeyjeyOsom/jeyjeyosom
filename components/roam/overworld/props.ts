@@ -654,15 +654,14 @@ export function roadPaintGeometry(crossings: number[], startS: number): THREE.Bu
       alongRoad(out, s - 0.7, s + 0.7, off0, off0 + 0.25, y, PAINT, 0.35)
     }
   }
-  // chevrons in each lane, pointing the way a lap runs
-  for (const s of [55, 125, 195, 235, 290]) {
-    for (const lane of [-0.75, 0.75]) {
-      for (let k = 0; k < 4; k++) {
-        const w = 0.6 - k * 0.15
-        alongRoad(out, s + k * 0.12, s + k * 0.12 + 0.12, lane - w / 2, lane - w / 2 + 0.12, y, PAINT, 0.12)
-        alongRoad(out, s + k * 0.12, s + k * 0.12 + 0.12, lane + w / 2 - 0.12, lane + w / 2, y, PAINT, 0.12)
-      }
-    }
+  // an arrow in the inner lane on each straight, pointing the way a lap
+  // runs: a shaft, then a head narrowing a step at a time
+  for (const s of [30, 100, 190, 280]) {
+    const lane = -0.75
+    alongRoad(out, s, s + 1.0, lane - 0.06, lane + 0.06, y, PAINT, 0.25)
+    ;[0.5, 0.36, 0.22, 0.08].forEach((w, k) => {
+      alongRoad(out, s + 1.0 + k * 0.125, s + 1.125 + k * 0.125, lane - w / 2, lane + w / 2, y, PAINT, 0.125)
+    })
   }
   // tyre marks on two corners, two lines each
   for (const [s0, s1, off] of [[44, 56, 0.55], [222, 232, -0.6]] as const) {
