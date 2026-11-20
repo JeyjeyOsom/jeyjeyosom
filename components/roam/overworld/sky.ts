@@ -76,7 +76,7 @@ const PATHS: Record<SkyCycle, [SkyLight, SkyLight, SkyLight]> = {
   "dawn-to-dusk": [SKIES.dawn, SKIES.noon, SKIES.dusk],
 }
 
-function mixColor(a: number, b: number, t: number): number {
+export function mixColor(a: number, b: number, t: number): number {
   const ar = (a >> 16) & 255
   const ag = (a >> 8) & 255
   const ab = a & 255

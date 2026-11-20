@@ -95,6 +95,7 @@ import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
 import { held as padHeld, PAD, PadEdges, readPad, stick } from "../gamepad"
 import { type LapFinish, LapTimer } from "./lap"
 import { QuestRoad } from "./questroad"
+import { rainGrade, Weather, type WeatherMode } from "./weather"
 import { QUESTS, questStartYear } from "../../zones/quests"
 
 // Palette colours go to the screen exactly as written: no colour
@@ -130,7 +131,7 @@ export interface FrameReport {
   world: { x: number; z: number }
 }
 
-export type StepSurface = "road" | "grass" | "sand" | "wood"
+export type StepSurface = "road" | "grass" | "sand" | "wood" | "puddle"
 
 export type OverworldSfx = LifeSfx | "horn" | "stone"
 
@@ -177,6 +178,8 @@ export interface OverworldCallbacks {
   onStick: (stick: { ox: number; oy: number; x: number; y: number; sprint: boolean } | null) => void
   /** a Landmark clicked in the scene */
   onOpen: (zoneId: string) => void
+  /** how hard it's raining, 0..1, reported in twentieths */
+  onRain: (intensity: number) => void
   onFrame: (report: FrameReport) => void
   onFrameTime: (ms: number) => void
   onContextLost: () => void
@@ -329,6 +332,11 @@ export class Overworld {
   }> = []
   private readonly openedAt = performance.now()
   private life: IslandLife | null = null
+  private weather: Weather | null = null
+  /** the sky before the rain greys it */
+  private baseLight: SkyLight = SKIES.dusk
+  private gradedAt = -1
+  private lastRain = -1
   private readonly lap = new LapTimer()
   private lastLapReport = ""
   private questRoad: QuestRoad | null = null
@@ -535,6 +543,7 @@ export class Overworld {
     })
     this.buildBanana()
     this.pointables.push(...this.life.pointables())
+    this.weather = new Weather(this.scene, () => this.flatDisc(), this.reduceMotion, performance.now() / 1000)
     // the headlamp's pool of light, thrown ahead of him at Dusk
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
     this.lampPool.scale.set(3.2, 1, 2.2)
@@ -734,6 +743,7 @@ export class Overworld {
     this.gradient.dispose()
     this.runnerTex.dispose()
     this.waterTex.dispose()
+    this.weather?.dispose()
     this.ghostTex.dispose()
     for (const st of this.stations) for (const sc of st.screens) sc.tex.dispose()
     this.renderer.dispose()
@@ -1205,7 +1215,17 @@ export class Overworld {
 
   // ---- sky ----
 
-  private applySky(light: SkyLight) {
+  /** Light the island from the sky, greyed by however hard it's raining */
+  private applySky(base: SkyLight) {
+    this.baseLight = base
+    const rain = this.weather?.intensity ?? 0
+    this.gradedAt = rain
+    const light = rainGrade(base, rain)
+    this.weather?.setSky(light)
+    this.paintSky(light)
+  }
+
+  private paintSky(light: SkyLight) {
     this.sun.color.setHex(light.sun)
     this.sun.intensity = light.sunI * Math.PI
     this.shade.color.setHex(light.shade)
@@ -1607,6 +1627,30 @@ export class Overworld {
     cancelAnimationFrame(this.raf)
   }
 
+  /** Rain: advance it, grey the light as it comes, splash the ground */
+  private updateWeather(dt: number, now: number) {
+    const w = this.weather
+    if (!w) return
+    const splashes = w.update(dt, now / 1000, { x: this.focus.x, z: this.focus.z })
+    if (Math.abs(w.intensity - this.gradedAt) > 0.01 || (w.intensity === 0 && this.gradedAt > 0)) this.applySky(this.baseLight)
+    for (const s of splashes) {
+      // a two-pixel crown that's gone in a blink
+      for (const side of [-1, 1]) {
+        this.life?.particles.spawn({ x: s.x, y: 0.01, z: s.z, vx: side * 0.5, vy: 0.9, vz: 0, max: 0.16, size: 1 / 16, gravity: 6, color: 0xe4ecf8 })
+      }
+    }
+    const rain = Math.round(w.intensity * 20) / 20
+    if (rain !== this.lastRain) {
+      this.lastRain = rain
+      this.cb.onRain(rain)
+    }
+  }
+
+  /** CLEAR, RAIN, or AUTO's occasional showers */
+  setWeather(mode: WeatherMode) {
+    this.weather?.setMode(mode, performance.now() / 1000)
+  }
+
   /** Time the Lap; report it to the HUD at most every tenth of a second */
   private updateLap(dt: number) {
     const r = this.runner
@@ -1796,6 +1840,7 @@ export class Overworld {
       const progress = (now - this.cycle.start) / this.cycleMs
       this.applySky(cycleLight(this.cycle.kind, progress, this.cycleMid))
     }
+    this.updateWeather(dt, now)
 
     this.render()
     this.report(dt, frameMs, now)
@@ -1854,7 +1899,9 @@ export class Overworld {
     if (stride !== this.stridePhase) {
       this.stridePhase = stride
       if (!r.airborne && speed > 0.4 && dt > 0) {
-        this.cb.onStep(inPier(r.x, r.z, -0.25) ? "wood" : surfaceAt(r.x, r.z))
+        const ground = inPier(r.x, r.z, -0.25) ? "wood" : surfaceAt(r.x, r.z)
+        const wet = (this.weather?.wetness ?? 0) > 0.5 && (ground === "road" || ground === "grass")
+        this.cb.onStep(wet ? "puddle" : ground)
       }
     }
 
@@ -1881,6 +1928,8 @@ export class Overworld {
       landed: this.landed,
       lit: this.lampsLit,
       focus: { x: this.focus.x, z: this.focus.z },
+      rain: this.weather?.intensity ?? 0,
+      wet: this.weather?.wetness ?? 0,
     })
     this.jumped = this.landed = false
     this.updateGhost(now)
@@ -1984,6 +2033,7 @@ export class Overworld {
     const { iw, ih } = this.size
     this.seeThrough.value.set((v.x * 0.5 + 0.5) * iw, (v.y * 0.5 + 0.5) * ih, SEE_THROUGH_RADIUS, v.z * 0.5 + 0.5)
     this.renderer.render(this.scene, this.camera)
+    this.weather?.render(this.renderer)
   }
 
   private renderOnce() {

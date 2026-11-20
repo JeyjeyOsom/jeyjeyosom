@@ -5,6 +5,7 @@ import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
 import { useSound } from "../SoundContext"
 import { WORLD_MAP } from "../zones/registry"
 import { lastInput, scrollToZone, zoneName } from "./world"
+import type { WeatherMode } from "./overworld/weather"
 import {
   DEFAULT_LOOK,
   type FrameReport,
@@ -32,6 +33,16 @@ type Panel = "none" | "menu" | "map"
 type Stage = "loading" | "start" | "live"
 
 const LOOK_KEY = "roam-look"
+const WEATHER_KEY = "roam-weather"
+
+function loadWeather(): WeatherMode {
+  try {
+    const v = localStorage.getItem(WEATHER_KEY)
+    return v === "clear" || v === "rain" ? v : "auto"
+  } catch {
+    return "auto"
+  }
+}
 // The LOOK panel's experiments are kept only for ?look sessions; every
 // other visit gets the chosen default
 const LOOK_PROTOTYPE = new URLSearchParams(window.location.search).has("look")
@@ -251,6 +262,7 @@ export default function RoamMode() {
     return () => window.clearTimeout(timer)
   }, [toasts])
   const [look, setLook] = useState<Look>(loadLook)
+  const [weather, setWeather] = useState<WeatherMode>(loadWeather)
 
   // Latest values for the engine's callbacks and the queued transitions
   const latest = useRef({ roam, panel, playSfx, playStep, setAmbience, view, theme, openDoor: ((zoneId: string) => void zoneId) as (zoneId: string) => void })
@@ -259,6 +271,7 @@ export default function RoamMode() {
   const captionTimer = useRef(0)
   const miniDot = useRef<HTMLSpanElement>(null)
   const waves = useRef(0)
+  const rainLevel = useRef(0)
 
   // Transitions run one at a time, in order
   const queue = useRef<Promise<void>>(Promise.resolve())
@@ -317,6 +330,7 @@ export default function RoamMode() {
           recordRef.current("finisher")
           if (done.newBest && bestBefore.current !== null) recordRef.current("negative-split")
           if (done.time < 60) recordRef.current("sub-60")
+          if (rainLevel.current >= 0.5) recordRef.current("rain")
         }
         bestBefore.current = report.best
       },
@@ -361,7 +375,7 @@ export default function RoamMode() {
       onStep: (surface) => latest.current.playStep(surface),
       onAmbience: (level) => {
         waves.current = level
-        latest.current.setAmbience({ waves: level, dusk: latest.current.theme === "dusk" })
+        latest.current.setAmbience({ waves: level, dusk: latest.current.theme === "dusk", rain: rainLevel.current })
       },
       onPad: markPad,
       onHover: (text) => {
@@ -388,6 +402,10 @@ export default function RoamMode() {
         knob.dataset.sprint = String(stick.sprint)
       },
       onOpen: (zoneId) => latest.current.openDoor(zoneId),
+      onRain: (level) => {
+        rainLevel.current = level
+        latest.current.setAmbience({ waves: waves.current, dusk: latest.current.theme === "dusk", rain: level })
+      },
     }
     let engine: Overworld
     try {
@@ -444,7 +462,7 @@ export default function RoamMode() {
   }, [onIsland, setMode])
   useEffect(() => {
     if (!onIsland) return
-    setAmbience({ waves: waves.current, dusk: theme === "dusk" })
+    setAmbience({ waves: waves.current, dusk: theme === "dusk", rain: rainLevel.current })
     return () => setAmbience(null)
   }, [onIsland, theme, setAmbience])
   // a caption follows the pointer, only over the island
@@ -468,6 +486,17 @@ export default function RoamMode() {
   useEffect(() => {
     if (moved && stage === "live" && view === "overworld") record("skies", theme)
   }, [moved, stage, view, theme, record])
+
+  // the weather setting: AUTO's showers, or held CLEAR or RAIN
+  useEffect(() => {
+    if (!ready) return
+    engineRef.current?.setWeather(weather)
+    try {
+      localStorage.setItem(WEATHER_KEY, weather)
+    } catch {
+      /* storage unavailable */
+    }
+  }, [weather, ready])
 
   useEffect(() => {
     engineRef.current?.setLook(look)
@@ -994,6 +1023,8 @@ export default function RoamMode() {
             setPanel("none")
             toggleSky()
           }}
+          weather={weather}
+          onWeather={() => setWeather((w) => (w === "auto" ? "rain" : w === "rain" ? "clear" : "auto"))}
           onLook={setLook}
           onExit={leave}
           pad={pad ?? padGlyphs(readPad())}

@@ -65,6 +65,9 @@ export interface LifeFrame {
   lit: boolean
   /** the camera's focus on the ground */
   focus: Vec2
+  /** how hard it's raining, and how wet the ground is, 0..1 */
+  rain: number
+  wet: number
 }
 
 const dist = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.z - b.z)
@@ -398,9 +401,7 @@ export class IslandLife {
     this.updateCup(f)
     this.updateFootprints(f)
     if (this.o.reduceMotion) {
-      this.fireflies.visible = f.lit
       this.updateFireflies(f, true)
-      for (const b of this.butterflies) b.group.visible = !f.lit
       this.updateButterflies(f, true)
       return
     }
@@ -780,8 +781,9 @@ export class IslandLife {
   // ---- fireflies and butterflies ----
 
   private updateFireflies(f: LifeFrame, still: boolean) {
-    this.fireflies.visible = f.lit
-    if (!f.lit) return
+    // they shelter from the rain
+    this.fireflies.visible = f.lit && f.rain < 0.3
+    if (!this.fireflies.visible) return
     const t = still ? 0 : f.t
     this.fireflyHomes.forEach((h, i) => {
       const on = still || ((t * 0.7 + h.phase) % 1) < 0.55
@@ -800,8 +802,8 @@ export class IslandLife {
   private updateButterflies(f: LifeFrame, still: boolean) {
     const t = still ? 0 : f.t
     for (const b of this.butterflies) {
-      b.group.visible = !f.lit
-      if (f.lit) continue
+      b.group.visible = !f.lit && f.rain < 0.3
+      if (!b.group.visible) continue
       if (!still && (Math.abs(b.home.x - f.focus.x) > 22 || Math.abs(b.home.z - f.focus.z) > 18)) continue
       const open = still || Math.floor(t * 7 + b.phase) % 2 === 0
       b.open.visible = open
@@ -820,7 +822,9 @@ export class IslandLife {
   private updateDust(f: LifeFrame) {
     const { t, runner: r } = f
     const surface = surfaceAt(r.x, r.z)
-    const color = surface === "road" ? 0x9a95a8 : surface === "sand" ? 0xf0dfb8 : 0xc9b98f
+    // spray off wet ground, dust off dry
+    const wet = f.wet > 0.5 && surface !== "sand"
+    const color = wet ? 0xa8c4e0 : surface === "road" ? 0x9a95a8 : surface === "sand" ? 0xf0dfb8 : 0xc9b98f
     if (f.landed) {
       for (let i = 0; i < 7; i++) {
         const a = (i / 7) * Math.PI * 2

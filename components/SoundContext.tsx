@@ -243,11 +243,11 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
 }
 
 /** What the Runner's feet land on, for the footstep's sound */
-export type StepSurface = "road" | "grass" | "sand" | "wood"
+export type StepSurface = "road" | "grass" | "sand" | "wood" | "puddle"
 
 /** The Overworld's background: surf by the coast, and crickets at Dusk or
  *  birds at Dawn; null switches it off */
-export type Ambience = { waves: number; dusk: boolean } | null
+export type Ambience = { waves: number; dusk: boolean; rain: number } | null
 
 interface SoundState {
   muted: boolean
@@ -603,6 +603,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       grass: { type: "lowpass", freq: 750, q: 0.7, gain: 0.05, dur: 0.05 },
       sand: { type: "bandpass", freq: 1300, q: 0.8, gain: 0.035, dur: 0.075 },
       wood: { type: "bandpass", freq: 850, q: 2, gain: 0.05, dur: 0.05 },
+      puddle: { type: "bandpass", freq: 1900, q: 0.9, gain: 0.06, dur: 0.09 },
     }[surface] as { type: BiquadFilterType; freq: number; q: number; gain: number; dur: number }
     const s = ctx.createBufferSource()
     s.buffer = noise
@@ -636,7 +637,14 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   // The Overworld's ambience: surf swelling slowly through a lowpass, its
   // level set by how near the coast he is; and every so often a cricket at
   // Dusk or a bird at Dawn
-  const ambienceRef = useRef<{ gain: GainNode; src: AudioBufferSourceNode; lfo: OscillatorNode; timer: number } | null>(null)
+  const ambienceRef = useRef<{
+    gain: GainNode
+    src: AudioBufferSourceNode
+    lfo: OscillatorNode
+    timer: number
+    rain: GainNode
+    rainSrc: AudioBufferSourceNode
+  } | null>(null)
   const ambienceState = useRef<Ambience>(null)
   const stopAmbience = useCallback(() => {
     const a = ambienceRef.current
@@ -645,10 +653,12 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     try {
       a.src.stop()
       a.lfo.stop()
+      a.rainSrc.stop()
     } catch {
       /* already stopped */
     }
     a.gain.disconnect()
+    a.rain.disconnect()
     ambienceRef.current = null
   }, [])
   const setAmbience = useCallback(
@@ -693,6 +703,29 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         gain.connect(sfx)
         src.start()
         lfo.start()
+        // rain: white noise through a broad band for the hiss, plus the
+        // brown roar low down for the patter on the ground
+        const rainBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
+        const rd = rainBuf.getChannelData(0)
+        for (let i = 0; i < rd.length; i++) rd[i] = Math.random() * 2 - 1
+        const rainSrc = ctx.createBufferSource()
+        rainSrc.buffer = rainBuf
+        rainSrc.loop = true
+        const hiss = ctx.createBiquadFilter()
+        hiss.type = "bandpass"
+        hiss.frequency.value = 3800
+        hiss.Q.value = 0.4
+        const rain = ctx.createGain()
+        rain.gain.value = 0
+        rainSrc.connect(hiss)
+        hiss.connect(rain)
+        const patter = ctx.createBiquadFilter()
+        patter.type = "lowpass"
+        patter.frequency.value = 900
+        lp.connect(patter)
+        patter.connect(rain)
+        rain.connect(sfx)
+        rainSrc.start()
         const timer = window.setInterval(() => {
           const c = sfxReady()
           const state = ambienceState.current
@@ -713,6 +746,8 @@ export function SoundProvider({ children }: { children: ReactNode }) {
             o.stop(t0 + at + dur + 0.01)
           }
           const inland = 1 - state.waves * 0.6
+          // the creatures keep quiet in the rain
+          if (state.rain > 0.3) return
           if (state.dusk) {
             // a cricket: a few fast pulses
             if (Math.random() < 0.55) for (let k = 0; k < 3; k++) chirp(k * 0.05, 4600, 4500, 0.025, 0.006 * inland, "sine")
@@ -723,9 +758,10 @@ export function SoundProvider({ children }: { children: ReactNode }) {
             for (let k = 0; k < n; k++) chirp(k * 0.11, base, base * 1.25, 0.07, 0.008 * inland, "sine")
           }
         }, 650)
-        ambienceRef.current = { gain, src, lfo, timer }
+        ambienceRef.current = { gain, src, lfo, timer, rain, rainSrc }
       }
       ambienceRef.current.gain.gain.setTargetAtTime(next.waves * 0.07, ctx.currentTime, 0.5)
+      ambienceRef.current.rain.gain.setTargetAtTime(next.rain * 0.06, ctx.currentTime, 0.8)
     },
     [stopAmbience]
   )

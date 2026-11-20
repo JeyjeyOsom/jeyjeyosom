@@ -19,6 +19,7 @@ import {
 import type { Look } from "./overworld/engine"
 import type { Kit, KitId, Medal } from "./medals"
 import type { PadGlyphs } from "./gamepad"
+import type { WeatherMode } from "./overworld/weather"
 
 // The Overworld's two panels: the map (fast travel, and the keyboard and
 // screen-reader route to every Zone) and the menu. Both are dialogs over a
@@ -251,6 +252,8 @@ export function RoamMenu({
   onResume,
   onToggleSound,
   onToggleSky,
+  weather,
+  onWeather,
   onLook,
   onExit,
   medals,
@@ -268,6 +271,8 @@ export function RoamMenu({
   onResume: () => void
   onToggleSound: () => void
   onToggleSky: () => void
+  weather: WeatherMode
+  onWeather: () => void
   onLook: (look: Look) => void
   onExit: () => void
   medals: Array<Medal & { earned: boolean; progress: number }>
@@ -304,6 +309,9 @@ export function RoamMenu({
           </button>
           <button onClick={onToggleSky} className={item}>
             {caret}SKY: {sky === "dusk" ? "DUSK" : "DAWN"}
+          </button>
+          <button onClick={onWeather} className={item}>
+            {caret}WEATHER: {weather === "auto" ? "AUTO (SHOWERS)" : weather === "rain" ? "RAIN" : "CLEAR"}
           </button>
           <button onClick={onExit} className={item}>
             {caret}EXIT THE OVERWORLD

@@ -24,6 +24,7 @@ export type MedalId =
   | "watch"
   | "travel"
   | "banana"
+  | "rain"
 
 export interface Medal {
   id: MedalId
@@ -52,6 +53,7 @@ export const MEDALS: Medal[] = [
   { id: "pier", name: "END OF THE PIER", hint: "Run to the end of the pier." },
   { id: "historian", name: "HISTORIAN", hint: "Raise every stone on the Quest Road." },
   { id: "skies", name: "DUSK TO DAWN", hint: "Run the island under both skies.", needs: 2 },
+  { id: "rain", name: "RAIN RUNNER", hint: "Finish a Lap in the rain." },
   { id: "honk", name: "ROAD SENSE", hint: "Get honked at. Then move." },
   { id: "watch", name: "SPLIT CHECK", hint: "Stand still long enough to check your watch." },
   { id: "banana", name: "BANANA", hint: "Somewhere on the island.", secret: true, cheer: "Yep, that's my banana." },
