@@ -350,7 +350,7 @@ export default function RoamMode() {
         else if (e.kind === "pier") r("pier")
         else if (e.kind === "stones") r("historian")
         else if (e.kind === "honk") r("honk")
-        else if (e.kind === "watch") r("watch")
+        else if (e.kind === "watch") r("watch", String(bookRef.current!.progress("watch") + 1))
         else if (e.kind === "banana") r("banana")
       },
       onFrame: (report: FrameReport) => {
@@ -898,7 +898,12 @@ export default function RoamMode() {
           </div>
 
           {/* a Lap just done, and Medals as they're won */}
-          <div aria-live="polite" className="fixed inset-x-0 top-24 z-[65] flex flex-col items-center gap-3 px-4 pointer-events-none">
+          {/* low on the screen, between the Runner and the prompt: up top they
+              covered the Landmark labels and the edge pins */}
+          <div
+            aria-live="polite"
+            className={`fixed inset-x-0 ${touch ? "bottom-48" : "bottom-24"} z-[65] flex flex-col-reverse items-center gap-3 px-4 pointer-events-none`}
+          >
             {toasts[0] && (
               <p key={toasts[0].key} className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 text-center">
                 <span className="block font-arcade text-[9px] md:text-[10px] text-gold-400">{toasts[0].title}</span>

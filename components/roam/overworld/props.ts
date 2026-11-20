@@ -549,7 +549,9 @@ export function coastWaterShapes(): { shallow: THREE.Shape; foam: THREE.Shape; p
 
 const DASH_PERIOD = LOOP_LENGTH / Math.round(LOOP_LENGTH / 2)
 
-export function roadGeometry(): THREE.BufferGeometry {
+/** The road from s0 to s1 along the lap (the whole lap by default); built
+ *  in stretches so the camera can skip the ones it can't see */
+export function roadGeometry(from = 0, to = LOOP_LENGTH): THREE.BufferGeometry {
   const positions: number[] = []
   const colors: number[] = []
   const col = new THREE.Color()
@@ -565,7 +567,7 @@ export function roadGeometry(): THREE.BufferGeometry {
   const n = Math.ceil(LOOP_LENGTH / step)
   const hw = ROAD.halfWidth
   const lineW = 0.12
-  for (let i = 0; i < n; i++) {
+  for (let i = Math.floor(from / step); i < Math.min(n, Math.ceil(to / step)); i++) {
     const s0 = i * step
     const s1 = Math.min((i + 1) * step, LOOP_LENGTH)
     const p = roadPoint(s0)
@@ -678,7 +680,7 @@ export function roadPaintGeometry(crossings: number[], startS: number): THREE.Bu
 }
 
 /** Kerbs along both edges: grey on the straights, red and white on the bends */
-export function kerbGeometry(): THREE.BufferGeometry {
+export function kerbBoxes(): Box[] {
   const boxes: Box[] = []
   const hw = ROAD.halfWidth
   // half-unit kerb stones on the straights; on the bends, small square
@@ -701,7 +703,7 @@ export function kerbGeometry(): THREE.BufferGeometry {
     }
     s += step
   }
-  return boxesGeometry(boxes)
+  return boxes
 }
 
 /** A distance post on the verge: a pole and a plate reading the metres */

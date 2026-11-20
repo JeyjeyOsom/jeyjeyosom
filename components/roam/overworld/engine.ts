@@ -61,7 +61,7 @@ import {
   carBoxes,
   coastBand,
   distancePostBoxes,
-  kerbGeometry,
+  kerbBoxes,
   lilyPadCells,
   pierGeometry,
   pondFlowerBoxes,
@@ -89,7 +89,7 @@ import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, 
 import { METERS_PER_UNIT } from "./movement"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { inPier, islandReach, surfaceAt } from "./level"
-import { boxesGeometry, cellsGeometry } from "./voxels"
+import { boxesGeometry, type Cell, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
 import { held as padHeld, PAD, PadEdges, readPad, stick } from "../gamepad"
@@ -203,6 +203,23 @@ const SEE_THROUGH_RADIUS = 20 // internal pixels
 /** Rows on screen at each zoom step, as multiples of the Look's rows */
 const ZOOM_ROWS = [1, 4 / 3, 2]
 const ZOOM_KEY = "roam-zoom"
+/** Island-wide meshes are cut into tiles this wide, and the road into
+ *  stretches this long, so the camera only draws what it can see */
+const TILE = 24
+const ROAD_STRETCH = 30
+
+/** Group things by the tile of the island they stand on */
+function byTile<T>(items: T[], at: (item: T) => Vec2): Map<string, T[]> {
+  const tiles = new Map<string, T[]>()
+  for (const item of items) {
+    const p = at(item)
+    const key = `${Math.floor(p.x / TILE)},${Math.floor(p.z / TILE)}`
+    const tile = tiles.get(key)
+    if (tile) tile.push(item)
+    else tiles.set(key, [item])
+  }
+  return tiles
+}
 /** The touch thumb-stick's reach in CSS pixels, and how far past it sprints */
 export const STICK_RADIUS = 44
 export const STICK_SPRINT = 1.5
@@ -426,6 +443,7 @@ export class Overworld {
   private lampsLit = false
   /** when he last stood still, for the watch check */
   private stillSince = performance.now()
+  private checkingWatch = false
   private jumped = false
   private landed = false
   private readonly lampPool: THREE.Mesh
@@ -777,27 +795,40 @@ export class Overworld {
     return mesh
   }
 
+  /**
+   * Scatter instances of one geometry, one InstancedMesh per tile of the
+   * island so the camera skips the tiles it can't see (one mesh across the
+   * whole island is always drawn in full)
+   */
   private instanced(
     geometry: THREE.BufferGeometry,
     material: THREE.Material,
     items: Array<{ x: number; z: number; rot: number; scale: number }>,
     scaleXZ?: (s: number) => [number, number]
-  ): THREE.InstancedMesh {
-    const mesh = new THREE.InstancedMesh(geometry, material, Math.max(items.length, 1))
-    mesh.count = items.length
+  ): THREE.InstancedMesh[] {
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
     const up = new THREE.Vector3(0, 1, 0)
-    items.forEach((it, i) => {
-      q.setFromAxisAngle(up, it.rot)
-      const [sx, sz] = scaleXZ ? scaleXZ(it.scale) : [it.scale, it.scale]
-      m.compose(new THREE.Vector3(it.x, 0, it.z), q, new THREE.Vector3(sx, it.scale, sz))
-      mesh.setMatrixAt(i, m)
+    return [...byTile(items, (it) => it).values()].map((tile) => {
+      const mesh = new THREE.InstancedMesh(geometry, material, tile.length)
+      tile.forEach((it, i) => {
+        q.setFromAxisAngle(up, it.rot)
+        const [sx, sz] = scaleXZ ? scaleXZ(it.scale) : [it.scale, it.scale]
+        m.compose(new THREE.Vector3(it.x, 0, it.z), q, new THREE.Vector3(sx, it.scale, sz))
+        mesh.setMatrixAt(i, m)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+      mesh.computeBoundingSphere()
+      this.scene.add(mesh)
+      return mesh
     })
-    mesh.instanceMatrix.needsUpdate = true
-    mesh.computeBoundingSphere()
-    this.scene.add(mesh)
-    return mesh
+  }
+
+  /** Flat cells on the ground, one mesh per tile of the island */
+  private addCells(cells: Cell[], y: number, material: THREE.Material) {
+    for (const tile of byTile(cells, (c) => ({ x: c.x + c.w / 2, z: c.z + c.d / 2 })).values()) {
+      this.add(cellsGeometry(tile, y), material)
+    }
   }
 
   private buildWorld() {
@@ -824,10 +855,11 @@ export class Overworld {
     this.wash = this.add(flat(washShape(), 0.003), this.foamMat)
     // the coast's pixel edges: wet sand by the water, and grass and sand
     // dithered into each other where they meet
-    this.add(cellsGeometry(coastBand(0.976, 1.0, 0.012, 0, 0xc4a676), 0.002), this.solidMat)
-    this.add(cellsGeometry(coastBand(BEACH_REACH, BEACH_REACH, 0, 0.011, C.grass), 0.004), this.solidMat)
-    this.add(cellsGeometry(coastBand(BEACH_REACH, BEACH_REACH, 0.011, 0, C.sand, 1), 0.0045), this.solidMat)
-    this.add(roadGeometry(), this.solidMat)
+    this.addCells(coastBand(0.976, 1.0, 0.012, 0, 0xc4a676), 0.002, this.solidMat)
+    this.addCells(coastBand(BEACH_REACH, BEACH_REACH, 0, 0.011, C.grass), 0.004, this.solidMat)
+    this.addCells(coastBand(BEACH_REACH, BEACH_REACH, 0.011, 0, C.sand, 1), 0.0045, this.solidMat)
+    // the road in stretches, so the camera skips the ones out of view
+    for (let s = 0; s < LOOP_LENGTH; s += ROAD_STRETCH) this.add(roadGeometry(s, s + ROAD_STRETCH), this.solidMat)
     this.add(
       roadPaintGeometry(
         this.landmarks.filter((l) => l.zoneId !== "title").map((l) => l.s),
@@ -835,7 +867,9 @@ export class Overworld {
       ),
       this.solidMat
     )
-    this.add(kerbGeometry(), this.solidMat)
+    for (const tile of byTile(kerbBoxes(), (b) => ({ x: b.x + b.w / 2, z: b.z + b.d / 2 })).values()) {
+      this.add(boxesGeometry(tile), this.solidMat)
+    }
     this.buildRoadside()
     this.point(this.add(pierGeometry(), this.occluderMat), "THE PIER.")
     const boat = new THREE.Mesh(boxesGeometry(boatBoxes(), false), this.occluderMat)
@@ -853,7 +887,9 @@ export class Overworld {
     this.point(this.add(fenceGeometry(), this.solidMat), "THE PASTURE FENCE.")
 
     const s = this.scenery
-    this.point(this.instanced(boxesGeometry(palmBoxes()), this.swayMaterial("occluder", 1.6, 2.4), s.palms), "A PALM.")
+    for (const palms of this.instanced(boxesGeometry(palmBoxes()), this.swayMaterial("occluder", 1.6, 2.4), s.palms)) {
+      this.point(palms, "A PALM.")
+    }
     this.instanced(this.flatDisc(), this.shadowMat, s.palms, (k) => [1.5 * k, 1.1 * k])
     for (let v = 0; v < 3; v++) {
       const rocks = s.rocks.filter((r) => r.variant === v)
@@ -862,7 +898,7 @@ export class Overworld {
     }
     for (let v = 0; v < 2; v++) {
       const patches = s.patches.filter((p) => p.variant % 2 === v)
-      this.add(cellsGeometry(patchCells(patches, v), 0.006 + v * 0.0005), this.solidMat)
+      this.addCells(patchCells(patches, v), 0.006 + v * 0.0005, this.solidMat)
     }
     for (let v = 0; v < 2; v++) {
       const bushes = s.bushes.filter((b) => b.variant % 2 === v)
@@ -1192,8 +1228,10 @@ export class Overworld {
     )
     cam.lookAt(this.focus)
     cam.updateMatrixWorld()
-    if (this.look.lens !== "ortho") return
-    // Move the camera in whole screen pixels so nothing shimmers
+    // Move the camera in whole screen pixels so nothing shimmers. The depth
+    // lens is sized so a pixel is 1/16 of a unit at the focus, as the flat
+    // lens is everywhere, so the same steps hold the ground near the Runner
+    // still; only things well above or behind it drift by a fraction.
     const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0)
     const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1)
     const fwd = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 2)
@@ -1885,7 +1923,9 @@ export class Overworld {
     if (r.moving || r.airborne || speed > 0.4) this.stillSince = now
     const idle = (now - this.stillSince) / 1000
     let pose: Pose = idle > 4 && (idle - 4) % 7 < 1.8 ? "watch" : "stand"
-    if (pose === "watch") this.tellOnce("watch")
+    // every watch check counts toward SPLIT CHECK, not just the first
+    if (pose === "watch" && !this.checkingWatch) this.cb.onEvent({ kind: "watch" })
+    this.checkingWatch = pose === "watch"
     if (r.airborne) pose = "jump"
     else if (speed > 0.4) {
       if (this.reduceMotion) pose = "a"
@@ -2010,7 +2050,6 @@ export class Overworld {
 
   /** Nudge a ground point so it lands on a whole screen pixel */
   private snapToPixels(x: number, z: number): Vec2 {
-    if (this.look.lens !== "ortho") return { x, z }
     const cam = this.camera
     const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0)
     const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1)

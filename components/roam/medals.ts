@@ -55,7 +55,7 @@ export const MEDALS: Medal[] = [
   { id: "skies", name: "DUSK TO DAWN", hint: "Run the island under both skies.", needs: 2 },
   { id: "rain", name: "RAIN RUNNER", hint: "Finish a Lap in the rain." },
   { id: "honk", name: "ROAD SENSE", hint: "Get honked at. Then move." },
-  { id: "watch", name: "SPLIT CHECK", hint: "Stand still long enough to check your watch." },
+  { id: "watch", name: "SPLIT CHECK", hint: "Stand still and check your watch, three times over.", needs: 3 },
   { id: "banana", name: "BANANA", hint: "Somewhere on the island.", secret: true, cheer: "Yep, that's my banana." },
 ]
 
