@@ -6,6 +6,7 @@ import { useSound } from "../SoundContext"
 import { WORLD_MAP } from "../zones/registry"
 import { lastInput, scrollToZone, zoneName } from "./world"
 import type { WeatherMode } from "./overworld/weather"
+import { type ClockPhase, clockHours, clockPhase } from "./overworld/sky"
 import {
   DEFAULT_LOOK,
   type FrameReport,
@@ -35,6 +36,15 @@ type Stage = "loading" | "start" | "live"
 
 const LOOK_KEY = "roam-look"
 const WEATHER_KEY = "roam-weather"
+const CLOCK_KEY = "roam-clock"
+
+function loadClock(): boolean {
+  try {
+    return localStorage.getItem(CLOCK_KEY) === "1"
+  } catch {
+    return false
+  }
+}
 
 function loadWeather(): WeatherMode {
   try {
@@ -264,10 +274,22 @@ export default function RoamMode() {
   }, [toasts])
   const [look, setLook] = useState<Look>(loadLook)
   const [weather, setWeather] = useState<WeatherMode>(loadWeather)
+  // YOUR CLOCK: the island keeps the visitor's time of day; `phase` is
+  // read again each minute, for the menu and the night sounds
+  const [clock, setClock] = useState(loadClock)
+  const [phase, setPhase] = useState<ClockPhase>(() => clockPhase(clockHours(new Date())))
+  useEffect(() => {
+    if (!clock) return
+    setPhase(clockPhase(clockHours(new Date())))
+    const timer = window.setInterval(() => setPhase(clockPhase(clockHours(new Date()))), 60_000)
+    return () => window.clearInterval(timer)
+  }, [clock])
+  // the island is dark (night sounds) at Dusk, or by the clock after dusk
+  const dark = clock ? phase === "dusk" || phase === "night" : theme === "dusk"
 
   // Latest values for the engine's callbacks and the queued transitions
-  const latest = useRef({ roam, panel, playSfx, playStep, setAmbience, view, theme, openDoor: ((zoneId: string) => void zoneId) as (zoneId: string) => void })
-  latest.current = { ...latest.current, roam, panel, playSfx, playStep, setAmbience, view, theme }
+  const latest = useRef({ roam, panel, playSfx, playStep, setAmbience, view, dark, openDoor: ((zoneId: string) => void zoneId) as (zoneId: string) => void })
+  latest.current = { ...latest.current, roam, panel, playSfx, playStep, setAmbience, view, dark }
   const caption = useRef<HTMLDivElement>(null)
   const captionTimer = useRef(0)
   const miniDot = useRef<HTMLSpanElement>(null)
@@ -297,6 +319,8 @@ export default function RoamMode() {
   latestLook.current = look
   const latestSky = useRef(theme)
   latestSky.current = theme
+  const latestClock = useRef(clock)
+  latestClock.current = clock
 
   // ---- the engine ----
   useEffect(() => {
@@ -386,7 +410,7 @@ export default function RoamMode() {
       onStep: (surface) => latest.current.playStep(surface),
       onAmbience: (level) => {
         waves.current = level
-        latest.current.setAmbience({ waves: level, dusk: latest.current.theme === "dusk", rain: rainLevel.current })
+        latest.current.setAmbience({ waves: level, dusk: latest.current.dark, rain: rainLevel.current })
       },
       onPad: markPad,
       onHover: (text) => {
@@ -415,7 +439,7 @@ export default function RoamMode() {
       onOpen: (zoneId) => latest.current.openDoor(zoneId),
       onRain: (level) => {
         rainLevel.current = level
-        latest.current.setAmbience({ waves: waves.current, dusk: latest.current.theme === "dusk", rain: level })
+        latest.current.setAmbience({ waves: waves.current, dusk: latest.current.dark, rain: level })
       },
     }
     let engine: Overworld
@@ -427,6 +451,7 @@ export default function RoamMode() {
           look: latestLook.current,
           reduceMotion,
           sky: latestSky.current,
+          clock: latestClock.current,
           // the Gel trail runs until every door has been stood at
           trail: bookRef.current?.has("sightseer") ? null : (bookRef.current?.keys("sightseer") ?? []),
         },
@@ -465,6 +490,14 @@ export default function RoamMode() {
   useEffect(() => {
     engineRef.current?.setSky(theme, cycle, CYCLE_MS, CYCLE_MID)
   }, [theme, cycle, ready])
+  useEffect(() => {
+    engineRef.current?.setClock(clock)
+    try {
+      localStorage.setItem(CLOCK_KEY, clock ? "1" : "0")
+    } catch {
+      /* storage unavailable */
+    }
+  }, [clock, ready])
   // The Roam tune plays while the Overworld is on screen; behind a door the
   // page's own amble returns. The surf and the creatures go with it.
   const onIsland = stage === "live" && !failure && view === "overworld"
@@ -475,9 +508,9 @@ export default function RoamMode() {
   }, [onIsland, setMode])
   useEffect(() => {
     if (!onIsland) return
-    setAmbience({ waves: waves.current, dusk: theme === "dusk", rain: rainLevel.current })
+    setAmbience({ waves: waves.current, dusk: dark, rain: rainLevel.current })
     return () => setAmbience(null)
-  }, [onIsland, theme, setAmbience])
+  }, [onIsland, dark, setAmbience])
   // the tab-title runner runs only while the island is on screen
   useEffect(() => {
     if (!tabTitle.current) tabTitle.current = new TabTitle(reduceMotion)
@@ -1052,6 +1085,8 @@ export default function RoamMode() {
           }}
           weather={weather}
           onWeather={() => setWeather((w) => (w === "auto" ? "rain" : w === "rain" ? "clear" : "auto"))}
+          clock={clock ? phase : null}
+          onClock={() => setClock((c) => !c)}
           onLook={setLook}
           onExit={leave}
           pad={pad ?? padGlyphs(readPad())}

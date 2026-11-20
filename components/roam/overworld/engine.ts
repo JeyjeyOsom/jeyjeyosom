@@ -64,7 +64,7 @@ import {
 } from "./props"
 import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY, textBoxes } from "./landmarks"
 import { METERS_PER_UNIT } from "./movement"
-import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
+import { clockHours, clockLight, cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { inPier, islandReach, surfaceAt } from "./level"
 import { boxesGeometry, type Cell, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
@@ -92,6 +92,8 @@ interface Options {
   sky: Sky
   /** the Landmark doors already stood at, for the Gel trail; null when it's done */
   trail: string[] | null
+  /** YOUR CLOCK: the island keeps the visitor's time of day, not the sky setting */
+  clock: boolean
 }
 
 const PIXELS_PER_UNIT = 16
@@ -282,6 +284,9 @@ export class Overworld {
   // sky
   private sky: Sky
   private cycle: { kind: SkyCycle; start: number } | null = null
+  /** following the visitor's clock, and when its light was last set */
+  private clock = false
+  private clockAt = 0
   private cycleMs = 2800
   private cycleMid = 0.45
 
@@ -457,7 +462,8 @@ export class Overworld {
     this.runner = newRunner(start?.door.x ?? 0, start?.door.z ?? 40)
 
     this.camera = this.makeCamera()
-    this.applySky(SKIES[this.sky])
+    this.clock = options.clock
+    this.applySky(this.clock ? clockLight(clockHours(new Date())) : SKIES[this.sky])
 
     this.onVisibility = this.onVisibility.bind(this)
     this.onContextLost = this.onContextLost.bind(this)
@@ -553,6 +559,11 @@ export class Overworld {
   setSky(sky: Sky, cycle: SkyCycle | null, cycleMs: number, cycleMid: number) {
     this.cycleMs = cycleMs
     this.cycleMid = cycleMid
+    // on the clock, the setting waits for the clock to be turned off
+    if (this.clock) {
+      this.sky = sky
+      return
+    }
     if (cycle && !this.reduceMotion) {
       if (!this.cycle || this.cycle.kind !== cycle) this.cycle = { kind: cycle, start: performance.now() }
       return
@@ -560,6 +571,16 @@ export class Overworld {
     this.cycle = null
     this.sky = sky
     this.applySky(SKIES[sky])
+    if (!this.running) this.renderOnce()
+  }
+
+  /** YOUR CLOCK on or off: the visitor's time of day, or the sky setting */
+  setClock(on: boolean) {
+    if (on === this.clock) return
+    this.clock = on
+    this.cycle = null
+    this.clockAt = performance.now()
+    this.applySky(on ? clockLight(clockHours(new Date())) : SKIES[this.sky])
     if (!this.running) this.renderOnce()
   }
 
@@ -1531,6 +1552,10 @@ export class Overworld {
     if (this.cycle) {
       const progress = (now - this.cycle.start) / this.cycleMs
       this.applySky(cycleLight(this.cycle.kind, progress, this.cycleMid))
+    } else if (this.clock && now - this.clockAt > 5000) {
+      // the clock's light moves a little every few seconds: too slowly to see
+      this.clockAt = now
+      this.applySky(clockLight(clockHours(new Date())))
     }
     this.updateWeather(dt, now)
 

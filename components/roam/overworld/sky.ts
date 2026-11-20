@@ -3,7 +3,8 @@
 // the colour of the sunlight, the colour of the shade, and the sea that
 // reflects it. A theme toggle plays the same journey as the Title Screen:
 // Dusk reaches Dawn through NIGHT, Dawn reaches Dusk through NOON, keyed
-// like folio-2025's day cycle (keyframes blended with a smoothstep).
+// like folio-2025's day cycle (keyframes blended with a smoothstep). Or,
+// with YOUR CLOCK on, the island keeps the visitor's own time of day.
 
 export type Sky = "dusk" | "dawn"
 export type SkyCycle = "dusk-to-dawn" | "dawn-to-dusk"
@@ -104,6 +105,48 @@ function mixLight(a: SkyLight, b: SkyLight, t: number): SkyLight {
 }
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t)
+
+// YOUR CLOCK (the Roam menu): the island follows the visitor's own time
+// of day, through the same four lights. Hours of local time, blended with
+// the same smoothstep between neighbours.
+const CLOCK_KEYS: Array<[number, SkyLight]> = [
+  [0, SKIES.night],
+  [4.5, SKIES.night],
+  [6, SKIES.dawn],
+  [8.5, SKIES.noon],
+  [16.5, SKIES.noon],
+  [18.5, SKIES.dusk],
+  [20.5, SKIES.night],
+  [24, SKIES.night],
+]
+
+/** Hours since local midnight, with the minutes as a fraction */
+export function clockHours(date: Date): number {
+  return date.getHours() + date.getMinutes() / 60 + date.getSeconds() / 3600
+}
+
+/** The island's light at an hour of the visitor's day */
+export function clockLight(hours: number): SkyLight {
+  const h = ((hours % 24) + 24) % 24
+  for (let i = 1; i < CLOCK_KEYS.length; i++) {
+    const [h1, b] = CLOCK_KEYS[i]
+    if (h > h1) continue
+    const [h0, a] = CLOCK_KEYS[i - 1]
+    return mixLight(a, b, smoothstep((h - h0) / (h1 - h0)))
+  }
+  return SKIES.night
+}
+
+export type ClockPhase = "night" | "dawn" | "day" | "dusk"
+
+/** What the clock's sky is called at an hour, for the menu */
+export function clockPhase(hours: number): ClockPhase {
+  const h = ((hours % 24) + 24) % 24
+  if (h < 5.25 || h >= 19.5) return "night"
+  if (h < 7.25) return "dawn"
+  if (h < 17.5) return "day"
+  return "dusk"
+}
 
 /** The light at a moment of a sky cycle: progress 0..1, deepest at mid */
 export function cycleLight(cycle: SkyCycle, progress: number, mid: number): SkyLight {

@@ -20,6 +20,7 @@ import type { Look } from "./overworld/engine"
 import type { Kit, KitId, Medal } from "./medals"
 import type { PadGlyphs } from "./gamepad"
 import type { WeatherMode } from "./overworld/weather"
+import type { ClockPhase } from "./overworld/sky"
 
 // The Overworld's two panels: the map (fast travel, and the keyboard and
 // screen-reader route to every Zone) and the menu. Both are dialogs over a
@@ -254,6 +255,8 @@ export function RoamMenu({
   onToggleSky,
   weather,
   onWeather,
+  clock,
+  onClock,
   onLook,
   onExit,
   medals,
@@ -273,6 +276,9 @@ export function RoamMenu({
   onToggleSky: () => void
   weather: WeatherMode
   onWeather: () => void
+  /** YOUR CLOCK's time of day, or null when it's off */
+  clock: ClockPhase | null
+  onClock: () => void
   onLook: (look: Look) => void
   onExit: () => void
   medals: Array<Medal & { earned: boolean; progress: number }>
@@ -309,6 +315,10 @@ export function RoamMenu({
           </button>
           <button onClick={onToggleSky} className={item}>
             {caret}SKY: {sky === "dusk" ? "DUSK" : "DAWN"}
+            {clock && <span className="text-mist-300"> (THE SITE; THE ISLAND KEEPS YOUR CLOCK)</span>}
+          </button>
+          <button onClick={onClock} className={item} aria-pressed={!!clock}>
+            {caret}YOUR CLOCK: {clock ? `ON · ${clock === "day" ? "DAYTIME" : clock.toUpperCase()}` : "OFF"}
           </button>
           <button onClick={onWeather} className={item}>
             {caret}WEATHER: {weather === "auto" ? "AUTO (SHOWERS)" : weather === "rain" ? "RAIN" : "CLEAR"}
