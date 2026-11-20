@@ -117,7 +117,7 @@ function roofText(text: string, cx: number, cz: number, y: number, color: number
 }
 
 /** Pixel rects as boxes on an upright face, one screen pixel each */
-function pxBoxes(rects: Px[], x0: number, top: number, z: number, depth = 0.02): Box[] {
+export function pxBoxes(rects: Px[], x0: number, top: number, z: number, depth = 0.02): Box[] {
   return rects.flatMap(([x, y, w, h, fill]) =>
     fill.startsWith("#")
       ? [{ x: x0 + x * PX, y: top - (y + h) * PY, z, w: w * PX, h: h * PY, d: depth, color: parseInt(fill.slice(1), 16) }]

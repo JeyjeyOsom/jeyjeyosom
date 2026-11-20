@@ -80,7 +80,7 @@ _Avoid_: contact section, footer form
 ### Play Mode mechanics
 
 **Gel**:
-The World's collectible and the run's score: an energy gel drawn as a small gold pixel packet, streamed endlessly at the Runner (ground runs and jump arcs) while he runs, faster as the run goes on. The count accumulates without cap, survives Esc within a visit, and resets on Retry or page load. Play Mode only; invisible in Browse Mode. The Save Point acknowledges the score.
+The World's collectible: an energy gel drawn as a small gold pixel packet. In Play Mode it is the run's score, streamed endlessly at the Runner (ground runs and jump arcs) while he runs, faster as the run goes on; the count accumulates without cap, survives Esc within a visit, and resets on Retry or page load, and the Save Point acknowledges it. In the Overworld, Gels make the Gel trail: until the visitor has stood at every Landmark's door (the SIGHTSEER Medal), a line of them runs from the start arch along the road to the next Landmark not yet reached, then on to the one after; running over one takes it with a chime, and scores nothing. Invisible in Browse Mode.
 _Avoid_: coins, points, pickups
 
 **Oncoming Traffic**:

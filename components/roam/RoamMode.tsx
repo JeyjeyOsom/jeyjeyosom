@@ -427,6 +427,8 @@ export default function RoamMode() {
           look: latestLook.current,
           reduceMotion,
           sky: latestSky.current,
+          // the Gel trail runs until every door has been stood at
+          trail: bookRef.current?.has("sightseer") ? null : (bookRef.current?.keys("sightseer") ?? []),
         },
         callbacks
       )

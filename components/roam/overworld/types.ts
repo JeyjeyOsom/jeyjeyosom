@@ -38,7 +38,7 @@ export interface FrameReport {
 
 export type StepSurface = "road" | "grass" | "sand" | "wood" | "puddle"
 
-export type OverworldSfx = LifeSfx | "horn" | "stone" | "bark"
+export type OverworldSfx = LifeSfx | "horn" | "stone" | "bark" | "gel"
 
 /** Things the Runner did that the interface keeps score of (Medals) */
 export type OverworldEvent = LifeEvent | { kind: "pier" | "stones" | "honk" | "watch" | "banana" }

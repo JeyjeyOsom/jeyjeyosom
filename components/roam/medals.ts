@@ -120,6 +120,11 @@ export class MedalBook {
   }
 
   /** How far along a set medal is */
+  /** The keys a set Medal holds so far */
+  keys(id: MedalId): string[] {
+    return [...(this.data.sets[id] ?? [])]
+  }
+
   progress(id: MedalId): number {
     return this.data.sets[id]?.length ?? 0
   }

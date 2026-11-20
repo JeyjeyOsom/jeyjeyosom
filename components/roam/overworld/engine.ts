@@ -70,6 +70,7 @@ import { boxesGeometry, type Cell, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife } from "./life"
 import { Dog, DOG_CAPTION } from "./dog"
+import { GelTrail } from "./trail"
 import { Controls } from "./controls"
 import { drawRunnerAtlas, FACING_SET, FRAME_COLS, LAMP_ANGLE, type Pose, POSES, WATER_PATTERN, WATER_SIZE } from "./textures"
 import type { LapReport, Look, OverworldCallbacks, OverworldSfx } from "./types"
@@ -88,6 +89,8 @@ interface Options {
   look: Look
   reduceMotion: boolean
   sky: Sky
+  /** the Landmark doors already stood at, for the Gel trail; null when it's done */
+  trail: string[] | null
 }
 
 const PIXELS_PER_UNIT = 16
@@ -150,6 +153,7 @@ export class Overworld {
   private readonly openedAt = performance.now()
   private life: IslandLife | null = null
   private dog: Dog | null = null
+  private trail: GelTrail | null = null
   private weather: Weather | null = null
   /** the sky before the rain greys it */
   private baseLight: SkyLight = SKIES.dusk
@@ -364,6 +368,22 @@ export class Overworld {
     })
     this.dog = dog
     this.pointables.push({ obj: dog.object, caption: () => DOG_CAPTION, click: () => dog.bark(performance.now() / 1000) })
+    if (options.trail) {
+      this.trail = new GelTrail(this.scene, this.landmarks, options.trail, {
+        glow: this.glowMat,
+        shadow: this.shadowMat,
+        flatDisc: () => this.flatDisc(),
+        solids: this.solids,
+        reduceMotion: this.reduceMotion,
+        picked: (at) => {
+          this.sfxAt("gel", at)
+          for (let k = 0; k < 5; k++) {
+            const a = (k / 5) * Math.PI * 2
+            this.life?.particles.spawn({ x: at.x, y: 0.4, z: at.z, vx: Math.cos(a) * 0.9, vy: 1.6, vz: Math.sin(a) * 0.5, max: 0.4, size: 1 / 16, gravity: 5, color: 0xffc94d })
+          }
+        },
+      })
+    }
     this.weather = new Weather(this.scene, () => this.flatDisc(), this.reduceMotion, performance.now() / 1000)
     // the headlamp's pool of light, thrown ahead of him at Dusk
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
@@ -546,6 +566,7 @@ export class Overworld {
 
   dispose() {
     this.stop()
+    this.trail?.dispose()
     this.resizeObserver.disconnect()
     this.controls.dispose()
     document.removeEventListener("visibilitychange", this.onVisibility)
@@ -985,6 +1006,7 @@ export class Overworld {
     }
     this.life?.setYaw(yaw)
     this.dog?.setYaw(yaw)
+    this.trail?.setYaw(yaw)
     return this.look.lens === "ortho"
       ? new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400)
       : new THREE.PerspectiveCamera(30, 1, 1, 400)
@@ -1146,6 +1168,11 @@ export class Overworld {
       this.goal = p
       this.goalMarker.position.set(p.x, 0, p.z)
     }
+  }
+
+  /** The Landmark the Gel trail leads to, if it's still laid */
+  get trailLeadsTo(): string | null {
+    return this.trail?.leadsTo ?? null
   }
 
   /** The dog is running with him */
@@ -1549,6 +1576,7 @@ export class Overworld {
       wet: this.weather?.wetness ?? 0,
     })
     this.dog?.update(dt, now / 1000, r, this.jumped)
+    this.trail?.update(now / 1000, r)
     this.jumped = this.landed = false
     this.updateGhost(now)
     if (this.questRoad && r) {
@@ -1667,6 +1695,7 @@ export class Overworld {
     const prompt = doorD < DOOR_REACH && !r.airborne ? near.zoneId : null
     if (prompt !== this.lastPrompt) {
       this.lastPrompt = prompt
+      if (prompt) this.trail?.visit(prompt)
       this.cb.onPrompt(prompt)
     }
     if (near && near.zoneId !== this.lastNearest) {

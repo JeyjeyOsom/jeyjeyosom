@@ -133,6 +133,7 @@ export type RoamSfx =
   | "best"
   | "medal"
   | "bark"
+  | "gel"
 
 interface SfxNote {
   /** start offset, s */
@@ -229,6 +230,14 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
       { at: 0.07, dur: 0.06, type: "square", from: midi(84), gain: 0.05 },
       { at: 0.14, dur: 0.06, type: "square", from: midi(88), gain: 0.05 },
       { at: 0.21, dur: 0.22, type: "square", from: midi(91), gain: 0.05 },
+    ],
+  },
+  // a Gel off the trail: Play Mode's chime, smaller (they come every half second)
+  gel: {
+    gap: 0.08,
+    notes: [
+      { at: 0, dur: 0.06, type: "square", from: 987.77, to: 987.77, gain: 0.035 },
+      { at: 0.06, dur: 0.16, type: "square", from: 1318.51, to: 1318.51, gain: 0.03 },
     ],
   },
   // the dog: woof-woof, two short drops
