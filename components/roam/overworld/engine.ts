@@ -171,6 +171,10 @@ export interface OverworldCallbacks {
   onHover: (caption: string | null) => void
   /** a gamepad moved him (so the prompts can show its buttons) */
   onPad: () => void
+  /** the touch thumb-stick: where it was planted and where the thumb is,
+   *  in CSS pixels, and whether it's pushed far enough to sprint; null
+   *  when no thumb is down */
+  onStick: (stick: { ox: number; oy: number; x: number; y: number; sprint: boolean } | null) => void
   /** a Landmark clicked in the scene */
   onOpen: (zoneId: string) => void
   onFrame: (report: FrameReport) => void
@@ -194,6 +198,9 @@ const SEE_THROUGH_RADIUS = 20 // internal pixels
 /** Rows on screen at each zoom step, as multiples of the Look's rows */
 const ZOOM_ROWS = [1, 4 / 3, 2]
 const ZOOM_KEY = "roam-zoom"
+/** The touch thumb-stick's reach in CSS pixels, and how far past it sprints */
+export const STICK_RADIUS = 44
+export const STICK_SPRINT = 1.5
 /** How near the Runner must be to a Landmark's door to wake it */
 const WAKE_REACH = 7
 // The camera looks this far ahead of the Runner (up the screen), so he
@@ -346,6 +353,9 @@ export class Overworld {
   /** the gamepad's buttons, tracked every frame so a press that closes a
    *  panel isn't read as a jump the moment the panel goes */
   private readonly padEdges = new PadEdges()
+  /** touch: the first finger is a thumb-stick (or a tap), a second looks around */
+  private stickTouch: { id: number; ox: number; oy: number; x: number; y: number; t0: number; moved: number } | null = null
+  private panTouch: { id: number; x: number; y: number } | null = null
   private lastWaves = -1
   /** events the interface has been told of once already */
   private readonly told = new Set<string>()
@@ -602,6 +612,7 @@ export class Overworld {
     this.canvas.addEventListener("wheel", this.onWheel, { passive: true })
     window.addEventListener("pointermove", this.onPointerMove)
     window.addEventListener("pointerup", this.onPointerUp)
+    window.addEventListener("pointercancel", this.onPointerUp)
     this.canvas.addEventListener("webglcontextlost", this.onContextLost)
 
     this.resizeObserver = new ResizeObserver(() => this.resize())
@@ -709,6 +720,7 @@ export class Overworld {
     this.canvas.removeEventListener("wheel", this.onWheel)
     window.removeEventListener("pointermove", this.onPointerMove)
     window.removeEventListener("pointerup", this.onPointerUp)
+    window.removeEventListener("pointercancel", this.onPointerUp)
     this.canvas.removeEventListener("webglcontextlost", this.onContextLost)
     const materials = new Set<THREE.Material>()
     this.scene.traverse((obj) => {
@@ -1131,7 +1143,9 @@ export class Overworld {
   private resize() {
     const w = Math.max(1, this.host.clientWidth)
     const h = Math.max(1, this.host.clientHeight)
-    const scale = Math.max(1, Math.floor(h / (this.look.rows * ZOOM_ROWS[this.zoom])))
+    // the shorter side sets the pixel size, so a phone held upright still
+    // gets a view about as wide as a landscape screen is tall
+    const scale = Math.max(1, Math.floor(Math.min(w, h) / (this.look.rows * ZOOM_ROWS[this.zoom])))
     // even internal sizes keep the pixel grid centred
     const iw = Math.ceil(w / scale / 2) * 2
     const ih = Math.ceil(h / scale / 2) * 2
@@ -1306,6 +1320,11 @@ export class Overworld {
     this.held.up = this.held.down = this.held.left = this.held.right = this.held.sprint = false
     this.jumpQueued = false
     this.drag = null
+    this.panTouch = null
+    if (this.stickTouch) {
+      this.stickTouch = null
+      this.reportStick()
+    }
   }
 
   private onBlur() {
@@ -1325,12 +1344,48 @@ export class Overworld {
   // Look around: drag the view; any movement key glides it home. A click
   // that doesn't drag acts on what's under it, or runs him there.
   private onPointerDown(e: PointerEvent) {
-    if (e.button !== 0 || !this.inputEnabled) return
+    if (!this.inputEnabled) return
+    if (e.pointerType === "touch") {
+      if (!this.stickTouch) {
+        const at = { x: e.clientX, y: e.clientY }
+        this.stickTouch = { id: e.pointerId, ox: at.x, oy: at.y, ...at, t0: performance.now(), moved: 0 }
+        this.reportStick()
+      } else if (!this.panTouch) {
+        this.panTouch = { id: e.pointerId, x: e.clientX, y: e.clientY }
+      }
+      return
+    }
+    if (e.button !== 0) return
     this.drag = { x: e.clientX, y: e.clientY }
     this.pointer = { x: e.clientX, y: e.clientY, moved: 0 }
   }
 
+  /** Slide the view by a drag of dx, dy CSS pixels (mouse, or a second finger) */
+  private panBy(dx: number, dy: number) {
+    const k = 1 / (this.size.scale * PIXELS_PER_UNIT)
+    const { right, up } = this.axes
+    const dRight = -dx * k
+    const dUp = (dy * k) / Math.sin(PITCH)
+    this.pan.x += right.x * dRight + up.x * dUp
+    this.pan.z += right.z * dRight + up.z * dUp
+    const len = Math.hypot(this.pan.x, this.pan.z)
+    if (len > 24) this.pan.multiplyScalar(24 / len)
+  }
+
   private onPointerMove(e: PointerEvent) {
+    if (e.pointerType === "touch") {
+      const st = this.stickTouch
+      if (st && st.id === e.pointerId) {
+        st.moved += Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y)
+        st.x = e.clientX
+        st.y = e.clientY
+        this.reportStick()
+      } else if (this.panTouch && this.panTouch.id === e.pointerId) {
+        this.panBy(e.clientX - this.panTouch.x, e.clientY - this.panTouch.y)
+        this.panTouch = { id: e.pointerId, x: e.clientX, y: e.clientY }
+      }
+      return
+    }
     if (e.target === this.canvas || this.drag) {
       this.hoverDirty = true
       if (this.pointer) this.pointer = { ...this.pointer, x: e.clientX, y: e.clientY }
@@ -1345,32 +1400,72 @@ export class Overworld {
     this.drag = { x: e.clientX, y: e.clientY }
     if (this.pointer) this.pointer.moved += Math.abs(dx) + Math.abs(dy)
     if (this.pointer && this.pointer.moved < 5) return
-    const k = 1 / (this.size.scale * PIXELS_PER_UNIT)
-    const { right, up } = this.axes
-    const dRight = -dx * k
-    const dUp = (dy * k) / Math.sin(PITCH)
-    this.pan.x += right.x * dRight + up.x * dUp
-    this.pan.z += right.z * dRight + up.z * dUp
-    const len = Math.hypot(this.pan.x, this.pan.z)
-    if (len > 24) this.pan.multiplyScalar(24 / len)
+    this.panBy(dx, dy)
   }
 
   private onPointerUp(e: PointerEvent) {
+    if (e.pointerType === "touch") {
+      const st = this.stickTouch
+      if (st && st.id === e.pointerId) {
+        this.stickTouch = null
+        this.reportStick()
+        // a quick touch that barely moved is a tap, not a run
+        const tap = e.type === "pointerup" && st.moved < 12 && performance.now() - st.t0 < 350
+        if (tap && this.inputEnabled) this.actAt(e.clientX, e.clientY, true)
+      } else if (this.panTouch && this.panTouch.id === e.pointerId) {
+        this.panTouch = null
+      }
+      return
+    }
     const wasDrag = !this.drag || !this.pointer || this.pointer.moved >= 5
     this.drag = null
     if (this.pointer) this.pointer.moved = 0
     if (wasDrag || e.target !== this.canvas || !this.inputEnabled) return
+    this.actAt(e.clientX, e.clientY, false)
+  }
+
+  /**
+   * A click or a tap: act on what's there (a Landmark opens, a cow moos),
+   * or run him to the spot if he can stand there. A tap also shows the
+   * caption of what it touched, since a finger can't hover.
+   */
+  private actAt(clientX: number, clientY: number, tap: boolean) {
+    if (tap) {
+      this.pointer = { x: clientX, y: clientY, moved: 0 }
+      this.lastCaption = null
+    }
     this.hoverNow()
+    if (tap) this.pointer = null
     if (this.hovered?.click) {
       this.hovered.click()
       return
     }
-    // run to the spot clicked, if he can stand there
-    const p = this.groundAt(e.clientX, e.clientY)
+    const p = this.groundAt(clientX, clientY)
     if (p && walkable(p.x, p.z)) {
       this.goal = p
       this.goalMarker.position.set(p.x, 0, p.z)
     }
+  }
+
+  /** Tell the interface where the thumb-stick is, so it can draw it */
+  private reportStick() {
+    const st = this.stickTouch
+    if (!st) {
+      this.cb.onStick(null)
+      return
+    }
+    const len = Math.hypot(st.x - st.ox, st.y - st.oy)
+    this.cb.onStick({ ox: st.ox, oy: st.oy, x: st.x, y: st.y, sprint: len > STICK_RADIUS * STICK_SPRINT })
+  }
+
+  /** A jump asked for by a touch button */
+  jump() {
+    if (this.inputEnabled) this.jumpQueued = true
+  }
+
+  /** Step to the next zoom, wrapping round (a touch button) */
+  cycleZoom() {
+    this.setZoom((this.zoom + 1) % ZOOM_ROWS.length)
   }
 
   private onWheel(e: WheelEvent) {
@@ -1415,6 +1510,23 @@ export class Overworld {
       if (len > 24) this.pan.multiplyScalar(24 / len)
     }
     if (x || y || sprint || look.x || look.y || this.padEdges.anyDown()) this.cb.onPad()
+  }
+
+  /**
+   * The touch thumb-stick: the thumb's offset from where it landed steers
+   * him, as far as it's pushed; past the ring, he sprints.
+   */
+  private readStick(intent: { x: number; y: number; sprint: boolean }) {
+    const st = this.stickTouch
+    if (!st || !this.inputEnabled || intent.x || intent.y) return
+    const dx = st.x - st.ox
+    const dy = st.y - st.oy
+    const len = Math.hypot(dx, dy)
+    if (len < 8) return
+    const k = Math.min(1, len / STICK_RADIUS) / len
+    intent.x = dx * k
+    intent.y = -dy * k
+    if (len > STICK_RADIUS * STICK_SPRINT) intent.sprint = true
   }
 
   /** Step the whole-pixel zoom, and remember it */
@@ -1624,6 +1736,7 @@ export class Overworld {
       jump: false,
     }
     this.readGamepad(intent, dt)
+    this.readStick(intent)
     // a clicked spot steers him until he gets there, a key takes over, or
     // he's stuck against something
     if (intent.x || intent.y || !this.inputEnabled || this.stuck.on) this.goal = null

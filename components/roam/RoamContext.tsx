@@ -123,7 +123,7 @@ export function RoamProvider({ children }: { children: ReactNode }) {
       startRoaming(knownZone(hash.slice(ROAM_HASH.length + 1)), false)
     } else {
       window.history.replaceState(null, "", window.location.pathname + window.location.search)
-      setNotice("The Overworld needs a keyboard or a gamepad, and WebGL2, so here is the page instead.")
+      setNotice("The Overworld needs WebGL2, which this browser doesn't have, so here is the page instead.")
     }
   }, [startRoaming])
 

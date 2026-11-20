@@ -401,6 +401,27 @@ export function RoamMenu({
           </tbody>
         </table>
 
+        <h3 className="mt-7 font-arcade text-[9px] text-gold-400">TOUCH</h3>
+        <table className="mt-3 w-full font-body text-sm">
+          <tbody>
+            {(
+              [
+                ["DRAG", "Run, the way you drag (further is faster)"],
+                ["DRAG FAR", "Sprint"],
+                ["TAP", "Run there, or open what you tap"],
+                ["JUMP", "Jump"],
+                ["TWO FINGERS", "Look around"],
+                ["ZOOM", "Zoom out and in"],
+              ] as Array<[string, string]>
+            ).map(([gesture, action]) => (
+              <tr key={gesture}>
+                <td className="py-1 pr-4 font-arcade text-[8px] text-gold-300 whitespace-nowrap">{gesture}</td>
+                <td className="py-1 text-mist-300">{action}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
         <h3 className="mt-7 font-arcade text-[9px] text-gold-400">GAMEPAD</h3>
         <table className="mt-3 w-full font-body text-sm">
           <tbody>

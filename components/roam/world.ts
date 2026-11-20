@@ -34,9 +34,11 @@ export function hasGamepad(): boolean {
 }
 
 /** Roam Mode's entrances appear with WebGL2 and a way to play: a keyboard
- *  and mouse, or a gamepad (ADR 0002) */
+ *  and mouse, a touch screen, or a gamepad (ADR 0002) */
 export function canRoam(): boolean {
-  return (window.matchMedia("(pointer: fine)").matches || hasGamepad()) && hasWebGL2()
+  const fine = window.matchMedia("(pointer: fine)").matches
+  const touch = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0
+  return (fine || touch || hasGamepad()) && hasWebGL2()
 }
 
 /** The Zone a visitor is looking at: the one under 40% of the viewport */

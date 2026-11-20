@@ -5,7 +5,16 @@ import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
 import { useSound } from "../SoundContext"
 import { WORLD_MAP } from "../zones/registry"
 import { lastInput, scrollToZone, zoneName } from "./world"
-import { DEFAULT_LOOK, type FrameReport, type LapReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
+import {
+  DEFAULT_LOOK,
+  type FrameReport,
+  type LapReport,
+  type Look,
+  Overworld,
+  type OverworldCallbacks,
+  STICK_RADIUS,
+  STICK_SPRINT,
+} from "./overworld/engine"
 import { formatLap } from "./overworld/lap"
 import { ISLAND_RX, ISLAND_RZ } from "./overworld/level"
 import { KITS, type KitId, type MedalId, MEDALS, MedalBook } from "./medals"
@@ -186,6 +195,10 @@ export default function RoamMode() {
   // The last device used decides how prompts name the controls: keys, or
   // the gamepad's buttons
   const [pad, setPad] = useState<PadGlyphs | null>(() => (lastInput.pad ? padGlyphs(readPad()) : null))
+  const [touch, setTouch] = useState(() => !lastInput.pad && window.matchMedia("(pointer: coarse)").matches)
+  const touchRef = useRef(touch)
+  const stickRing = useRef<HTMLDivElement>(null)
+  const stickKnob = useRef<HTMLDivElement>(null)
   const padRef = useRef<PadGlyphs | null>(pad)
   const markPad = useCallback(() => {
     lastInput.pad = true
@@ -194,8 +207,14 @@ export default function RoamMode() {
     setPad(padRef.current)
   }, [])
   useEffect(() => {
-    const toKeys = () => {
+    const toKeys = (e: KeyboardEvent | PointerEvent) => {
       lastInput.pad = false
+      // a finger makes the prompts speak touch; keys or a mouse, keys
+      const byTouch = e instanceof PointerEvent && e.pointerType === "touch"
+      if (touchRef.current !== byTouch) {
+        touchRef.current = byTouch
+        setTouch(byTouch)
+      }
       if (!padRef.current) return
       padRef.current = null
       setPad(null)
@@ -237,6 +256,7 @@ export default function RoamMode() {
   const latest = useRef({ roam, panel, playSfx, playStep, setAmbience, view, theme, openDoor: ((zoneId: string) => void zoneId) as (zoneId: string) => void })
   latest.current = { ...latest.current, roam, panel, playSfx, playStep, setAmbience, view, theme }
   const caption = useRef<HTMLDivElement>(null)
+  const captionTimer = useRef(0)
   const miniDot = useRef<HTMLSpanElement>(null)
   const waves = useRef(0)
 
@@ -349,6 +369,23 @@ export default function RoamMode() {
         if (!el) return
         el.textContent = text ?? ""
         el.style.display = text ? "block" : "none"
+        // a finger can't hover: a tapped caption shows for a moment
+        window.clearTimeout(captionTimer.current)
+        if (text && touchRef.current) captionTimer.current = window.setTimeout(() => (el.style.display = "none"), 1600)
+      },
+      onStick: (stick) => {
+        const ring = stickRing.current
+        const knob = stickKnob.current
+        if (!ring || !knob) return
+        ring.style.display = knob.style.display = stick ? "block" : "none"
+        if (!stick) return
+        const dx = stick.x - stick.ox
+        const dy = stick.y - stick.oy
+        const len = Math.hypot(dx, dy)
+        const k = len > STICK_RADIUS * STICK_SPRINT ? (STICK_RADIUS * STICK_SPRINT) / len : 1
+        ring.style.transform = `translate(${stick.ox}px, ${stick.oy}px) translate(-50%, -50%)`
+        knob.style.transform = `translate(${stick.ox + dx * k}px, ${stick.oy + dy * k}px) translate(-50%, -50%)`
+        knob.dataset.sprint = String(stick.sprint)
       },
       onOpen: (zoneId) => latest.current.openDoor(zoneId),
     }
@@ -420,7 +457,11 @@ export default function RoamMode() {
       if (el) el.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 16}px)`
     }
     window.addEventListener("pointermove", move)
-    return () => window.removeEventListener("pointermove", move)
+    window.addEventListener("pointerdown", move)
+    return () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerdown", move)
+    }
   }, [])
 
   // running under a sky counts toward DUSK TO DAWN
@@ -743,7 +784,7 @@ export default function RoamMode() {
       {inOverworld && (
         <>
           <div className="fixed inset-x-0 top-0 z-[65] flex items-start justify-between gap-3 px-4 md:px-6 py-3">
-            <div className="pixel-border bg-dusk-950/90 mx-1 px-3 py-2">
+            <div className="hidden sm:block pixel-border bg-dusk-950/90 mx-1 px-3 py-2">
               <p className="font-arcade text-[9px] md:text-[10px] text-gold-400">THE OVERWORLD</p>
               <p className="mt-2 font-arcade text-[8px] text-mist-300">
                 {year !== null ? (
@@ -755,7 +796,7 @@ export default function RoamMode() {
                 )}
               </p>
             </div>
-            <div className="flex items-start gap-3">
+            <div className="flex flex-wrap items-start justify-end gap-3">
               {lap && (
                 <div className="pixel-border bg-dusk-950/90 mx-1 px-3 py-2 text-right">
                   <p className="font-arcade text-[8px] text-mist-300">
@@ -781,14 +822,22 @@ export default function RoamMode() {
                   onClick={blurAfter(() => setPanel("map"))}
                   className="font-arcade text-[8px] md:text-[9px] text-cream-100 hover:text-gold-300 focus-ring"
                 >
-                  MAP <span className="text-mist-300">{pad ? pad.Y : "M"}</span>
+                  MAP {!touch && <span className="text-mist-300">{pad ? pad.Y : "M"}</span>}
                 </button>
                 <button
                   onClick={blurAfter(() => setPanel("menu"))}
                   className="font-arcade text-[8px] md:text-[9px] text-cream-100 hover:text-gold-300 focus-ring"
                 >
-                  MENU <span className="text-mist-300">{pad ? pad.START : "ESC"}</span>
+                  MENU {!touch && <span className="text-mist-300">{pad ? pad.START : "ESC"}</span>}
                 </button>
+                {touch && (
+                  <button
+                    onClick={blurAfter(() => engineRef.current?.cycleZoom())}
+                    className="font-arcade text-[8px] md:text-[9px] text-cream-100 hover:text-gold-300 focus-ring"
+                  >
+                    ZOOM
+                  </button>
+                )}
                 <button
                   onClick={blurAfter(toggleMuted)}
                   aria-label={muted ? "Unmute sound" : "Mute sound"}
@@ -821,15 +870,31 @@ export default function RoamMode() {
             )}
           </div>
 
-          <div aria-live="polite" className="fixed inset-x-0 bottom-6 z-[65] flex justify-center px-4 pointer-events-none">
-            {prompt ? (
+          <div
+            aria-live="polite"
+            className={`fixed inset-x-0 ${touch ? "bottom-28" : "bottom-6"} z-[65] flex justify-center px-4 pointer-events-none`}
+          >
+            {prompt && touch && !pad ? (
+              <button
+                onClick={blurAfter(() => openDoor(prompt))}
+                className="pointer-events-auto select-none touch-manipulation pixel-border bg-gold-400 text-dusk-950 mx-1 px-5 py-4 font-arcade text-[10px] md:text-[11px] focus-ring"
+              >
+                ▸ OPEN THE {zoneName(prompt)}
+              </button>
+            ) : prompt ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[9px] md:text-[10px] text-cream-100">
                 {pad ? <PadKey glyph={pad.X} /> : <span className="text-gold-400 animate-blink">ENTER</span>} ▸ OPEN THE{" "}
                 {zoneName(prompt)}
               </p>
             ) : stuck ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[9px] text-cream-100">
-                STUCK? PRESS {pad ? <PadKey glyph={pad.BACK} /> : <span className="text-gold-400">R</span>}
+                {touch && !pad ? (
+                  <>
+                    STUCK? <span className="text-gold-400">TAP MAP</span> TO JUMP AHEAD
+                  </>
+                ) : (
+                  <>STUCK? PRESS {pad ? <PadKey glyph={pad.BACK} /> : <span className="text-gold-400">R</span>}</>
+                )}
               </p>
             ) : !moved ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[8px] md:text-[9px] text-cream-100 text-center leading-relaxed">
@@ -837,6 +902,11 @@ export default function RoamMode() {
                   <>
                     <span className="text-gold-400">STICK</span> RUN · <PadKey glyph={pad.B} /> SPRINT · <PadKey glyph={pad.A} /> JUMP ·{" "}
                     <PadKey glyph={pad.Y} /> MAP
+                  </>
+                ) : touch ? (
+                  <>
+                    <span className="text-gold-400">DRAG</span> TO RUN · <span className="text-gold-400">FAR</span> TO SPRINT ·{" "}
+                    <span className="text-gold-400">TAP</span> TO GO THERE
                   </>
                 ) : (
                   <>
@@ -848,6 +918,32 @@ export default function RoamMode() {
             ) : null}
           </div>
         </>
+      )}
+
+      {/* the touch thumb-stick, drawn where the thumb landed */}
+      <div
+        ref={stickRing}
+        aria-hidden="true"
+        className="fixed left-0 top-0 z-[64] pointer-events-none rounded-full border-2 border-cream-100/60 bg-dusk-950/20"
+        style={{ display: "none", width: STICK_RADIUS * 2, height: STICK_RADIUS * 2 }}
+      />
+      <div
+        ref={stickKnob}
+        aria-hidden="true"
+        className="fixed left-0 top-0 z-[64] pointer-events-none rounded-full bg-cream-100/70 data-[sprint=true]:bg-gold-400"
+        style={{ display: "none", width: 36, height: 36 }}
+      />
+      {inOverworld && touch && panel === "none" && (
+        <button
+          onPointerDown={(e) => {
+            e.preventDefault()
+            engineRef.current?.jump()
+          }}
+          aria-label="Jump"
+          className="fixed right-5 bottom-6 z-[65] w-20 h-20 rounded-full select-none touch-manipulation pixel-border bg-dusk-950/80 font-arcade text-[10px] text-gold-400 active:bg-gold-400 active:text-dusk-950"
+        >
+          JUMP
+        </button>
       )}
 
       {/* what the pointer is over */}
