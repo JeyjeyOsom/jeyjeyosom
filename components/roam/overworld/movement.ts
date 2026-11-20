@@ -57,6 +57,21 @@ function moveToward(current: number, target: number, maxDelta: number): number {
 
 /** Push a circle out of one solid; returns the corrected centre */
 function pushOut(x: number, z: number, r: number, solid: Solid): Vec2 {
+  if (solid.kind === "obb") {
+    // into the box's own frame, out of it there, and back
+    const c = Math.cos(solid.angle)
+    const s = Math.sin(solid.angle)
+    const dx = x - solid.x
+    const dz = z - solid.z
+    const p = pushOut(dx * c - dz * s, dx * s + dz * c, r, {
+      kind: "box",
+      minX: -solid.hx,
+      maxX: solid.hx,
+      minZ: -solid.hz,
+      maxZ: solid.hz,
+    })
+    return { x: solid.x + p.x * c + p.z * s, z: solid.z - p.x * s + p.z * c }
+  }
   if (solid.kind === "circle") {
     const dx = x - solid.x
     const dz = z - solid.z

@@ -74,9 +74,10 @@ export interface LandmarkModel {
   screens?: LandmarkScreen[]
   /** pools of light on the ground around it */
   pools?: Array<{ x: number; z: number; rx: number; rz: number; color: number }>
-  /** where it shades the ground (the sun is high in the north-west), as
-   *  rectangles given by their centres */
-  shadows?: Array<{ x: number; z: number; w: number; d: number }>
+  /** where it shades the ground, as rectangles given by their centres; a
+   *  shadow with a `lift` is cast by something that high, so it falls away
+   *  from the sun (high in the north-west) whichever way the Landmark faces */
+  shadows?: Array<{ x: number; z: number; w: number; d: number; lift?: number }>
   /** flat paving on the ground, under everything */
   floor?: Array<{ x: number; z: number; w: number; d: number; color: number }>
   /** top of the structure, where its label hangs */
@@ -283,10 +284,10 @@ function titleArch(): LandmarkModel {
       },
     ],
     shadows: [
-      { x: -2.35, z: 0.25, w: 0.95, d: 0.95 },
-      { x: 2.85, z: 0.25, w: 0.95, d: 0.95 },
-      // the banner's, thrown south-east onto the grass
-      { x: 1.4, z: 0.7, w: 4.6, d: 0.4 },
+      { x: -2.6, z: 0, w: 0.95, d: 0.95, lift: 0.5 },
+      { x: 2.6, z: 0, w: 0.95, d: 0.95, lift: 0.5 },
+      // the banner's, thrown well clear of the arch onto the grass
+      { x: 0, z: 0, w: 4.6, d: 0.4, lift: 2.9 },
     ],
     height: 4.6,
   }

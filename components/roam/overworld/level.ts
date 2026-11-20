@@ -211,9 +211,9 @@ export function loopS(x: number, z: number): number {
 
 // ---- Landmarks ----
 // One per Zone, along the road in the World's order. Each stands beside the
-// road and, like buildings in a 16-bit game, faces the camera (south), with
-// its door in front of it. On the south straight they stand on the inner
-// side so they never hide the Runner on the road.
+// road and, like buildings in a 16-bit game, faces the camera, with its
+// door in front of it. On the south straight they stand on the inner side
+// so they never hide the Runner on the road.
 
 interface LandmarkSlot {
   s: number
@@ -246,45 +246,75 @@ export interface LandmarkPlacement {
   /** centre of the structure's footprint */
   x: number
   z: number
-  /** the way its front faces */
+  /** its turn about the vertical: the model is built facing +z */
+  angle: number
+  /** the way its front faces: toward the camera */
   facing: Vec2
   /** where the Runner stands to open it, just in front */
   door: Vec2
-  /** axis-aligned footprint */
+  /** the footprint's half width (across its front) and half depth */
+  hx: number
+  hz: number
+  /** the turned footprint's axis-aligned bounds, for keeping scenery clear */
   minX: number
   maxX: number
   minZ: number
   maxZ: number
 }
 
-export function placeLandmarks(zoneIds: string[]): LandmarkPlacement[] {
+/**
+ * Stand each Landmark beside the road, turned to face the camera (its
+ * angle is the camera's yaw), so its front, its signs and its screens
+ * meet the view square on. It is set back far enough that the turned
+ * footprint stays clear of the road, and its door is in front of it.
+ */
+export function placeLandmarks(zoneIds: string[], yaw = 0): LandmarkPlacement[] {
+  const fx = Math.sin(yaw)
+  const fz = Math.cos(yaw)
+  const ux = Math.cos(yaw) // across its front
+  const uz = -Math.sin(yaw)
+  const hx = LANDMARK_WIDTH / 2
+  const hz = LANDMARK_DEPTH / 2
+  const ex = hx * Math.abs(ux) + hz * Math.abs(fx)
+  const ez = hx * Math.abs(uz) + hz * Math.abs(fz)
   return zoneIds.flatMap((zoneId) => {
     const slot = LANDMARK_SLOTS[zoneId]
     if (!slot) return []
     const p = roadPoint(slot.s)
     const ox = p.nx * slot.side
     const oz = p.nz * slot.side
-    // set back from the road by half the footprint in the direction away
-    const half = Math.abs(ox) > 0.5 ? LANDMARK_WIDTH / 2 : LANDMARK_DEPTH / 2
-    const back = ROAD.halfWidth + 1.2 + half
+    // how far the turned footprint reaches toward the road
+    const reach = hx * Math.abs(ux * ox + uz * oz) + hz * Math.abs(fx * ox + fz * oz)
+    const back = ROAD.halfWidth + 1.2 + reach
     const x = p.x + ox * back
     const z = p.z + oz * back
-    const maxZ = z + LANDMARK_DEPTH / 2
     return [
       {
         zoneId,
         s: slot.s,
         x,
         z,
-        facing: { x: 0, z: 1 },
-        door: { x, z: maxZ + 1 },
-        minX: x - LANDMARK_WIDTH / 2,
-        maxX: x + LANDMARK_WIDTH / 2,
-        minZ: z - LANDMARK_DEPTH / 2,
-        maxZ,
+        angle: yaw,
+        facing: { x: fx, z: fz },
+        door: { x: x + fx * (hz + 1), z: z + fz * (hz + 1) },
+        hx,
+        hz,
+        minX: x - ex,
+        maxX: x + ex,
+        minZ: z - ez,
+        maxZ: z + ez,
       },
     ]
   })
+}
+
+/** A point in a Landmark's own frame: x across its front, z out of it */
+export function landmarkLocal(l: LandmarkPlacement, x: number, z: number): Vec2 {
+  const dx = x - l.x
+  const dz = z - l.z
+  const c = Math.cos(l.angle)
+  const s = Math.sin(l.angle)
+  return { x: dx * c - dz * s, z: dx * s + dz * c }
 }
 
 // ---- Fixed features ----
@@ -492,6 +522,8 @@ export function surfaceAt(x: number, z: number): Surface {
 
 export type Solid =
   | { kind: "box"; minX: number; maxX: number; minZ: number; maxZ: number }
+  /** a box turned by `angle` about its centre, with half sizes hx, hz */
+  | { kind: "obb"; x: number; z: number; hx: number; hz: number; angle: number }
   | { kind: "circle"; x: number; z: number; r: number }
 
 /** Where the Runner may stand: on the island, out of the pond and the
@@ -534,7 +566,7 @@ export function fenceRails(): Solid[] {
 export function buildSolids(landmarks: LandmarkPlacement[], scenery: Scenery): Solid[] {
   const solids: Solid[] = []
   for (const l of landmarks) {
-    solids.push({ kind: "box", minX: l.minX, maxX: l.maxX, minZ: l.minZ, maxZ: l.maxZ })
+    solids.push({ kind: "obb", x: l.x, z: l.z, hx: l.hx, hz: l.hz, angle: l.angle })
   }
   for (const p of scenery.palms) solids.push({ kind: "circle", x: p.x, z: p.z, r: 0.35 })
   for (const r of scenery.rocks) solids.push({ kind: "circle", x: r.x, z: r.z, r: 0.45 * r.scale })

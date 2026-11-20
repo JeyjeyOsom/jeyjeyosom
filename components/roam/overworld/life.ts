@@ -13,6 +13,7 @@ import {
   inPasture,
   islandPoint,
   islandReach,
+  landmarkLocal,
   type LandmarkPlacement,
   mulberry32,
   PASTURE,
@@ -216,6 +217,12 @@ interface Crab {
   state: "idle" | "scuttle" | "flee" | "hidden"
   until: number
   dir: number
+}
+
+/** Just in front of the aid station's table, in its own frame */
+function inFrontOfTable(aid: LandmarkPlacement, x: number, z: number): boolean {
+  const p = landmarkLocal(aid, x, z)
+  return Math.abs(p.x) < 2.3 && p.z > aid.hz && p.z < aid.hz + 1.6
 }
 
 export class IslandLife {
@@ -880,9 +887,7 @@ export class IslandLife {
       t - this.takenAt > 6 &&
       speed > 3 &&
       !r.airborne &&
-      Math.abs(r.x - aid.x) < 2.3 &&
-      r.z > aid.maxZ &&
-      r.z < aid.maxZ + 1.6
+      inFrontOfTable(aid, r.x, r.z)
     ) {
       this.takenAt = t
       this.carryUntil = t + 1.4

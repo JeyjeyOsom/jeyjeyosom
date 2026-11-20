@@ -498,7 +498,8 @@ export class Overworld {
     this.sun.position.set(-0.416, 0.885, -0.208)
     this.scene.add(this.sun, this.shade)
 
-    this.landmarks = placeLandmarks(options.zoneIds)
+    // they face the camera the Overworld opens with
+    this.landmarks = placeLandmarks(options.zoneIds, (options.look.yaw * Math.PI) / 180)
     this.scenery = scatterScenery(this.landmarks)
     this.solids = buildSolids(this.landmarks, this.scenery)
     this.buildWorld()
@@ -915,7 +916,14 @@ export class Overworld {
       for (const sh of model.shadows ?? []) {
         const mesh = new THREE.Mesh(this.flatDisc(), this.rectShadowMat)
         mesh.scale.set(sh.w, 1, sh.d)
-        mesh.position.set(sh.x, 0, sh.z)
+        // away from the sun by its height, turned into the Landmark's frame
+        const sun = this.sun.position
+        const k = (sh.lift ?? 0) / sun.y
+        const wx = -sun.x * k
+        const wz = -sun.z * k
+        const c = Math.cos(l.angle)
+        const sn = Math.sin(l.angle)
+        mesh.position.set(sh.x + wx * c - wz * sn, 0, sh.z + wx * sn + wz * c)
         group.add(mesh)
       }
       for (const pool of model.pools ?? []) {
