@@ -7,8 +7,9 @@ import { WORLD_MAP } from "../zones/registry"
 import { scrollToZone, zoneName } from "./world"
 import { DEFAULT_LOOK, type FrameReport, type LapReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
 import { formatLap } from "./overworld/lap"
+import { ISLAND_RX, ISLAND_RZ } from "./overworld/level"
 import { KITS, type KitId, type MedalId, MEDALS, MedalBook } from "./medals"
-import { RoamMap, RoamMenu } from "./RoamPanels"
+import { RoamMap, RoamMenu, RoamMiniMap } from "./RoamPanels"
 import { RoamCover } from "./RoamScreens"
 
 // Roam Mode's interface (CONTEXT.md: Roam Mode, Overworld, Landmark, Pace).
@@ -39,6 +40,10 @@ function loadLook(): Look {
 }
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+
+// the minimap spans the island plus the map's margin (RoamPanels)
+const MINI_RX = ISLAND_RX + 6
+const MINI_RZ = ISLAND_RZ + 6
 
 // Where an off-screen Landmark's label pins itself: on the edge of the
 // screen, inside the HUD, along the line from the centre toward it
@@ -124,7 +129,7 @@ export default function RoamMode() {
   const roam = useRoam()
   const { view, doorZone, arrival, startedByGesture, setCovering, reportNearest } = roam
   const { theme, cycle, toggle: toggleSky } = useTheme()
-  const { muted, toggleMuted, playSfx } = useSound()
+  const { muted, toggleMuted, playSfx, playStep, setAmbience, setMode } = useSound()
   const [reduceMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches)
   const [showLook] = useState(() => new URLSearchParams(window.location.search).has("look"))
 
@@ -177,8 +182,11 @@ export default function RoamMode() {
   const [look, setLook] = useState<Look>(loadLook)
 
   // Latest values for the engine's callbacks and the queued transitions
-  const latest = useRef({ roam, panel, playSfx, view })
-  latest.current = { roam, panel, playSfx, view }
+  const latest = useRef({ roam, panel, playSfx, playStep, setAmbience, view, theme, openDoor: ((zoneId: string) => void zoneId) as (zoneId: string) => void })
+  latest.current = { ...latest.current, roam, panel, playSfx, playStep, setAmbience, view, theme }
+  const caption = useRef<HTMLDivElement>(null)
+  const miniDot = useRef<HTMLSpanElement>(null)
+  const waves = useRef(0)
 
   // Transitions run one at a time, in order
   const queue = useRef<Promise<void>>(Promise.resolve())
@@ -253,6 +261,11 @@ export default function RoamMode() {
         else if (e.kind === "banana") r("banana")
       },
       onFrame: (report: FrameReport) => {
+        const dot = miniDot.current
+        if (dot) {
+          dot.style.left = `${(report.world.x / (2 * MINI_RX) + 0.5) * 100}%`
+          dot.style.top = `${(report.world.z / (2 * MINI_RZ) + 0.5) * 100}%`
+        }
         const w = window.innerWidth
         const h = window.innerHeight
         for (const label of report.labels) {
@@ -272,6 +285,18 @@ export default function RoamMode() {
       },
       onFrameTime: setFrameMs,
       onContextLost: () => setFailure("The graphics device stopped responding."),
+      onStep: (surface) => latest.current.playStep(surface),
+      onAmbience: (level) => {
+        waves.current = level
+        latest.current.setAmbience({ waves: level, dusk: latest.current.theme === "dusk" })
+      },
+      onHover: (text) => {
+        const el = caption.current
+        if (!el) return
+        el.textContent = text ?? ""
+        el.style.display = text ? "block" : "none"
+      },
+      onOpen: (zoneId) => latest.current.openDoor(zoneId),
     }
     let engine: Overworld
     try {
@@ -318,6 +343,32 @@ export default function RoamMode() {
   useEffect(() => {
     engineRef.current?.setSky(theme, cycle, CYCLE_MS, CYCLE_MID)
   }, [theme, cycle, ready])
+  // The Roam tune plays while the Overworld is on screen; behind a door the
+  // page's own amble returns. The surf and the creatures go with it.
+  const onIsland = stage === "live" && !failure && view === "overworld"
+  useEffect(() => {
+    if (!onIsland) return
+    setMode("roam")
+    return () => setMode("browse")
+  }, [onIsland, setMode])
+  useEffect(() => {
+    if (!onIsland) return
+    setAmbience({ waves: waves.current, dusk: theme === "dusk" })
+    return () => setAmbience(null)
+  }, [onIsland, theme, setAmbience])
+  // a caption follows the pointer, only over the island
+  useEffect(() => {
+    if (!onIsland && caption.current) caption.current.style.display = "none"
+  })
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const el = caption.current
+      if (el) el.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 16}px)`
+    }
+    window.addEventListener("pointermove", move)
+    return () => window.removeEventListener("pointermove", move)
+  }, [])
+
   // running under a sky counts toward DUSK TO DAWN
   useEffect(() => {
     if (moved && stage === "live" && view === "overworld") record("skies", theme)
@@ -409,6 +460,8 @@ export default function RoamMode() {
     },
     [enqueue, iris]
   )
+
+  latest.current.openDoor = openDoor
 
   const travel = useCallback(
     (zoneId: string) => {
@@ -660,6 +713,18 @@ export default function RoamMode() {
             ) : null}
           </div>
         </>
+      )}
+
+      {/* what the pointer is over */}
+      <div
+        ref={caption}
+        aria-hidden="true"
+        className="fixed left-0 top-0 z-[66] pointer-events-none pixel-border bg-dusk-950/90 px-2 py-1 font-arcade text-[8px] text-cream-100 whitespace-nowrap"
+        style={{ display: "none" }}
+      />
+
+      {inOverworld && engineRef.current && (
+        <RoamMiniMap landmarks={landmarks} dotRef={miniDot} onOpen={blurAfter(() => setPanel("map"))} />
       )}
 
       {/* Behind a door: the World at one Zone, and the way back */}

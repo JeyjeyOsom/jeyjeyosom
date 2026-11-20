@@ -88,6 +88,7 @@ import {
 import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY, textBoxes } from "./landmarks"
 import { METERS_PER_UNIT } from "./movement"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
+import { inPier, islandReach, surfaceAt } from "./level"
 import { boxesGeometry, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
@@ -122,7 +123,11 @@ export interface FrameReport {
   labels: LabelPosition[]
   /** the Runner's chest, in CSS pixels of the host */
   runner: { x: number; y: number }
+  /** where he stands on the island, for the minimap */
+  world: { x: number; z: number }
 }
+
+export type StepSurface = "road" | "grass" | "sand" | "wood"
 
 export type OverworldSfx = LifeSfx | "horn" | "stone"
 
@@ -155,6 +160,14 @@ export interface OverworldCallbacks {
   /** the year to show while he runs the Quest Road, or null off it */
   onYear: (year: number | null) => void
   onEvent: (e: OverworldEvent) => void
+  /** a footfall, and what it lands on */
+  onStep: (surface: StepSurface) => void
+  /** how near the coast he is, 0 inland .. 1 on the beach, for the surf */
+  onAmbience: (waves: number) => void
+  /** what the pointer is over, or null */
+  onHover: (caption: string | null) => void
+  /** a Landmark clicked in the scene */
+  onOpen: (zoneId: string) => void
   onFrame: (report: FrameReport) => void
   onFrameTime: (ms: number) => void
   onContextLost: () => void
@@ -173,6 +186,9 @@ const CAMERA_DISTANCE = 60
 const STEP = 1 / 120
 const SPRITE_H = 1.25 / Math.cos(PITCH) // a vertical 20-pixel sprite, foreshortened back to 20 pixels
 const SEE_THROUGH_RADIUS = 20 // internal pixels
+/** Rows on screen at each zoom step, as multiples of the Look's rows */
+const ZOOM_ROWS = [1, 4 / 3, 2]
+const ZOOM_KEY = "roam-zoom"
 /** How near the Runner must be to a Landmark's door to wake it */
 const WAKE_REACH = 7
 // The camera looks this far ahead of the Runner (up the screen), so he
@@ -307,6 +323,22 @@ export class Overworld {
   private lastYear: number | null | undefined = undefined
   private readonly ghostMesh: THREE.Mesh
   private readonly ghostTex: THREE.Texture
+  /** whole-pixel zoom: 0 near (the Look's rows), 1 middle, 2 far */
+  private zoom = 0
+  private lastWheel = 0
+  /** where a click asked him to run, and its marker */
+  private goal: Vec2 | null = null
+  private readonly goalMarker: THREE.Mesh
+  /** the pointer, for captions and clicks */
+  private pointer: { x: number; y: number; moved: number } | null = null
+  private hoverAt = 0
+  private hoverDirty = false
+  private lastCaption: string | null = null
+  private hovered: { caption: () => string; click?: () => void } | null = null
+  private readonly pointables: Array<{ obj: THREE.Object3D; caption: () => string; click?: () => void }> = []
+  private readonly raycaster = new THREE.Raycaster()
+  private stridePhase = 0
+  private lastWaves = -1
   /** events the interface has been told of once already */
   private readonly told = new Set<string>()
   private banana: THREE.Group | null = null
@@ -479,10 +511,20 @@ export class Overworld {
       event: (e) => this.cb.onEvent(e),
     })
     this.buildBanana()
+    this.pointables.push(...this.life.pointables())
     // the headlamp's pool of light, thrown ahead of him at Dusk
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
     this.lampPool.scale.set(3.2, 1, 2.2)
     this.scene.add(this.lampPool)
+    this.goalMarker = new THREE.Mesh(this.flatDisc(), decalMaterial(0xfff4e3, 0.7, { shape: "ring" }))
+    this.goalMarker.visible = false
+    this.scene.add(this.goalMarker)
+    try {
+      const z = Number(localStorage.getItem(ZOOM_KEY))
+      if (z === 1 || z === 2) this.zoom = z
+    } catch {
+      /* storage unavailable */
+    }
     this.questRoad = new QuestRoad(this.scene, {
       years: QUESTS.map(questStartYear).filter((y): y is number => y !== null),
       occluder: this.occluderMat,
@@ -492,6 +534,7 @@ export class Overworld {
       solids: this.solids,
       reduceMotion: this.reduceMotion,
     })
+    this.pointables.push(...this.questRoad.pointables())
 
     const runnerGeo = new THREE.PlaneGeometry(1, SPRITE_H)
     runnerGeo.translate(0, SPRITE_H / 2, 0)
@@ -541,6 +584,8 @@ export class Overworld {
     window.addEventListener("blur", this.onBlur)
     document.addEventListener("visibilitychange", this.onVisibility)
     this.canvas.addEventListener("pointerdown", this.onPointerDown)
+    this.onWheel = this.onWheel.bind(this)
+    this.canvas.addEventListener("wheel", this.onWheel, { passive: true })
     window.addEventListener("pointermove", this.onPointerMove)
     window.addEventListener("pointerup", this.onPointerUp)
     this.canvas.addEventListener("webglcontextlost", this.onContextLost)
@@ -563,6 +608,13 @@ export class Overworld {
     this.paused = true
     this.releaseKeys()
     this.stop()
+    this.goal = null
+    this.pointer = null
+    this.hovered = null
+    if (this.lastCaption !== null) {
+      this.lastCaption = null
+      this.cb.onHover(null)
+    }
   }
 
   setInputEnabled(enabled: boolean) {
@@ -640,6 +692,7 @@ export class Overworld {
     window.removeEventListener("blur", this.onBlur)
     document.removeEventListener("visibilitychange", this.onVisibility)
     this.canvas.removeEventListener("pointerdown", this.onPointerDown)
+    this.canvas.removeEventListener("wheel", this.onWheel)
     window.removeEventListener("pointermove", this.onPointerMove)
     window.removeEventListener("pointerup", this.onPointerUp)
     this.canvas.removeEventListener("webglcontextlost", this.onContextLost)
@@ -669,6 +722,12 @@ export class Overworld {
     g.rotateX(-Math.PI / 2)
     g.translate(0, 0.02, 0)
     return g
+  }
+
+  /** Let a pointer find this object and show its caption */
+  private point<T extends THREE.Object3D>(obj: T, caption: string): T {
+    this.pointables.push({ obj, caption: () => caption })
+    return obj
   }
 
   private add(geometry: THREE.BufferGeometry, material: THREE.Material, renderOrder = 0): THREE.Mesh {
@@ -720,7 +779,7 @@ export class Overworld {
     this.add(flat(water.foam, -0.345), this.foamMat)
 
     for (const g of groundGeometries()) this.add(g, this.solidMat)
-    this.add(flat(water.pond, 0.008), this.shallowMat)
+    this.point(this.add(flat(water.pond, 0.008), this.shallowMat), "THE POND. SOMETHING SPLASHES.")
     const plunge = plungeShapes()
     this.add(flat(plunge.pool, 0.008), this.shallowMat)
     this.add(flat(plunge.foam, 0.01), this.foamMat)
@@ -740,22 +799,23 @@ export class Overworld {
     )
     this.add(kerbGeometry(), this.solidMat)
     this.buildRoadside()
-    this.add(pierGeometry(), this.occluderMat)
+    this.point(this.add(pierGeometry(), this.occluderMat), "THE PIER.")
     const boat = new THREE.Mesh(boxesGeometry(boatBoxes(), false), this.occluderMat)
     boat.position.set(PIER.x + 1.9, -0.42, PIER.z1 - 2.2)
     boat.rotation.y = Math.PI / 2
     this.scene.add(boat)
     this.boat = boat
+    this.point(boat, "A ROWING BOAT. NOT FOR HIRE.")
     this.add(cellsGeometry(lilyPadCells(), 0.011), this.solidMat)
     this.add(boxesGeometry(pondFlowerBoxes()), this.solidMat)
     this.add(boxesGeometry(reedBoxes()), this.swayMaterial("occluder", 0.2, 0.7))
     this.buildGlints()
-    this.add(mountainGeometry(), this.occluderMat)
-    this.add(waterfallGeometry(), this.waterMat, 1)
-    this.add(fenceGeometry(), this.solidMat)
+    this.point(this.add(mountainGeometry(), this.occluderMat), "THE MOUNTAIN. ANOTHER DAY.")
+    this.point(this.add(waterfallGeometry(), this.waterMat, 1), "THE WATERFALL.")
+    this.point(this.add(fenceGeometry(), this.solidMat), "THE PASTURE FENCE.")
 
     const s = this.scenery
-    this.instanced(boxesGeometry(palmBoxes()), this.swayMaterial("occluder", 1.6, 2.4), s.palms)
+    this.point(this.instanced(boxesGeometry(palmBoxes()), this.swayMaterial("occluder", 1.6, 2.4), s.palms), "A PALM.")
     this.instanced(this.flatDisc(), this.shadowMat, s.palms, (k) => [1.5 * k, 1.1 * k])
     for (let v = 0; v < 3; v++) {
       const rocks = s.rocks.filter((r) => r.variant === v)
@@ -797,6 +857,7 @@ export class Overworld {
       group.add(lit, beam, tail, brake)
       this.lamps.push(lit, beam, tail)
       this.scene.add(group)
+      this.point(group, "ONCOMING TRAFFIC. IT STOPS FOR YOU.")
       // two circles hugging the body, front and back: one round circle
       // reached out of the lane far enough to shove a Runner standing at
       // a door beside the road
@@ -859,6 +920,8 @@ export class Overworld {
         this.glowPools.push(mat)
       }
       this.stations.push(station)
+      const zoneId = l.zoneId
+      this.pointables.push({ obj: group, caption: () => "A DOOR INTO THE PAGE.", click: () => this.cb.onOpen(zoneId) })
       this.scene.add(group)
       this.labelAnchors.push({ zoneId: l.zoneId, pos: new THREE.Vector3(l.x, model.height + 0.45, l.z) })
     }
@@ -950,6 +1013,7 @@ export class Overworld {
       const mesh = this.add(boxesGeometry(distancePostBoxes(post.metres, textBoxes)), this.occluderMat)
       mesh.position.set(x, 0, z)
       mesh.updateMatrix()
+      this.point(mesh, `${post.metres} METRES INTO THE LAP.`)
       this.solids.push({ kind: "circle", x, z, r: 0.12 })
     }
     const { pole, bulb } = streetLampBoxes()
@@ -967,6 +1031,7 @@ export class Overworld {
       pool.position.x = 1.0
       group.add(new THREE.Mesh(poleGeo, this.occluderMat), glow, pool)
       this.scene.add(group)
+      this.point(group, "A STREET LAMP.")
       this.lamps.push(glow, pool)
       this.solids.push({ kind: "circle", x, z, r: 0.15 })
     }
@@ -1036,7 +1101,7 @@ export class Overworld {
   private resize() {
     const w = Math.max(1, this.host.clientWidth)
     const h = Math.max(1, this.host.clientHeight)
-    const scale = Math.max(1, Math.floor(h / this.look.rows))
+    const scale = Math.max(1, Math.floor(h / (this.look.rows * ZOOM_ROWS[this.zoom])))
     // even internal sizes keep the pixel grid centred
     const iw = Math.ceil(w / scale / 2) * 2
     const ih = Math.ceil(h / scale / 2) * 2
@@ -1164,6 +1229,15 @@ export class Overworld {
       case "Space":
         if (!e.repeat) this.jumpQueued = true
         break
+      case "KeyZ":
+        if (!e.repeat) this.setZoom((this.zoom + 1) % ZOOM_ROWS.length)
+        break
+      case "Minus":
+        this.setZoom(Math.min(ZOOM_ROWS.length - 1, this.zoom + 1))
+        break
+      case "Equal":
+        this.setZoom(Math.max(0, this.zoom - 1))
+        break
       case "KeyR":
         if (!e.repeat) this.cb.onRespawn()
         break
@@ -1218,17 +1292,29 @@ export class Overworld {
     }
   }
 
-  // Look around: drag the view; any movement key glides it home
+  // Look around: drag the view; any movement key glides it home. A click
+  // that doesn't drag acts on what's under it, or runs him there.
   private onPointerDown(e: PointerEvent) {
     if (e.button !== 0 || !this.inputEnabled) return
     this.drag = { x: e.clientX, y: e.clientY }
+    this.pointer = { x: e.clientX, y: e.clientY, moved: 0 }
   }
 
   private onPointerMove(e: PointerEvent) {
+    if (e.target === this.canvas || this.drag) {
+      this.hoverDirty = true
+      if (this.pointer) this.pointer = { ...this.pointer, x: e.clientX, y: e.clientY }
+      else this.pointer = { x: e.clientX, y: e.clientY, moved: 0 }
+    } else if (this.lastCaption !== null) {
+      this.pointer = null
+      this.hoverDirty = true
+    }
     if (!this.drag) return
     const dx = e.clientX - this.drag.x
     const dy = e.clientY - this.drag.y
     this.drag = { x: e.clientX, y: e.clientY }
+    if (this.pointer) this.pointer.moved += Math.abs(dx) + Math.abs(dy)
+    if (this.pointer && this.pointer.moved < 5) return
     const k = 1 / (this.size.scale * PIXELS_PER_UNIT)
     const { right, up } = this.axes
     const dRight = -dx * k
@@ -1239,8 +1325,86 @@ export class Overworld {
     if (len > 24) this.pan.multiplyScalar(24 / len)
   }
 
-  private onPointerUp() {
+  private onPointerUp(e: PointerEvent) {
+    const wasDrag = !this.drag || !this.pointer || this.pointer.moved >= 5
     this.drag = null
+    if (this.pointer) this.pointer.moved = 0
+    if (wasDrag || e.target !== this.canvas || !this.inputEnabled) return
+    this.hoverNow()
+    if (this.hovered?.click) {
+      this.hovered.click()
+      return
+    }
+    // run to the spot clicked, if he can stand there
+    const p = this.groundAt(e.clientX, e.clientY)
+    if (p && walkable(p.x, p.z)) {
+      this.goal = p
+      this.goalMarker.position.set(p.x, 0, p.z)
+    }
+  }
+
+  private onWheel(e: WheelEvent) {
+    const now = performance.now()
+    if (now - this.lastWheel < 180 || e.deltaY === 0) return
+    this.lastWheel = now
+    this.setZoom(Math.max(0, Math.min(ZOOM_ROWS.length - 1, this.zoom + (e.deltaY > 0 ? 1 : -1))))
+  }
+
+  /** Step the whole-pixel zoom, and remember it */
+  setZoom(level: number) {
+    if (level === this.zoom) return
+    this.zoom = level
+    try {
+      localStorage.setItem(ZOOM_KEY, String(level))
+    } catch {
+      /* storage unavailable */
+    }
+    this.resize()
+  }
+
+  private ndc(clientX: number, clientY: number): THREE.Vector2 {
+    const rect = this.canvas.getBoundingClientRect()
+    return new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1)
+  }
+
+  /** The point on the ground under a screen position */
+  private groundAt(clientX: number, clientY: number): Vec2 | null {
+    this.raycaster.setFromCamera(this.ndc(clientX, clientY), this.camera)
+    const hit = this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), new THREE.Vector3())
+    return hit ? { x: hit.x, z: hit.z } : null
+  }
+
+  /** Find what the pointer is over, and tell the interface its caption */
+  private hoverNow() {
+    this.hoverDirty = false
+    this.hoverAt = performance.now()
+    let found: (typeof this.pointables)[number] | null = null
+    if (this.pointer && this.inputEnabled) {
+      this.raycaster.setFromCamera(this.ndc(this.pointer.x, this.pointer.y), this.camera)
+      const hits = this.raycaster.intersectObjects(
+        this.pointables.map((p) => p.obj),
+        true
+      )
+      for (const hit of hits) {
+        // decals are drawn dithered and flat: never what he points at
+        const m = (hit.object as THREE.Mesh).material
+        if (m instanceof THREE.ShaderMaterial && "uDensity" in m.uniforms) continue
+        if (!hit.object.visible) continue
+        let o: THREE.Object3D | null = hit.object
+        while (o && !found) {
+          found = this.pointables.find((p) => p.obj === o) ?? null
+          o = o.parent
+        }
+        if (found) break
+      }
+    }
+    this.hovered = found
+    const caption = found ? found.caption() : null
+    this.canvas.style.cursor = found?.click ? "pointer" : ""
+    if (caption !== this.lastCaption) {
+      this.lastCaption = caption
+      this.cb.onHover(caption)
+    }
   }
 
   private onContextLost(e: Event) {
@@ -1323,6 +1487,7 @@ export class Overworld {
     group.position.set(at.x, 0, at.z)
     this.scene.add(group)
     this.banana = group
+    this.point(group, "A BANANA?!")
   }
 
   /** Found already on an earlier visit: leave the beach empty */
@@ -1389,6 +1554,25 @@ export class Overworld {
       sprint: this.held.sprint,
       jump: false,
     }
+    // a clicked spot steers him until he gets there, a key takes over, or
+    // he's stuck against something
+    if (intent.x || intent.y || !this.inputEnabled || this.stuck.on) this.goal = null
+    if (this.goal) {
+      const dx = this.goal.x - this.runner.x
+      const dz = this.goal.z - this.runner.z
+      const d = Math.hypot(dx, dz)
+      if (d < 0.3) this.goal = null
+      else {
+        intent.x = (dx * this.axes.right.x + dz * this.axes.right.z) / d
+        intent.y = (dx * this.axes.up.x + dz * this.axes.up.z) / d
+      }
+    }
+    this.goalMarker.visible = !!this.goal
+    if (this.goal) {
+      const s = this.reduceMotion || Math.floor(now / 300) % 2 ? 0.9 : 0.7
+      this.goalMarker.scale.set(s, 1, s * 0.75)
+    }
+    if (this.hoverDirty && now - this.hoverAt > 60) this.hoverNow()
     this.acc += dt
     this.jumped = this.landed = false
     while (this.acc >= STEP) {
@@ -1482,6 +1666,14 @@ export class Overworld {
     }
     const col = FACING_SET[r.facing] * POSES.length + POSES.indexOf(pose)
     this.runnerTex.offset.set(col / FRAME_COLS, this.lampsLit ? 0 : 0.5)
+    // a footfall on every stride, even when the sprite holds still
+    const stride = Math.floor(this.animClock / (r.sprinting ? 0.11 : 0.15))
+    if (stride !== this.stridePhase) {
+      this.stridePhase = stride
+      if (!r.airborne && speed > 0.4 && dt > 0) {
+        this.cb.onStep(inPier(r.x, r.z, -0.25) ? "wood" : surfaceAt(r.x, r.z))
+      }
+    }
 
     // the sprite sits on whole screen pixels, mirrored for left
     const hop = Math.round(r.h * Math.cos(PITCH) * PIXELS_PER_UNIT) / (Math.cos(PITCH) * PIXELS_PER_UNIT)
@@ -1644,7 +1836,12 @@ export class Overworld {
       const onScreen = s.x > 0 && s.y > 0 && s.x < this.host.clientWidth && s.y < this.host.clientHeight
       return { zoneId, x: s.x, y: s.y, onScreen }
     })
-    this.cb.onFrame({ labels, runner: this.runnerOnScreen() })
+    this.cb.onFrame({ labels, runner: this.runnerOnScreen(), world: { x: r.x, z: r.z } })
+    const waves = inPier(r.x, r.z) ? 1 : Math.max(0, Math.min(1, (islandReach(r.x, r.z) - 0.62) / 0.33))
+    if (Math.abs(waves - this.lastWaves) > 0.04) {
+      this.lastWaves = waves
+      this.cb.onAmbience(waves)
+    }
 
     if (frameMs > 0) {
       this.frameTimes.push(frameMs)

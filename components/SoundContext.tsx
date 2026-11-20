@@ -23,7 +23,7 @@ const N = null
 // Two tunes, both on a 16th grid of MIDI notes. Browse Mode ambles through
 // Am - F - C - G; Play Mode runs the Andalusian cadence (Am - G - F - E)
 // faster, with an octave-pumping chase bass and a backbeat snare.
-export type SoundMode = "browse" | "play"
+export type SoundMode = "browse" | "play" | "roam"
 
 interface Track {
   bpm: number
@@ -35,7 +35,35 @@ interface Track {
   drive: boolean
 }
 
+// Roam Mode's tune: an island amble in D major pentatonic, unhurried, a
+// lap of the road at an easy pace (D - G - A - D, Bm - G - A - D)
+const ROAM_TRACK: Track = {
+  bpm: 100,
+  pump: false,
+  drive: false,
+  bassRoots: [50, 43, 45, 50, 47, 43, 45, 50],
+  lead: [
+    // D
+    74, N, 78, N, 81, N, 78, 81, 83, N, 81, N, 78, N, N, N,
+    // G
+    83, N, N, 81, 78, N, 74, N, 76, N, 78, N, N, N, N, N,
+    // A
+    81, N, 76, N, 73, N, 76, 78, 81, N, N, N, 76, N, N, N,
+    // D
+    78, N, 76, N, 74, N, N, N, 69, N, 74, N, N, N, N, N,
+    // Bm
+    71, N, 74, N, 78, N, 74, 78, 83, N, 81, N, 78, N, N, N,
+    // G
+    79, N, 83, N, 86, N, 83, N, 81, N, 79, N, 78, N, N, N,
+    // A
+    76, N, 81, N, 85, N, 81, N, 76, N, 78, 76, 73, N, N, N,
+    // D, and a pickup back to the top
+    74, N, N, 78, 81, N, 78, N, 74, N, N, N, N, N, 69, N,
+  ],
+}
+
 const TRACKS: Record<SoundMode, Track> = {
+  roam: ROAM_TRACK,
   browse: {
     bpm: 112,
     pump: false,
@@ -214,6 +242,13 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
   },
 }
 
+/** What the Runner's feet land on, for the footstep's sound */
+export type StepSurface = "road" | "grass" | "sand" | "wood"
+
+/** The Overworld's background: surf by the coast, and crickets at Dusk or
+ *  birds at Dawn; null switches it off */
+export type Ambience = { waves: number; dusk: boolean } | null
+
 interface SoundState {
   muted: boolean
   toggleMuted: () => void
@@ -221,6 +256,8 @@ interface SoundState {
   playStumble: () => void
   playGameOver: () => void
   playSfx: (name: RoamSfx) => void
+  playStep: (surface: StepSurface) => void
+  setAmbience: (ambience: Ambience) => void
   setMode: (mode: SoundMode) => void
 }
 
@@ -231,6 +268,8 @@ const SoundCtx = createContext<SoundState>({
   playStumble: () => {},
   playGameOver: () => {},
   playSfx: () => {},
+  playStep: () => {},
+  setAmbience: () => {},
   setMode: () => {},
 })
 
@@ -552,9 +591,149 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // A footstep: a short burst of noise, filtered by what he lands on
+  const playStep = useCallback((surface: StepSurface) => {
+    const ctx = sfxReady()
+    const sfx = sfxGainRef.current
+    const noise = noiseRef.current
+    if (!ctx || !sfx || !noise) return
+    const t = ctx.currentTime
+    const shape = {
+      road: { type: "bandpass", freq: 2300, q: 1.4, gain: 0.05, dur: 0.035 },
+      grass: { type: "lowpass", freq: 750, q: 0.7, gain: 0.05, dur: 0.05 },
+      sand: { type: "bandpass", freq: 1300, q: 0.8, gain: 0.035, dur: 0.075 },
+      wood: { type: "bandpass", freq: 850, q: 2, gain: 0.05, dur: 0.05 },
+    }[surface] as { type: BiquadFilterType; freq: number; q: number; gain: number; dur: number }
+    const s = ctx.createBufferSource()
+    s.buffer = noise
+    const f = ctx.createBiquadFilter()
+    f.type = shape.type
+    f.frequency.value = shape.freq * (0.9 + Math.random() * 0.2)
+    f.Q.value = shape.q
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(shape.gain, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + shape.dur)
+    s.connect(f)
+    f.connect(g)
+    g.connect(sfx)
+    s.start(t, Math.random() * 0.4)
+    s.stop(t + shape.dur + 0.01)
+    if (surface === "wood") {
+      // the boards knock back
+      const o = ctx.createOscillator()
+      o.type = "triangle"
+      o.frequency.setValueAtTime(170, t)
+      const og = ctx.createGain()
+      og.gain.setValueAtTime(0.05, t)
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06)
+      o.connect(og)
+      og.connect(sfx)
+      o.start(t)
+      o.stop(t + 0.07)
+    }
+  }, [])
+
+  // The Overworld's ambience: surf swelling slowly through a lowpass, its
+  // level set by how near the coast he is; and every so often a cricket at
+  // Dusk or a bird at Dawn
+  const ambienceRef = useRef<{ gain: GainNode; src: AudioBufferSourceNode; lfo: OscillatorNode; timer: number } | null>(null)
+  const ambienceState = useRef<Ambience>(null)
+  const stopAmbience = useCallback(() => {
+    const a = ambienceRef.current
+    if (!a) return
+    window.clearInterval(a.timer)
+    try {
+      a.src.stop()
+      a.lfo.stop()
+    } catch {
+      /* already stopped */
+    }
+    a.gain.disconnect()
+    ambienceRef.current = null
+  }, [])
+  const setAmbience = useCallback(
+    (next: Ambience) => {
+      ambienceState.current = next
+      const ctx = sfxReady()
+      const sfx = sfxGainRef.current
+      if (!next) {
+        stopAmbience()
+        return
+      }
+      if (!ctx || !sfx) return
+      if (!ambienceRef.current) {
+        const len = ctx.sampleRate * 3
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+        const data = buf.getChannelData(0)
+        // brown-ish noise: a soft roar rather than a hiss
+        let last = 0
+        for (let i = 0; i < len; i++) {
+          last = (last + (Math.random() * 2 - 1) * 0.08) * 0.985
+          data[i] = last * 3
+        }
+        const src = ctx.createBufferSource()
+        src.buffer = buf
+        src.loop = true
+        const lp = ctx.createBiquadFilter()
+        lp.type = "lowpass"
+        lp.frequency.value = 650
+        const swell = ctx.createGain()
+        swell.gain.value = 0.55
+        const lfo = ctx.createOscillator()
+        lfo.frequency.value = 0.12
+        const lfoGain = ctx.createGain()
+        lfoGain.gain.value = 0.45
+        lfo.connect(lfoGain)
+        lfoGain.connect(swell.gain)
+        const gain = ctx.createGain()
+        gain.gain.value = 0
+        src.connect(lp)
+        lp.connect(swell)
+        swell.connect(gain)
+        gain.connect(sfx)
+        src.start()
+        lfo.start()
+        const timer = window.setInterval(() => {
+          const c = sfxReady()
+          const state = ambienceState.current
+          const out = sfxGainRef.current
+          if (!c || !state || !out) return
+          const t0 = c.currentTime + 0.02
+          const chirp = (at: number, from: number, to: number, dur: number, gain: number, type: OscillatorType) => {
+            const o = c.createOscillator()
+            o.type = type
+            o.frequency.setValueAtTime(from, t0 + at)
+            o.frequency.exponentialRampToValueAtTime(to, t0 + at + dur)
+            const g = c.createGain()
+            g.gain.setValueAtTime(gain, t0 + at)
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur)
+            o.connect(g)
+            g.connect(out)
+            o.start(t0 + at)
+            o.stop(t0 + at + dur + 0.01)
+          }
+          const inland = 1 - state.waves * 0.6
+          if (state.dusk) {
+            // a cricket: a few fast pulses
+            if (Math.random() < 0.55) for (let k = 0; k < 3; k++) chirp(k * 0.05, 4600, 4500, 0.025, 0.006 * inland, "sine")
+          } else if (Math.random() < 0.3) {
+            // a bird: two or three quick rising notes
+            const n = 2 + Math.floor(Math.random() * 2)
+            const base = 2600 + Math.random() * 900
+            for (let k = 0; k < n; k++) chirp(k * 0.11, base, base * 1.25, 0.07, 0.008 * inland, "sine")
+          }
+        }, 650)
+        ambienceRef.current = { gain, src, lfo, timer }
+      }
+      ambienceRef.current.gain.gain.setTargetAtTime(next.waves * 0.07, ctx.currentTime, 0.5)
+    },
+    [stopAmbience]
+  )
+  useEffect(() => () => stopAmbience(), [stopAmbience])
+
   const value = useMemo(
-    () => ({ muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, setMode }),
-    [muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, setMode]
+    () => ({ muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, playStep, setAmbience, setMode }),
+    [muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, playStep, setAmbience, setMode]
   )
   return <SoundCtx.Provider value={value}>{children}</SoundCtx.Provider>
 }

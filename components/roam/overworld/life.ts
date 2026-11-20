@@ -329,6 +329,38 @@ export class IslandLife {
     scene.add(this.cup)
   }
 
+  /** What a pointer can point at here: a caption, and maybe a click */
+  pointables(): Array<{ obj: THREE.Object3D; caption: () => string; click?: () => void }> {
+    return [
+      ...this.cows.map((cow, i) => ({
+        obj: cow.group,
+        caption: () => (cow.watching ? "A COW. SHE'S WATCHING YOU." : "A COW. SHE'S BUSY."),
+        click: () => this.moo(i),
+      })),
+      ...this.crabs.map((crab) => ({
+        obj: crab.group,
+        caption: () => "A CRAB, SIDEWAYS.",
+        click: () => {
+          if (crab.state === "hidden" || this.o.reduceMotion) return
+          crab.state = "flee"
+          crab.until = performance.now() / 1000 + 0.6
+        },
+      })),
+      ...this.flocks.flatMap((flock) => flock.birds.map((b) => ({ obj: b.group, caption: () => "A LITTLE BROWN BIRD." }))),
+    ]
+  }
+
+  /** A click on a cow gets a moo, the same as a jump beside her */
+  private moo(i: number) {
+    const cow = this.cows[i]
+    const t = performance.now() / 1000
+    if (t - cow.lastMoo < 0.8) return
+    cow.lastMoo = t
+    cow.mooUntil = t + 1.3
+    this.o.sfx("moo", cow)
+    this.o.event({ kind: "moo", cow: i })
+  }
+
   /** Seconds since the Runner took a cup at the aid station */
   sinceCup(t: number): number {
     return t - this.takenAt

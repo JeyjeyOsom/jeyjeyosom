@@ -89,6 +89,11 @@ export class QuestRoad {
     })
   }
 
+  /** The stones that have come up, for a pointer's caption */
+  pointables(): Array<{ obj: THREE.Object3D; caption: () => string }> {
+    return this.stones.map((st) => ({ obj: st.group, caption: () => `A STONE FOR ${st.year}.` }))
+  }
+
   /** Every stone has come up */
   allRisen(): boolean {
     return this.stones.every((s) => s.risenAt !== null)

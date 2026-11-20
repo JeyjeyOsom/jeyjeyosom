@@ -8,6 +8,9 @@ import {
   LOOP_LENGTH,
   MOUNTAIN,
   PASTURE,
+  WATERFALL,
+  PIER,
+  PLUNGE,
   POND,
   roadPoint,
   type LandmarkPlacement,
@@ -56,6 +59,20 @@ function drawMap(canvas: HTMLCanvasElement) {
   g.fillRect(mtn.x, mtn.y, MOUNTAIN.baseHalfX * 2, MOUNTAIN.baseHalfZ * 2)
   g.fillStyle = "#6F6A80"
   g.fillRect(mtn.x + 10, mtn.y + 4, MOUNTAIN.baseHalfX * 2 - 26, MOUNTAIN.baseHalfZ * 2 - 8)
+  // the waterfall down the mountain's face, and its pool
+  const fall = toMap({ x: WATERFALL.x, z: MOUNTAIN.z - 2 })
+  g.fillStyle = "#A8D4E8"
+  g.fillRect(Math.round(fall.x) - 1, Math.round(fall.y), 2, Math.round(MOUNTAIN.baseHalfZ + 2))
+  const pool: Vec2[] = []
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2
+    pool.push({ x: PLUNGE.x + Math.cos(a) * PLUNGE.rx, z: PLUNGE.z + Math.sin(a) * PLUNGE.rz })
+  }
+  fill(pool, "#7EC8E8")
+  // the pier off the south beach
+  const pier = toMap({ x: PIER.x - PIER.halfWidth, z: PIER.z0 })
+  g.fillStyle = "#9C7452"
+  g.fillRect(Math.round(pier.x), Math.round(pier.y), 2, Math.round(PIER.z1 - PIER.z0))
   const past = toMap({ x: PASTURE.minX, z: PASTURE.minZ })
   g.fillStyle = "#82AD62"
   g.fillRect(past.x, past.y, PASTURE.maxX - PASTURE.minX, PASTURE.maxZ - PASTURE.minZ)
@@ -64,6 +81,44 @@ function drawMap(canvas: HTMLCanvasElement) {
     const m = toMap(roadPoint(s))
     g.fillRect(Math.round(m.x) - 1, Math.round(m.y) - 1, 3, 3)
   }
+}
+
+/** The minimap in the corner: the island, its Landmarks, and where he is.
+ *  A click opens the full map. */
+export function RoamMiniMap({
+  landmarks,
+  dotRef,
+  onOpen,
+}: {
+  landmarks: LandmarkPlacement[]
+  dotRef: React.RefObject<HTMLSpanElement | null>
+  onOpen: (e: React.MouseEvent<HTMLButtonElement>) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    drawMap(canvas)
+    const g = canvas.getContext("2d")
+    if (!g) return
+    g.fillStyle = "#FFC94D"
+    for (const l of landmarks) {
+      const m = toMap({ x: l.x, z: l.z })
+      g.fillRect(Math.round(m.x) - 2, Math.round(m.y) - 2, 4, 4)
+    }
+  }, [landmarks])
+  return (
+    <button
+      onClick={onOpen}
+      aria-label="Open the map"
+      className="hidden md:block fixed left-6 bottom-6 z-[65] pixel-border bg-dusk-950/90 mx-1 p-1.5 focus-ring"
+    >
+      <span className="relative block" style={{ width: MAP_W, height: MAP_H }}>
+        <canvas ref={canvasRef} width={MAP_W} height={MAP_H} className="crisp block" aria-hidden="true" />
+        <span ref={dotRef} aria-hidden="true" className="absolute w-1.5 h-1.5 -translate-x-1/2 -translate-y-1/2 bg-sunset-500 animate-blink" />
+      </span>
+    </button>
+  )
 }
 
 export function RoamMap({
@@ -165,7 +220,9 @@ const CONTROLS: Array<[string, string]> = [
   ["SHIFT", "Sprint"],
   ["SPACE", "Jump"],
   ["ENTER / E", "Open a Landmark"],
+  ["CLICK", "Run there, or open what you click"],
   ["M", "Map"],
+  ["Z / WHEEL", "Zoom out and in"],
   ["R", "Back to the nearest Landmark"],
   ["DRAG", "Look around"],
   ["ESC", "Menu"],
