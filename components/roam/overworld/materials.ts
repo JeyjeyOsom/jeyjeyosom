@@ -3,6 +3,7 @@
 // colour through an ordered dither, glow parts are their own colours.
 
 import * as THREE from "three"
+import { ISLAND_RX, ISLAND_RZ } from "./level"
 
 export function gradientTexture(tones: 2 | 3): THREE.DataTexture {
   const values = tones === 2 ? [0, 255] : [0, 128, 255]
@@ -20,15 +21,18 @@ export function gradientTexture(tones: 2 | 3): THREE.DataTexture {
 // on the palette. A blob shadow is a disc at half density; a pool of lamp
 // light thins toward its rim through a 4x4 ordered dither. A cone opens
 // along the decal's +x, from its lamp at u = 0; a rect fills its square;
-// a ring is a disc's outer rim (ripples).
+// a ring is a disc's outer rim (ripples). LAND keeps a decal to the
+// island (cloud shadows), by the coastline's formula in level.ts.
 const DECAL_VERTEX = /* glsl */ `
   varying vec2 vUv;
+  varying vec2 vWorld;
   void main() {
     vUv = uv;
     vec4 p = vec4(position, 1.0);
     #ifdef USE_INSTANCING
       p = instanceMatrix * p;
     #endif
+    vWorld = (modelMatrix * p).xz;
     gl_Position = projectionMatrix * modelViewMatrix * p;
   }
 `
@@ -38,8 +42,15 @@ const DECAL_FRAGMENT = /* glsl */ `
   uniform float uShape;
   uniform float uFalloff;
   varying vec2 vUv;
+  varying vec2 vWorld;
   const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
   void main() {
+    #ifdef LAND
+      vec2 e = vWorld / vec2(${ISLAND_RX.toFixed(1)}, ${ISLAND_RZ.toFixed(1)});
+      float th = atan(e.y, e.x);
+      float wobble = 1.0 + 0.045 * sin(3.0 * th + 1.1) + 0.03 * sin(5.0 * th + 2.3) + 0.02 * sin(7.0 * th + 0.4);
+      if (length(e) / wobble > 0.99) discard;
+    #endif
     vec2 d = vUv - 0.5;
     float r;
     if (uShape > 2.5) {
@@ -64,8 +75,13 @@ const DECAL_FRAGMENT = /* glsl */ `
 
 const DECAL_SHAPES = { disc: 0, cone: 1, rect: 2, ring: 3 } as const
 
-export function decalMaterial(color: number, density: number, opts: { shape?: keyof typeof DECAL_SHAPES; falloff?: boolean } = {}) {
+export function decalMaterial(
+  color: number,
+  density: number,
+  opts: { shape?: keyof typeof DECAL_SHAPES; falloff?: boolean; land?: boolean } = {}
+) {
   return new THREE.ShaderMaterial({
+    defines: opts.land ? { LAND: "" } : {},
     uniforms: {
       uColor: { value: new THREE.Color(color) },
       uDensity: { value: density },

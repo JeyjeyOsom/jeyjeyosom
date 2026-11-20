@@ -134,6 +134,8 @@ export type RoamSfx =
   | "medal"
   | "bark"
   | "gel"
+  | "thunder"
+  | "gull"
 
 interface SfxNote {
   /** start offset, s */
@@ -240,6 +242,16 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
       { at: 0.06, dur: 0.16, type: "square", from: 1318.51, to: 1318.51, gain: 0.03 },
     ],
   },
+  // thunder is noise, not notes: see rumble() (the cue is here for its gap)
+  thunder: { gap: 4, notes: [] },
+  // a gull over the beach: a rising "kee", a falling "ow"
+  gull: {
+    gap: 3,
+    notes: [
+      { at: 0, dur: 0.1, type: "triangle", from: 1500, to: 2100, gain: 0.045 },
+      { at: 0.1, dur: 0.24, type: "triangle", from: 2100, to: 1250, gain: 0.04 },
+    ],
+  },
   // the dog: woof-woof, two short drops
   bark: {
     gap: 0.4,
@@ -297,6 +309,40 @@ function initialMuted(): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Thunder: low noise, rolling in a few swells over three seconds or so, a
+ * crack at the front of it. Built from the shared noise buffer, looped.
+ */
+function rumble(ctx: AudioContext, out: AudioNode, noise: AudioBuffer | null) {
+  if (!noise) return
+  const t = ctx.currentTime
+  const src = ctx.createBufferSource()
+  src.buffer = noise
+  src.loop = true
+  // a slow drift in the playback rate, so the loop doesn't buzz
+  src.playbackRate.setValueAtTime(0.5, t)
+  src.playbackRate.linearRampToValueAtTime(0.35, t + 3.5)
+  const low = ctx.createBiquadFilter()
+  low.type = "lowpass"
+  low.frequency.setValueAtTime(900, t)
+  low.frequency.exponentialRampToValueAtTime(160, t + 0.5)
+  low.Q.value = 0.5
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  // measured: the crack peaks near -19 dBFS, level with the tune's peaks
+  g.gain.exponentialRampToValueAtTime(0.18, t + 0.05)
+  g.gain.exponentialRampToValueAtTime(0.11, t + 0.4)
+  g.gain.linearRampToValueAtTime(0.2, t + 0.9)
+  g.gain.exponentialRampToValueAtTime(0.08, t + 1.6)
+  g.gain.linearRampToValueAtTime(0.13, t + 2.0)
+  g.gain.exponentialRampToValueAtTime(0.001, t + 3.8)
+  src.connect(low)
+  low.connect(g)
+  g.connect(out)
+  src.start(t)
+  src.stop(t + 3.9)
 }
 
 export function SoundProvider({ children }: { children: ReactNode }) {
@@ -592,8 +638,12 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     if (!ctx || !sfx) return
     const cue = ROAM_SFX[name]
     const t0 = ctx.currentTime
-    if (t0 - (lastSfx.current[name] ?? -1) < cue.gap) return
+    if (t0 - (lastSfx.current[name] ?? -Infinity) < cue.gap) return
     lastSfx.current[name] = t0
+    if (name === "thunder") {
+      rumble(ctx, sfx, noiseRef.current)
+      return
+    }
     for (const n of cue.notes) {
       const o = ctx.createOscillator()
       o.type = n.type

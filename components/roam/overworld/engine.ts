@@ -71,13 +71,14 @@ import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife } from "./life"
 import { Dog, DOG_CAPTION } from "./dog"
 import { GelTrail } from "./trail"
+import { Gulls } from "./gulls"
 import { Controls } from "./controls"
 import { drawRunnerAtlas, FACING_SET, FRAME_COLS, LAMP_ANGLE, type Pose, POSES, WATER_PATTERN, WATER_SIZE } from "./textures"
 import type { LapReport, Look, OverworldCallbacks, OverworldSfx } from "./types"
 export * from "./types"
 import { LapTimer } from "./lap"
 import { QuestRoad } from "./questroad"
-import { rainGrade, Weather, type WeatherMode } from "./weather"
+import { flashGrade, rainGrade, Weather, type WeatherMode } from "./weather"
 import { QUESTS, questStartYear } from "../../zones/quests"
 
 // Palette colours go to the screen exactly as written: no colour
@@ -154,6 +155,7 @@ export class Overworld {
   private life: IslandLife | null = null
   private dog: Dog | null = null
   private trail: GelTrail | null = null
+  private gulls: Gulls | null = null
   private weather: Weather | null = null
   /** the sky before the rain greys it */
   private baseLight: SkyLight = SKIES.dusk
@@ -186,6 +188,11 @@ export class Overworld {
   private kit = { top: "#FF9A4A", bottom: "#7EC8E8" }
   /** whole-pixel wind in grass, flowers, reeds and palm crowns */
   private readonly swayTime = { value: 0 }
+  /** the wind in the trees: 0 a breeze, more in rain, most in a gust */
+  private readonly swayWind = { value: 0 }
+  /** the sway's own clock, which runs faster as the wind rises */
+  private swayClock = 0
+  private gradedFlash = 0
   /** the camera's right along the ground, which the sway follows */
   private readonly swayDir = { value: new THREE.Vector2(1, 0) }
   /** things that turn to face the camera: signs meant to be read */
@@ -368,6 +375,14 @@ export class Overworld {
     })
     this.dog = dog
     this.pointables.push({ obj: dog.object, caption: () => DOG_CAPTION, click: () => dog.bark(performance.now() / 1000) })
+    this.gulls = new Gulls(this.scene, {
+      occluder: this.occluderMat,
+      shadow: this.shadowMat,
+      flatDisc: () => this.flatDisc(),
+      reduceMotion: this.reduceMotion,
+      sfx: (name, at) => this.sfxAt(name, at),
+    })
+    this.pointables.push(...this.gulls.pointables())
     if (options.trail) {
       this.trail = new GelTrail(this.scene, this.landmarks, options.trail, {
         glow: this.glowMat,
@@ -880,12 +895,14 @@ export class Overworld {
     const before = m.onBeforeCompile.bind(m)
     const time = this.swayTime
     const swayDir = this.swayDir
+    const wind = this.swayWind
     m.onBeforeCompile = (shader, renderer) => {
       before(shader, renderer)
       shader.uniforms.uSwayTime = time
       shader.uniforms.uSwayDir = swayDir
+      shader.uniforms.uWind = wind
       shader.vertexShader =
-        "uniform float uSwayTime;\nuniform vec2 uSwayDir;\n" +
+        "uniform float uSwayTime;\nuniform vec2 uSwayDir;\nuniform float uWind;\n" +
         shader.vertexShader.replace(
           "#include <project_vertex>",
           /* glsl */ `vec4 mvPosition = vec4( transformed, 1.0 );
@@ -894,8 +911,10 @@ export class Overworld {
           #endif
           {
             float swayK = clamp((transformed.y - ${from.toFixed(3)}) / ${(to - from).toFixed(3)}, 0.0, 1.0);
+            // in the wind, more of the trees lean, and further: two pixels in a gust
             float gust = sin(uSwayTime * 1.7 + mvPosition.x * 0.31 + mvPosition.z * 0.17);
-            mvPosition.xz += uSwayDir * floor(swayK * step(0.3, gust) + 0.5) / 16.0;
+            float lean = step(0.3 - 0.55 * min(uWind, 1.0), gust) * (1.0 + uWind);
+            mvPosition.xz += uSwayDir * floor(swayK * lean + 0.5) / 16.0;
           }
           mvPosition = modelViewMatrix * mvPosition;
           gl_Position = projectionMatrix * mvPosition;`
@@ -1083,8 +1102,10 @@ export class Overworld {
   private applySky(base: SkyLight) {
     this.baseLight = base
     const rain = this.weather?.intensity ?? 0
+    const flash = this.weather?.flash ?? 0
     this.gradedAt = rain
-    const light = rainGrade(base, rain)
+    this.gradedFlash = flash
+    const light = flashGrade(rainGrade(base, rain), flash)
     this.weather?.setSky(light)
     this.paintSky(light)
   }
@@ -1281,8 +1302,15 @@ export class Overworld {
   private updateWeather(dt: number, now: number) {
     const w = this.weather
     if (!w) return
-    const splashes = w.update(dt, now / 1000, { x: this.focus.x, z: this.focus.z })
-    if (Math.abs(w.intensity - this.gradedAt) > 0.01 || (w.intensity === 0 && this.gradedAt > 0)) this.applySky(this.baseLight)
+    const { splashes, thunder } = w.update(dt, now / 1000, { x: this.focus.x, z: this.focus.z })
+    if (
+      Math.abs(w.intensity - this.gradedAt) > 0.01 ||
+      (w.intensity === 0 && this.gradedAt > 0) ||
+      w.flash !== this.gradedFlash
+    )
+      this.applySky(this.baseLight)
+    if (thunder) this.cb.onSfx("thunder")
+    this.swayWind.value = w.wind
     for (const s of splashes) {
       // a two-pixel crown that's gone in a blink
       for (const side of [-1, 1]) {
@@ -1294,6 +1322,28 @@ export class Overworld {
       this.lastRain = rain
       this.cb.onRain(rain)
     }
+  }
+
+  /** A foot through a puddle: a crown of drops and rings on the water */
+  private splash(x: number, z: number, t: number) {
+    if (this.reduceMotion) return
+    const r = this.runner
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + t
+      this.life?.particles.spawn({
+        x: x + Math.cos(a) * 0.12,
+        y: 0.04,
+        z: z + Math.sin(a) * 0.08,
+        vx: Math.cos(a) * 1.1 + r.vx * 0.15,
+        vy: 1.5 + (k % 3) * 0.35,
+        vz: Math.sin(a) * 0.7 + r.vz * 0.15,
+        max: 0.32,
+        size: 1 / 16,
+        gravity: 9,
+        color: 0xd8e4f4,
+      })
+    }
+    this.weather?.splashPuddle(x, z, t)
   }
 
   /** CLEAR, RAIN, or AUTO's occasional showers */
@@ -1544,8 +1594,10 @@ export class Overworld {
       this.stridePhase = stride
       if (!r.airborne && speed > 0.4 && dt > 0) {
         const ground = inPier(r.x, r.z, -0.25) ? "wood" : surfaceAt(r.x, r.z)
-        const wet = (this.weather?.wetness ?? 0) > 0.5 && (ground === "road" || ground === "grass")
+        const puddle = ground !== "wood" && !!this.weather?.puddleAt(r.x, r.z)
+        const wet = puddle || ((this.weather?.wetness ?? 0) > 0.5 && (ground === "road" || ground === "grass"))
         this.cb.onStep(wet ? "puddle" : ground)
+        if (puddle) this.splash(r.x, r.z, now / 1000)
       }
     }
 
@@ -1577,6 +1629,7 @@ export class Overworld {
     })
     this.dog?.update(dt, now / 1000, r, this.jumped)
     this.trail?.update(now / 1000, r)
+    this.gulls?.update(dt, now / 1000, this.weather?.intensity ?? 0)
     this.jumped = this.landed = false
     this.updateGhost(now)
     if (this.questRoad && r) {
@@ -1601,8 +1654,10 @@ export class Overworld {
     if (this.reduceMotion) return
     // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
-    // wind, the wave's wash, the moored boat, glints on the sea
-    this.swayTime.value = now / 1000
+    // wind, the wave's wash, the moored boat, glints on the sea; the sway
+    // keeps its own clock so a rising wind quickens it without a jump
+    this.swayClock += dt * (1 + this.swayWind.value * 0.9)
+    this.swayTime.value = this.swayClock
     if (this.wash) this.wash.visible = Math.floor(now / 850) % 3 === 0
     if (this.boat) this.boat.position.y = -0.42 + (Math.floor(now / 760) % 2 ? 1 / 16 : 0)
     this.updateGlints(now / 1000)
