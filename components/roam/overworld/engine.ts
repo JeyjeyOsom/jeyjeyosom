@@ -69,6 +69,7 @@ import { inPier, islandReach, surfaceAt } from "./level"
 import { boxesGeometry, type Cell, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife } from "./life"
+import { Dog, DOG_CAPTION } from "./dog"
 import { Controls } from "./controls"
 import { drawRunnerAtlas, FACING_SET, FRAME_COLS, LAMP_ANGLE, type Pose, POSES, WATER_PATTERN, WATER_SIZE } from "./textures"
 import type { LapReport, Look, OverworldCallbacks, OverworldSfx } from "./types"
@@ -148,6 +149,7 @@ export class Overworld {
   }> = []
   private readonly openedAt = performance.now()
   private life: IslandLife | null = null
+  private dog: Dog | null = null
   private weather: Weather | null = null
   /** the sky before the rain greys it */
   private baseLight: SkyLight = SKIES.dusk
@@ -351,6 +353,17 @@ export class Overworld {
     })
     this.buildBanana()
     this.pointables.push(...this.life.pointables())
+    const dog = new Dog(this.scene, {
+      occluder: this.occluderMat,
+      glow: this.glowMat,
+      shadow: this.shadowMat,
+      flatDisc: () => this.flatDisc(),
+      solids: this.solids,
+      reduceMotion: this.reduceMotion,
+      sfx: (name, at) => this.sfxAt(name, at),
+    })
+    this.dog = dog
+    this.pointables.push({ obj: dog.object, caption: () => DOG_CAPTION, click: () => dog.bark(performance.now() / 1000) })
     this.weather = new Weather(this.scene, () => this.flatDisc(), this.reduceMotion, performance.now() / 1000)
     // the headlamp's pool of light, thrown ahead of him at Dusk
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
@@ -474,6 +487,7 @@ export class Overworld {
     if (!l) return
     this.runner = newRunner(l.door.x, l.door.z, facing)
     this.lap.reset()
+    this.dog?.arrive(this.runner, performance.now() / 1000, l.facing)
     this.pan.set(0, 0, 0)
     this.focus.set(this.runner.x + this.axes.up.x * LOOK_AHEAD, 0, this.runner.z + this.axes.up.z * LOOK_AHEAD)
     this.stuck = { timer: 0, origin: { x: l.door.x, z: l.door.z }, on: false }
@@ -804,9 +818,11 @@ export class Overworld {
     const here = lanePoint(car.s)
     const ahead = lanePoint(car.s - 2.4)
     const r = this.runner
+    // it waits for the Runner, and for his dog
     const blocked =
-      !!r &&
-      (Math.hypot(r.x - ahead.x, r.z - ahead.z) < 1.7 || Math.hypot(r.x - here.x, r.z - here.z) < 1.6)
+      (!!r && (Math.hypot(r.x - ahead.x, r.z - ahead.z) < 1.7 || Math.hypot(r.x - here.x, r.z - here.z) < 1.6)) ||
+      !!this.dog?.near(ahead.x, ahead.z, 1.4) ||
+      !!this.dog?.near(here.x, here.z, 1.3)
     const target = blocked || this.reduceMotion ? 0 : CRUISE
     // brake lamps while it slows or waits; a honk if he lingers in its way
     car.brake.visible = !this.reduceMotion && (blocked || target < car.speed - 0.05)
@@ -968,6 +984,7 @@ export class Overworld {
       if (!f.matrixAutoUpdate) f.updateMatrix()
     }
     this.life?.setYaw(yaw)
+    this.dog?.setYaw(yaw)
     return this.look.lens === "ortho"
       ? new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400)
       : new THREE.PerspectiveCamera(30, 1, 1, 400)
@@ -1129,6 +1146,11 @@ export class Overworld {
       this.goal = p
       this.goalMarker.position.set(p.x, 0, p.z)
     }
+  }
+
+  /** The dog is running with him */
+  get dogWithYou(): boolean {
+    return !!this.dog?.isFollowing
   }
 
   /** A jump asked for by a touch button */
@@ -1526,6 +1548,7 @@ export class Overworld {
       rain: this.weather?.intensity ?? 0,
       wet: this.weather?.wetness ?? 0,
     })
+    this.dog?.update(dt, now / 1000, r, this.jumped)
     this.jumped = this.landed = false
     this.updateGhost(now)
     if (this.questRoad && r) {

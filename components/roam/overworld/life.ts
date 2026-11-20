@@ -82,7 +82,7 @@ function turnToward(current: number, target: number, max: number): number {
 }
 
 /** A speech bubble: a dark plate with a cream word and a tail */
-function bubbleBoxes(text: string): Box[] {
+export function bubbleBoxes(text: string): Box[] {
   const w = (textWidth(text) + 4) / 16
   const h = 9 * PY
   return [

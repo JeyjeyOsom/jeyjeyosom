@@ -32,7 +32,7 @@ One themed region of the World corresponding to one content section (About, Skil
 _Avoid_: section, screen, area
 
 **Overworld**:
-The 3D pixel-art island the Runner roams in Roam Mode: a picture of Juan's training route, a loop road with one Landmark per Zone in the World's order. It holds no content of its own, and its sky is the World's: Dusk or Dawn, with a passing shower of rain now and then (or held clear or rainy from the Roam menu).
+The 3D pixel-art island the Runner roams in Roam Mode: a picture of Juan's training route, a loop road with one Landmark per Zone in the World's order. It holds no content of its own, and its sky is the World's: Dusk or Dawn, with a passing shower of rain now and then (or held clear or rainy from the Roam menu). A tan dog waits by the pasture gate and, once the Runner has been by, runs at his side.
 _Avoid_: 3D world, map, hub, island, level
 
 **Landmark**:

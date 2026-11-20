@@ -337,6 +337,7 @@ export default function RoamMode() {
           if (done.newBest && bestBefore.current !== null) recordRef.current("negative-split")
           if (done.time < 60) recordRef.current("sub-60")
           if (rainLevel.current >= 0.5) recordRef.current("rain")
+          if (engineRef.current?.dogWithYou) recordRef.current("dog")
         }
         bestBefore.current = report.best
       },

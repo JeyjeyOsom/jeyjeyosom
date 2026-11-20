@@ -132,6 +132,7 @@ export type RoamSfx =
   | "lap"
   | "best"
   | "medal"
+  | "bark"
 
 interface SfxNote {
   /** start offset, s */
@@ -228,6 +229,14 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
       { at: 0.07, dur: 0.06, type: "square", from: midi(84), gain: 0.05 },
       { at: 0.14, dur: 0.06, type: "square", from: midi(88), gain: 0.05 },
       { at: 0.21, dur: 0.22, type: "square", from: midi(91), gain: 0.05 },
+    ],
+  },
+  // the dog: woof-woof, two short drops
+  bark: {
+    gap: 0.4,
+    notes: [
+      { at: 0, dur: 0.08, type: "square", from: 420, to: 260, gain: 0.05 },
+      { at: 0.13, dur: 0.09, type: "square", from: 400, to: 240, gain: 0.05 },
     ],
   },
   // a car waiting on the Runner: two polite beeps
