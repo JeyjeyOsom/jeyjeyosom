@@ -129,6 +129,8 @@ export interface FrameReport {
   runner: { x: number; y: number }
   /** where he stands on the island, for the minimap */
   world: { x: number; z: number }
+  /** how fast he's going, in units a second (the tab-title runner) */
+  speed: number
 }
 
 export type StepSurface = "road" | "grass" | "sand" | "wood" | "puddle"
@@ -2070,7 +2072,7 @@ export class Overworld {
       const onScreen = s.x > 0 && s.y > 0 && s.x < this.host.clientWidth && s.y < this.host.clientHeight
       return { zoneId, x: s.x, y: s.y, onScreen }
     })
-    this.cb.onFrame({ labels, runner: this.runnerOnScreen(), world: { x: r.x, z: r.z } })
+    this.cb.onFrame({ labels, runner: this.runnerOnScreen(), world: { x: r.x, z: r.z }, speed: Math.hypot(r.vx, r.vz) })
     const waves = inPier(r.x, r.z) ? 1 : Math.max(0, Math.min(1, (islandReach(r.x, r.z) - 0.62) / 0.33))
     if (Math.abs(waves - this.lastWaves) > 0.04) {
       this.lastWaves = waves

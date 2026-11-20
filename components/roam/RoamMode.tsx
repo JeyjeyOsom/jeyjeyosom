@@ -17,6 +17,7 @@ import {
   STICK_SPRINT,
 } from "./overworld/engine"
 import { formatLap } from "./overworld/lap"
+import { TabTitle } from "./tabTitle"
 import { ISLAND_RX, ISLAND_RZ } from "./overworld/level"
 import { KITS, type KitId, type MedalId, MEDALS, MedalBook } from "./medals"
 import { held as padHeld, PAD, PadEdges, padGlyphs, type PadGlyphs, readPad, rumble, stick } from "./gamepad"
@@ -272,6 +273,10 @@ export default function RoamMode() {
   const miniDot = useRef<HTMLSpanElement>(null)
   const waves = useRef(0)
   const rainLevel = useRef(0)
+  // the tab-title runner, and what it reads each frame
+  const tabTitle = useRef<TabTitle | null>(null)
+  const lapText = useRef<string | null>(null)
+  const frameAt = useRef(0)
 
   // Transitions run one at a time, in order
   const queue = useRef<Promise<void>>(Promise.resolve())
@@ -319,6 +324,7 @@ export default function RoamMode() {
       onJump: () => latest.current.playSfx("jump"),
       onSfx: (name) => latest.current.playSfx(name),
       onLap: (report) => {
+        lapText.current = report.running ? formatLap(report.time) : null
         setLap(report.running || report.best !== null ? report : null)
         if (report.finished) {
           const done = report.finished
@@ -348,6 +354,10 @@ export default function RoamMode() {
         else if (e.kind === "banana") r("banana")
       },
       onFrame: (report: FrameReport) => {
+        const now = performance.now()
+        const dt = frameAt.current ? Math.min((now - frameAt.current) / 1000, 0.1) : 0
+        frameAt.current = now
+        tabTitle.current?.update(report.speed * dt, rainLevel.current >= 0.5, lapText.current)
         const dot = miniDot.current
         if (dot) {
           dot.style.left = `${(report.world.x / (2 * MINI_RX) + 0.5) * 100}%`
@@ -465,6 +475,15 @@ export default function RoamMode() {
     setAmbience({ waves: waves.current, dusk: theme === "dusk", rain: rainLevel.current })
     return () => setAmbience(null)
   }, [onIsland, theme, setAmbience])
+  // the tab-title runner runs only while the island is on screen
+  useEffect(() => {
+    if (!tabTitle.current) tabTitle.current = new TabTitle(reduceMotion)
+    const title = tabTitle.current
+    if (onIsland) title.start()
+    else title.stop()
+  }, [onIsland, reduceMotion])
+  useEffect(() => () => tabTitle.current?.stop(), [])
+
   // a caption follows the pointer, only over the island
   useEffect(() => {
     if (!onIsland && caption.current) caption.current.style.display = "none"
