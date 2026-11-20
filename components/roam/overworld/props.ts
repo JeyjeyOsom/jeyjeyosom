@@ -9,12 +9,16 @@ import {
   BEACH_REACH,
   fencePosts,
   GROUND_PIXEL,
+  ISLAND_RX,
+  ISLAND_RZ,
   islandOutline,
+  islandReach,
   LOOP_LENGTH,
   MOUNTAIN,
   mulberry32,
   PASTURE,
   type Placement,
+  PIER,
   PLUNGE,
   POND,
   ROAD,
@@ -515,6 +519,13 @@ function ellipse(cx: number, cz: number, rx: number, rz: number, n = 48): Vec2[]
   return pts
 }
 
+/** The wave's wash: a thin second foam line up the sand, shown on the beat */
+export function washShape(): THREE.Shape {
+  const wash = shapeFrom(islandOutline(0.992))
+  wash.holes.push(new THREE.Path(islandOutline(0.983).map((p) => new THREE.Vector2(p.x, -p.z))))
+  return wash
+}
+
 /** The waterfall's pool, and the churned ring of foam inside its rim */
 export function plungeShapes(): { pool: THREE.Shape; foam: THREE.Shape } {
   const { x, z, rx, rz } = PLUNGE
@@ -526,8 +537,8 @@ export function plungeShapes(): { pool: THREE.Shape; foam: THREE.Shape } {
 export function coastWaterShapes(): { shallow: THREE.Shape; foam: THREE.Shape; pond: THREE.Shape } {
   const shallow = shapeFrom(islandOutline(1.16))
   shallow.holes.push(new THREE.Path(islandOutline(1.0).map((p) => new THREE.Vector2(p.x, -p.z))))
-  const foam = shapeFrom(islandOutline(1.03))
-  foam.holes.push(new THREE.Path(islandOutline(0.995).map((p) => new THREE.Vector2(p.x, -p.z))))
+  const foam = shapeFrom(islandOutline(1.016))
+  foam.holes.push(new THREE.Path(islandOutline(0.997).map((p) => new THREE.Vector2(p.x, -p.z))))
   const pondPts: Vec2[] = []
   for (let i = 0; i < 48; i++) {
     const a = (i / 48) * Math.PI * 2
@@ -577,4 +588,292 @@ export function roadGeometry(): THREE.BufferGeometry {
   for (let i = 1; i < normals.length; i += 3) normals[i] = 1
   g.setAttribute("normal", new THREE.BufferAttribute(normals, 3))
   return g
+}
+
+// ---- Road paint and kerbs ----
+
+const PAINT = 0xefe6d6
+const SKID = 0x3f3b4d
+
+/** Flat quads along the road: offsets across it (from the centreline) and a
+ *  stretch along it, at height y */
+function alongRoad(
+  out: { positions: number[]; colors: number[] },
+  s0: number,
+  s1: number,
+  off0: number,
+  off1: number,
+  y: number,
+  color: number,
+  step = 0.25
+) {
+  const col = new THREE.Color(color)
+  for (let s = s0; s < s1 - 1e-6; s += step) {
+    const a = roadPoint(s)
+    const b = roadPoint(Math.min(s + step, s1))
+    const p = (r: typeof a, off: number) => ({ x: r.x + r.nx * off, z: r.z + r.nz * off })
+    const q = [p(a, off0), p(b, off0), p(b, off1), p(a, off1)]
+    for (const i of [0, 2, 1, 0, 3, 2]) {
+      out.positions.push(q[i].x, y, q[i].z)
+      out.colors.push(col.r, col.g, col.b)
+    }
+  }
+}
+
+function flatBuffers(out: { positions: number[]; colors: number[] }): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry()
+  g.setAttribute("position", new THREE.Float32BufferAttribute(out.positions, 3))
+  g.setAttribute("color", new THREE.Float32BufferAttribute(out.colors, 3))
+  const normals = new Float32Array(out.positions.length)
+  for (let i = 1; i < normals.length; i += 3) normals[i] = 1
+  g.setAttribute("normal", new THREE.BufferAttribute(normals, 3))
+  g.computeBoundingSphere()
+  return g
+}
+
+/**
+ * Paint on the asphalt: a checkered start/finish band at the start arch, a
+ * zebra crossing at every other Landmark, chevrons pointing the way round
+ * the lap, tyre marks on two corners and a few manhole covers.
+ */
+export function roadPaintGeometry(crossings: number[], startS: number): THREE.BufferGeometry {
+  const out = { positions: [] as number[], colors: [] as number[] }
+  const hw = ROAD.halfWidth
+  const y = 0.019
+  // start / finish: three rows of checks across the road
+  for (let row = 0; row < 3; row++) {
+    for (let k = 0; k < 10; k++) {
+      const off0 = -hw + (k * 2 * hw) / 10
+      alongRoad(out, startS - 0.45 + row * 0.3, startS - 0.15 + row * 0.3, off0, off0 + (2 * hw) / 10, y, (row + k) % 2 ? C.ink : PAINT, 0.3)
+    }
+  }
+  // zebra crossings
+  for (const s of crossings) {
+    for (let k = 0; k < 6; k++) {
+      const off0 = -hw + 0.25 + k * 0.45
+      alongRoad(out, s - 0.7, s + 0.7, off0, off0 + 0.25, y, PAINT, 0.35)
+    }
+  }
+  // chevrons in each lane, pointing the way a lap runs
+  for (const s of [55, 125, 195, 235, 290]) {
+    for (const lane of [-0.75, 0.75]) {
+      for (let k = 0; k < 4; k++) {
+        const w = 0.6 - k * 0.15
+        alongRoad(out, s + k * 0.12, s + k * 0.12 + 0.12, lane - w / 2, lane - w / 2 + 0.12, y, PAINT, 0.12)
+        alongRoad(out, s + k * 0.12, s + k * 0.12 + 0.12, lane + w / 2 - 0.12, lane + w / 2, y, PAINT, 0.12)
+      }
+    }
+  }
+  // tyre marks on two corners, two lines each
+  for (const [s0, s1, off] of [[44, 56, 0.55], [222, 232, -0.6]] as const) {
+    alongRoad(out, s0, s1, off, off + 0.07, y, SKID, 0.5)
+    alongRoad(out, s0 + 0.4, s1 - 0.6, off + 0.3, off + 0.37, y, SKID, 0.5)
+  }
+  // manhole covers: a dark square with a lighter cross
+  for (const [s, off] of [[120, -0.6], [262, 0.5], [335, -0.4]] as const) {
+    alongRoad(out, s, s + 0.4, off - 0.2, off + 0.2, y, 0x3a3747, 0.4)
+    alongRoad(out, s + 0.17, s + 0.23, off - 0.2, off + 0.2, y + 0.001, 0x5d5870, 0.06)
+    alongRoad(out, s, s + 0.4, off - 0.03, off + 0.03, y + 0.001, 0x5d5870, 0.4)
+  }
+  return flatBuffers(out)
+}
+
+/** Kerbs along both edges: grey on the straights, red and white on the bends */
+export function kerbGeometry(): THREE.BufferGeometry {
+  const boxes: Box[] = []
+  const hw = ROAD.halfWidth
+  // half-unit kerb stones on the straights; on the bends, small square
+  // blocks in red and white, which follow a curve without turning
+  let k = 0
+  for (let s = 0; s < LOOP_LENGTH - 1e-6; k++) {
+    const p = roadPoint(s + 0.125)
+    const bend = Math.abs(p.tx) > 0.02 && Math.abs(p.tz) > 0.02
+    const step = bend ? 0.25 : 0.5
+    const q = roadPoint(s + step / 2)
+    for (const side of [-1, 1]) {
+      const cx = q.x + q.nx * side * (hw + 0.1)
+      const cz = q.z + q.nz * side * (hw + 0.1)
+      if (bend) {
+        boxes.push(centered(cx, 0, cz, 0.2, 0.05, 0.2, Math.floor(k / 2) % 2 ? C.cream : C.magenta))
+      } else {
+        const along = Math.abs(q.tx) >= Math.abs(q.tz)
+        boxes.push(centered(cx, 0, cz, along ? step + 0.02 : 0.14, 0.05, along ? 0.14 : step + 0.02, k % 2 ? C.rock : C.rockLight))
+      }
+    }
+    s += step
+  }
+  return boxesGeometry(boxes)
+}
+
+/** A distance post on the verge: a pole and a plate reading the metres */
+export function distancePostBoxes(metres: number, textBoxes: (text: string, cx: number, top: number, z: number, color: number) => Box[]): Box[] {
+  const label = String(metres)
+  const w = (label.length * 4 + 3) / 16
+  return [
+    centered(0, 0, 0, 0.1, 0.62, 0.1, C.cream),
+    centered(0, 0.62, 0, w, 0.5, 0.06, C.cream),
+    centered(0, 0.62, 0.031, w - 2 / 16, 0.07, 0.01, C.sunset),
+    ...textBoxes(label, 0, 1.03, 0.035, C.ink),
+  ]
+}
+
+/** A street lamp, its arm reaching along +x toward the road */
+export function streetLampBoxes(): { pole: Box[]; bulb: Box[] } {
+  return {
+    pole: [
+      centered(0, 0, 0, 0.26, 0.12, 0.26, 0x4a4658),
+      centered(0, 0, 0, 0.12, 2.5, 0.12, 0x5d5870),
+      { x: 0, y: 2.42, z: -0.05, w: 1.0, h: 0.08, d: 0.1, color: 0x5d5870 },
+      centered(1.0, 2.32, 0, 0.36, 0.14, 0.22, 0x4a4658),
+    ],
+    bulb: [centered(1.0, 2.26, 0, 0.24, 0.06, 0.14, 0xfff1c4)],
+  }
+}
+
+// ---- The coast's pixel edges ----
+
+/**
+ * Cells on the pixel grid where the island's reach falls in a band:
+ * filled between `inner` and `outer`, dithered for `dither` beyond each
+ * side. Each row only looks near the coast, where the band can be.
+ */
+export function coastBand(inner: number, outer: number, ditherIn: number, ditherOut: number, color: number, parity = 0): Cell[] {
+  const cw = GROUND_PIXEL.x * 2
+  const cd = GROUND_PIXEL.z * 2
+  const lo = inner - ditherIn
+  const hi = outer + ditherOut
+  const cells: Cell[] = []
+  for (let j = Math.floor((-hi * 1.1 * ISLAND_RZ) / cd); j <= Math.ceil((hi * 1.1 * ISLAND_RZ) / cd); j++) {
+    const z = (j + 0.5) * cd
+    const ez = z / ISLAND_RZ
+    const xMax = ISLAND_RX * Math.sqrt(Math.max(0, (hi * 1.1) ** 2 - ez * ez))
+    const xMin = ISLAND_RX * Math.sqrt(Math.max(0, (lo * 0.9) ** 2 - ez * ez))
+    for (const sign of [-1, 1]) {
+      let run: number | null = null
+      const i0 = Math.floor(xMin / cw)
+      const i1 = Math.ceil(xMax / cw)
+      const flush = (end: number) => {
+        if (run === null) return
+        const a = sign > 0 ? run : -end
+        cells.push({ x: a * cw, z: j * cd, w: (end - run) * cw, d: cd, color })
+        run = null
+      }
+      for (let i = i0; i <= i1; i++) {
+        const x = sign * (i + 0.5) * cw
+        const r = i < i1 ? islandReach(x, z) : Infinity
+        const on =
+          (r >= inner && r <= outer) ||
+          (((r >= lo && r < inner) || (r > outer && r <= hi)) && ((i + j + parity + (sign > 0 ? 0 : 1)) & 1) === 0)
+        if (on && run === null) run = i
+        if (!on) flush(i)
+      }
+      flush(i1)
+    }
+  }
+  return cells
+}
+
+// ---- The pond's lily pads and reeds ----
+
+export function lilyPadCells(): Cell[] {
+  const rand = mulberry32(77)
+  const cells: Cell[] = []
+  for (let k = 0; k < 8; k++) {
+    const a = rand() * Math.PI * 2
+    const d = 0.25 + rand() * 0.5
+    const cx = POND.x + Math.cos(a) * POND.rx * d
+    const cz = POND.z + Math.sin(a) * POND.rz * d
+    const r = 0.35 + rand() * 0.25
+    cells.push(
+      ...rasterize(
+        { minX: cx - r, maxX: cx + r, minZ: cz - r, maxZ: cz + r },
+        (x, z) => {
+          // a disc with a notch cut in it
+          const ang = Math.atan2(z - cz, x - cx)
+          if (Math.abs(ang - a) < 0.35) return 9
+          return Math.hypot((x - cx) / r, (z - cz) / (r * 0.8))
+        },
+        1,
+        k % 2 ? C.frond : C.frondLight
+      )
+    )
+  }
+  return cells
+}
+
+export function pondFlowerBoxes(): Box[] {
+  const rand = mulberry32(77)
+  const boxes: Box[] = []
+  for (let k = 0; k < 8; k++) {
+    const a = rand() * Math.PI * 2
+    const d = 0.25 + rand() * 0.5
+    rand()
+    if (k % 3) continue
+    boxes.push(centered(POND.x + Math.cos(a) * POND.rx * d, 0.012, POND.z + Math.sin(a) * POND.rz * d, 0.14, 0.08, 0.14, 0xf6a6c0))
+  }
+  return boxes
+}
+
+export function reedBoxes(): Box[] {
+  const rand = mulberry32(31)
+  const boxes: Box[] = []
+  for (let cluster = 0; cluster < 7; cluster++) {
+    const a = -Math.PI * 0.95 + rand() * Math.PI * 0.9 // the north shore, behind the water
+    const cx = POND.x + Math.cos(a) * POND.rx * 1.02
+    const cz = POND.z + Math.sin(a) * POND.rz * 1.02
+    for (let k = 0; k < 5; k++) {
+      const x = cx + (rand() - 0.5) * 0.8
+      const z = cz + (rand() - 0.5) * 0.4
+      const h = 0.45 + rand() * 0.35
+      boxes.push(centered(x, 0, z, 0.05, h, 0.05, k % 2 ? C.frondDark : C.frond))
+      if (k % 2 === 0) boxes.push(centered(x, h - 0.04, z, 0.08, 0.16, 0.08, C.trunkDark))
+    }
+  }
+  return boxes
+}
+
+// ---- The pier and its boat ----
+
+export function pierGeometry(): THREE.BufferGeometry {
+  const { x, z0, z1, halfWidth: hw } = PIER
+  const boxes: Box[] = []
+  // planks across, alternating tone, sitting just proud of the sand
+  let k = 0
+  for (let z = z0; z < z1 - 1e-6; z += 0.25, k++) {
+    boxes.push({ x: x - hw, y: -0.14, z, w: hw * 2 - (k % 5 === 2 ? 0.25 : 0), h: 0.16, d: 0.23, color: k % 2 ? C.wood : C.woodDark })
+  }
+  // stringers along the edges and posts down into the water
+  boxes.push({ x: x - hw - 0.04, y: -0.2, z: z0, w: 0.12, h: 0.12, d: z1 - z0, color: C.trunkDark })
+  boxes.push({ x: x + hw - 0.08, y: -0.2, z: z0, w: 0.12, h: 0.12, d: z1 - z0, color: C.trunkDark })
+  for (let z = z0 + 2.5; z <= z1; z += 2) {
+    for (const side of [-1, 1]) boxes.push(centered(x + side * (hw - 0.05), -0.7, z, 0.18, 0.95, 0.18, C.trunk))
+  }
+  // a lantern post at the end, and a coil of rope
+  boxes.push(centered(x + hw - 0.15, 0, z1 - 0.3, 0.12, 1.3, 0.12, C.trunkDark))
+  boxes.push(centered(x - hw + 0.35, 0.02, z1 - 0.6, 0.34, 0.08, 0.34, C.canvas))
+  return boxesGeometry(boxes, false)
+}
+
+/** A rowing boat moored beside the pier, facing +x */
+export function boatBoxes(): Box[] {
+  return [
+    // the hull, narrowing to a bow at +x
+    centered(-0.1, 0, 0, 1.8, 0.3, 0.84, C.purpleDark),
+    centered(0.95, 0.04, 0, 0.3, 0.26, 0.56, C.purpleDark),
+    centered(1.18, 0.08, 0, 0.16, 0.22, 0.28, C.purpleDark),
+    // inside: floorboards and two thwarts
+    centered(-0.1, 0.3, 0, 1.7, 0.02, 0.66, C.woodDark),
+    centered(-0.45, 0.3, 0, 0.18, 0.08, 0.66, C.wood),
+    centered(0.35, 0.3, 0, 0.18, 0.08, 0.66, C.wood),
+    // gunwales, a ring of cream so the inside shows
+    centered(-0.1, 0.3, 0.38, 1.8, 0.08, 0.08, C.cream),
+    centered(-0.1, 0.3, -0.38, 1.8, 0.08, 0.08, C.cream),
+    centered(-0.98, 0.3, 0, 0.08, 0.08, 0.84, C.cream),
+    centered(0.95, 0.3, 0.26, 0.3, 0.08, 0.08, C.cream),
+    centered(0.95, 0.3, -0.26, 0.3, 0.08, 0.08, C.cream),
+    centered(1.15, 0.3, 0, 0.12, 0.08, 0.3, C.cream),
+    // an oar resting across
+    centered(-0.05, 0.38, 0.1, 1.3, 0.04, 0.06, C.trunk),
+    centered(0.62, 0.38, 0.1, 0.24, 0.04, 0.14, C.trunk),
+  ]
 }

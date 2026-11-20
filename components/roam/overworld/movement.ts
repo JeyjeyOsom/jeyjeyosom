@@ -179,7 +179,7 @@ export function stepRunner(
 // ---- Pace (CONTEXT.md) ----
 // Scaled so that running reads as Juan's 5K pace (5:43/km) and sprinting
 // as roughly his 400 m pace: the watch on his wrist, not a speedometer.
-const METERS_PER_UNIT = 1000 / 343 / RUN_SPEED
+export const METERS_PER_UNIT = 1000 / 343 / RUN_SPEED
 
 /** "5:43" for a speed in units per second, or null when standing still */
 export function formatPace(unitsPerSecond: number): string | null {

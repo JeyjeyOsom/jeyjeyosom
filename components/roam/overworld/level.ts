@@ -203,8 +203,13 @@ export const LANDMARK_DEPTH = 3.6
 /** How close the Runner must be to a Landmark's door to open it */
 export const DOOR_REACH = 2.6
 
+/** Where a lap starts and ends: the start arch's stretch of road */
+export const LAP_START_S = 10
+
 export interface LandmarkPlacement {
   zoneId: string
+  /** its place along the lap */
+  s: number
   /** centre of the structure's footprint */
   x: number
   z: number
@@ -235,6 +240,7 @@ export function placeLandmarks(zoneIds: string[]): LandmarkPlacement[] {
     return [
       {
         zoneId,
+        s: slot.s,
         x,
         z,
         facing: { x: 0, z: 1 },
@@ -279,6 +285,13 @@ export function terrace(i: number) {
 export const WATERFALL = { x: -30, fromLayer: 3, halfWidth: 0.56 }
 /** The pool at its foot */
 export const PLUNGE = { x: -30, z: -45.9, rx: 2.4, rz: 1.3 }
+
+/** A wooden pier off the south beach, walkable to its end */
+export const PIER = { x: 24, z0: 57.5, z1: 71, halfWidth: 0.8 }
+
+export function inPier(x: number, z: number, margin = 0): boolean {
+  return Math.abs(x - PIER.x) < PIER.halfWidth + margin && z > PIER.z0 - margin && z < PIER.z1 + margin
+}
 
 export function inPlunge(x: number, z: number, margin = 0): boolean {
   const dx = (x - PLUNGE.x) / (PLUNGE.rx + margin)
@@ -353,6 +366,7 @@ export function scatterScenery(landmarks: LandmarkPlacement[]): Scenery {
     inPond(x, z, margin) ||
     inPasture(x, z, margin) ||
     inMountain(x, z, margin) ||
+    inPier(x, z, margin + 0.6) ||
     nearLandmark(x, z, margin)
 
   const scatter = (
@@ -447,8 +461,10 @@ export type Solid =
   | { kind: "box"; minX: number; maxX: number; minZ: number; maxZ: number }
   | { kind: "circle"; x: number; z: number; r: number }
 
-/** Where the Runner may stand: on the island, out of the pond and the pool */
+/** Where the Runner may stand: on the island, out of the pond and the
+ *  pool, or out along the pier (a little inside its edges) */
 export function walkable(x: number, z: number): boolean {
+  if (inPier(x, z, -0.25)) return true
   return islandReach(x, z) < WALK_REACH && !inPond(x, z) && !inPlunge(x, z)
 }
 
@@ -500,4 +516,23 @@ export function buildSolids(landmarks: LandmarkPlacement[], scenery: Scenery): S
     maxZ: MOUNTAIN.z + MOUNTAIN.baseHalfZ,
   })
   return solids
+}
+
+// ---- Roadside ----
+// Distance posts every 50 metres from the start line, and street lamps on
+// the inner verge, kept clear of the Landmarks' crossings and the posts.
+
+export function roadside(metersPerUnit: number): { posts: Array<{ s: number; metres: number }>; lamps: number[] } {
+  const posts: Array<{ s: number; metres: number }> = []
+  const lapMetres = LOOP_LENGTH * metersPerUnit
+  for (let m = 50; m < lapMetres - 10; m += 50) posts.push({ s: LAP_START_S + m / metersPerUnit, metres: m })
+  const busy = [...Object.values(LANDMARK_SLOTS).map((l) => l.s), ...posts.map((p) => p.s)]
+  const lamps: number[] = []
+  for (let s = LAP_START_S + 22; s < LAP_START_S + LOOP_LENGTH - 8; s += 34) {
+    let at = s
+    // slide along until clear of everything else at the roadside
+    while (busy.some((b) => Math.abs(((at - b + LOOP_LENGTH * 1.5) % LOOP_LENGTH) - LOOP_LENGTH / 2) < 7)) at += 2
+    lamps.push(at % LOOP_LENGTH)
+  }
+  return { posts, lamps }
 }

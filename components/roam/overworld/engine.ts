@@ -33,8 +33,14 @@ import {
 } from "../../sprites"
 import {
   buildSolids,
+  BEACH_REACH,
   CAMERA_PITCH,
   DOOR_REACH,
+  islandPoint,
+  LAP_START_S,
+  PIER,
+  ROAD,
+  roadside,
   type LandmarkPlacement,
   placeLandmarks,
   type Scenery,
@@ -49,8 +55,20 @@ import {
 } from "./level"
 import { type Facing, formatPace, newRunner, type RunnerState, stepRunner } from "./movement"
 import {
+  boatBoxes,
+  C,
   CAR_COLORS,
   carBoxes,
+  coastBand,
+  distancePostBoxes,
+  kerbGeometry,
+  lilyPadCells,
+  pierGeometry,
+  pondFlowerBoxes,
+  reedBoxes,
+  roadPaintGeometry,
+  streetLampBoxes,
+  washShape,
   carBrakeBoxes,
   carLampBoxes,
   coastWaterShapes,
@@ -67,7 +85,8 @@ import {
   tuftBoxes,
   waterfallGeometry,
 } from "./props"
-import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY } from "./landmarks"
+import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY, textBoxes } from "./landmarks"
+import { METERS_PER_UNIT } from "./movement"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { boxesGeometry, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
@@ -252,6 +271,13 @@ export class Overworld {
   }> = []
   private readonly openedAt = performance.now()
   private life: IslandLife | null = null
+  /** whole-pixel wind in grass, flowers, reeds and palm crowns */
+  private readonly swayTime = { value: 0 }
+  private readonly swayMats: THREE.MeshToonMaterial[] = []
+  private wash: THREE.Mesh | null = null
+  private boat: THREE.Object3D | null = null
+  private glints: THREE.InstancedMesh | null = null
+  private readonly glintSpots: Array<{ x: number; z: number; phase: number }> = []
   /** Oncoming Traffic: cars lapping the other way, stopping for the Runner */
   private readonly cars: Array<{
     group: THREE.Group
@@ -532,6 +558,7 @@ export class Overworld {
       this.gradient = gradientTexture(look.tones)
       this.solidMat.gradientMap = this.gradient
       this.occluderMat.gradientMap = this.gradient
+      for (const m of this.swayMats) m.gradientMap = this.gradient
       this.life?.setGradient(this.gradient)
       old.dispose()
     }
@@ -630,17 +657,43 @@ export class Overworld {
     const plunge = plungeShapes()
     this.add(flat(plunge.pool, 0.008), this.shallowMat)
     this.add(flat(plunge.foam, 0.01), this.foamMat)
+    this.wash = this.add(flat(washShape(), 0.003), this.foamMat)
+    // the coast's pixel edges: wet sand by the water, and grass and sand
+    // dithered into each other where they meet
+    this.add(cellsGeometry(coastBand(0.976, 1.0, 0.012, 0, 0xc4a676), 0.002), this.solidMat)
+    this.add(cellsGeometry(coastBand(BEACH_REACH, BEACH_REACH, 0, 0.011, C.grass), 0.004), this.solidMat)
+    this.add(cellsGeometry(coastBand(BEACH_REACH, BEACH_REACH, 0.011, 0, C.sand, 1), 0.0045), this.solidMat)
     this.add(roadGeometry(), this.solidMat)
+    this.add(
+      roadPaintGeometry(
+        this.landmarks.filter((l) => l.zoneId !== "title").map((l) => l.s),
+        LAP_START_S
+      ),
+      this.solidMat
+    )
+    this.add(kerbGeometry(), this.solidMat)
+    this.buildRoadside()
+    this.add(pierGeometry(), this.occluderMat)
+    const boat = new THREE.Mesh(boxesGeometry(boatBoxes(), false), this.occluderMat)
+    boat.position.set(PIER.x + 1.9, -0.42, PIER.z1 - 2.2)
+    boat.rotation.y = Math.PI / 2
+    this.scene.add(boat)
+    this.boat = boat
+    this.add(cellsGeometry(lilyPadCells(), 0.011), this.solidMat)
+    this.add(boxesGeometry(pondFlowerBoxes()), this.solidMat)
+    this.add(boxesGeometry(reedBoxes()), this.swayMaterial("occluder", 0.2, 0.7))
+    this.buildGlints()
     this.add(mountainGeometry(), this.occluderMat)
     this.add(waterfallGeometry(), this.waterMat, 1)
     this.add(fenceGeometry(), this.solidMat)
 
     const s = this.scenery
-    this.instanced(boxesGeometry(palmBoxes()), this.occluderMat, s.palms)
+    this.instanced(boxesGeometry(palmBoxes()), this.swayMaterial("occluder", 1.6, 2.4), s.palms)
     this.instanced(this.flatDisc(), this.shadowMat, s.palms, (k) => [1.5 * k, 1.1 * k])
     for (let v = 0; v < 3; v++) {
       const rocks = s.rocks.filter((r) => r.variant === v)
       this.instanced(boxesGeometry(rockBoxes(v)), this.occluderMat, rocks)
+      this.instanced(this.flatDisc(), this.shadowMat, rocks, (k) => [1.1 * k, 0.8 * k])
     }
     for (let v = 0; v < 2; v++) {
       const patches = s.patches.filter((p) => p.variant % 2 === v)
@@ -651,9 +704,9 @@ export class Overworld {
       this.instanced(boxesGeometry(bushBoxes(v)), this.occluderMat, bushes)
       this.instanced(this.flatDisc(), this.shadowMat, bushes, (k) => [1.4 * k, 1.0 * k])
     }
-    this.instanced(boxesGeometry(tuftBoxes()), this.solidMat, s.tufts)
+    this.instanced(boxesGeometry(tuftBoxes()), this.swayMaterial("solid", 0.08, 0.3), s.tufts)
     for (let v = 0; v < 3; v++) {
-      this.instanced(boxesGeometry(flowerBoxes(v)), this.solidMat, s.flowers.filter((f) => f.variant === v))
+      this.instanced(boxesGeometry(flowerBoxes(v)), this.swayMaterial("solid", 0.12, 0.3), s.flowers.filter((f) => f.variant === v))
     }
 
     // Oncoming Traffic, in the outer lane
@@ -782,6 +835,100 @@ export class Overworld {
     })
   }
 
+  /**
+   * A copy of the ground or occluder material whose vertices sway with
+   * the wind: a whole screen pixel along x, only above `from` and fully
+   * from `to`, in gusts that roll across the island.
+   */
+  private swayMaterial(base: "solid" | "occluder", from: number, to: number): THREE.MeshToonMaterial {
+    const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: this.gradient })
+    if (base === "occluder") this.installSeeThrough(m)
+    const before = m.onBeforeCompile.bind(m)
+    const time = this.swayTime
+    m.onBeforeCompile = (shader, renderer) => {
+      before(shader, renderer)
+      shader.uniforms.uSwayTime = time
+      shader.vertexShader =
+        "uniform float uSwayTime;\n" +
+        shader.vertexShader.replace(
+          "#include <project_vertex>",
+          /* glsl */ `vec4 mvPosition = vec4( transformed, 1.0 );
+          #ifdef USE_INSTANCING
+            mvPosition = instanceMatrix * mvPosition;
+          #endif
+          {
+            float swayK = clamp((transformed.y - ${from.toFixed(3)}) / ${(to - from).toFixed(3)}, 0.0, 1.0);
+            float gust = sin(uSwayTime * 1.7 + mvPosition.x * 0.31 + mvPosition.z * 0.17);
+            mvPosition.x += floor(swayK * step(0.3, gust) + 0.5) / 16.0;
+          }
+          mvPosition = modelViewMatrix * mvPosition;
+          gl_Position = projectionMatrix * mvPosition;`
+        )
+    }
+    m.customProgramCacheKey = () => `sway-${base}-${from}-${to}`
+    this.swayMats.push(m)
+    return m
+  }
+
+  /** Distance posts every 50 metres, and street lamps that light at Dusk */
+  private buildRoadside() {
+    const { posts, lamps } = roadside(METERS_PER_UNIT)
+    const verge = (s: number, off: number) => {
+      const p = roadPoint(s)
+      return { p, x: p.x - p.nx * off, z: p.z - p.nz * off }
+    }
+    for (const post of posts) {
+      const { x, z } = verge(post.s, ROAD.halfWidth + 0.7)
+      const mesh = this.add(boxesGeometry(distancePostBoxes(post.metres, textBoxes)), this.occluderMat)
+      mesh.position.set(x, 0, z)
+      mesh.updateMatrix()
+      this.solids.push({ kind: "circle", x, z, r: 0.12 })
+    }
+    const { pole, bulb } = streetLampBoxes()
+    const poleGeo = boxesGeometry(pole)
+    const bulbGeo = boxesGeometry(bulb)
+    for (const s of lamps) {
+      const { p, x, z } = verge(s, ROAD.halfWidth + 0.9)
+      const group = new THREE.Group()
+      group.position.set(x, 0, z)
+      // the arm reaches out over the road
+      group.rotation.y = Math.atan2(-p.nz, p.nx)
+      const glow = new THREE.Mesh(bulbGeo, this.glowMat)
+      const pool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.36, { falloff: true }))
+      pool.scale.set(2.6, 1, 2.0)
+      pool.position.x = 1.0
+      group.add(new THREE.Mesh(poleGeo, this.occluderMat), glow, pool)
+      this.scene.add(group)
+      this.lamps.push(glow, pool)
+      this.solids.push({ kind: "circle", x, z, r: 0.15 })
+    }
+  }
+
+  private buildGlints() {
+    for (let i = 0; i < 70; i++) {
+      const p = islandPoint(Math.random() * Math.PI * 2, 1.05 + Math.random() * 0.4)
+      this.glintSpots.push({ ...p, phase: Math.random() })
+    }
+    this.glints = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), this.glintSpots.length)
+    this.glints.frustumCulled = false
+    this.scene.add(this.glints)
+    this.updateGlints(0)
+  }
+
+  /** Each glint flashes briefly, two pixels wide, now and then */
+  private updateGlints(t: number) {
+    const g = this.glints
+    if (!g) return
+    const m = new THREE.Matrix4()
+    this.glintSpots.forEach((spot, i) => {
+      const on = this.reduceMotion ? i % 4 === 0 : (t * 0.45 + spot.phase) % 1 < 0.12
+      m.makeScale(on ? 2 / 16 : 0, 0.01, on ? 0.09 : 0)
+      m.setPosition(spot.x, -0.34, spot.z)
+      g.setMatrixAt(i, m)
+    })
+    g.instanceMatrix.needsUpdate = true
+  }
+
   /** Occluders between the camera and the Runner dither away around him */
   private installSeeThrough(material: THREE.MeshToonMaterial) {
     const uniform = this.seeThrough
@@ -889,6 +1036,7 @@ export class Overworld {
     this.seaMat.color.setHex(light.seaDeep)
     this.shallowMat.color.setHex(light.sea)
     this.foamMat.color.setHex(light.foam)
+    ;(this.glints?.material as THREE.MeshBasicMaterial | undefined)?.color.setHex(light.foam)
     this.renderer.setClearColor(light.seaDeep)
     this.runnerMat.color.setHex(light.sprite)
     const shadow = new THREE.Color(light.shade).multiplyScalar(0.42)
@@ -1200,6 +1348,11 @@ export class Overworld {
     if (this.reduceMotion) return
     // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
+    // wind, the wave's wash, the moored boat, glints on the sea
+    this.swayTime.value = now / 1000
+    if (this.wash) this.wash.visible = Math.floor(now / 850) % 3 === 0
+    if (this.boat) this.boat.position.y = -0.42 + (Math.floor(now / 760) % 2 ? 1 / 16 : 0)
+    this.updateGlints(now / 1000)
   }
 
   /**
