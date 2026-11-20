@@ -246,6 +246,8 @@ export class IslandLife {
 
   private readonly cup: THREE.Mesh
   private takenAt = -Infinity
+  /** the camera's turn about y: bubbles face it, the cup sits to his side of the screen */
+  private yaw = 0
   private carryUntil = -Infinity
   private tossed = true
 
@@ -364,6 +366,14 @@ export class IslandLife {
   /** Seconds since the Runner took a cup at the aid station */
   sinceCup(t: number): number {
     return t - this.takenAt
+  }
+
+  setYaw(yaw: number) {
+    this.yaw = yaw
+    for (const cow of this.cows) {
+      cow.bang.rotation.y = yaw
+      cow.moo.rotation.y = yaw
+    }
   }
 
   setGradient(gradient: THREE.Texture) {
@@ -515,7 +525,7 @@ export class IslandLife {
       }
       for (const [bubble, until] of [[cow.bang, cow.bangUntil], [cow.moo, cow.mooUntil]] as const) {
         bubble.visible = t < until
-        bubble.position.set(cow.x, 1.75, cow.z + 0.2)
+        bubble.position.set(cow.x + Math.sin(this.yaw) * 0.2, 1.75, cow.z + Math.cos(this.yaw) * 0.2)
       }
       if (cow.moo.visible) cow.bang.visible = false
     }
@@ -882,8 +892,9 @@ export class IslandLife {
     }
     this.cup.visible = t < this.carryUntil
     if (this.cup.visible) {
+      // in the hand on his leading side of the screen
       const ahead = r.facing === "left" ? -0.35 : r.facing === "right" ? 0.35 : 0
-      this.cup.position.set(r.x + ahead, 1.35 + r.h, r.z + 0.05)
+      this.cup.position.set(r.x + Math.cos(this.yaw) * ahead, 1.35 + r.h, r.z - Math.sin(this.yaw) * ahead + 0.05)
     } else if (!this.tossed) {
       // drained and tossed: a splash of water and the cup, over his shoulder
       this.tossed = true

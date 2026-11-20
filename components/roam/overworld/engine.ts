@@ -109,7 +109,9 @@ export interface Look {
   tones: 2 | 3
 }
 
-export const DEFAULT_LOOK: Look = { yaw: 0, lens: "ortho", rows: 180, tones: 2 }
+/** Juan's pick from the LOOK prototype (2026-11-20): the diamond angle
+ *  through the slightly perspective lens */
+export const DEFAULT_LOOK: Look = { yaw: 45, lens: "perspective", rows: 180, tones: 2 }
 
 export interface LabelPosition {
   zoneId: string
@@ -345,6 +347,10 @@ export class Overworld {
   private kit = { top: "#FF9A4A", bottom: "#7EC8E8" }
   /** whole-pixel wind in grass, flowers, reeds and palm crowns */
   private readonly swayTime = { value: 0 }
+  /** the camera's right along the ground, which the sway follows */
+  private readonly swayDir = { value: new THREE.Vector2(1, 0) }
+  /** things that turn to face the camera: signs meant to be read */
+  private readonly facers: THREE.Object3D[] = []
   private readonly swayMats: THREE.MeshToonMaterial[] = []
   private wash: THREE.Mesh | null = null
   private boat: THREE.Object3D | null = null
@@ -535,6 +541,7 @@ export class Overworld {
       reduceMotion: this.reduceMotion,
     })
     this.pointables.push(...this.questRoad.pointables())
+    this.facers.push(...this.questRoad.pointables().map((p) => p.obj))
 
     const runnerGeo = new THREE.PlaneGeometry(1, SPRITE_H)
     runnerGeo.translate(0, SPRITE_H / 2, 0)
@@ -976,11 +983,13 @@ export class Overworld {
     if (base === "occluder") this.installSeeThrough(m)
     const before = m.onBeforeCompile.bind(m)
     const time = this.swayTime
+    const swayDir = this.swayDir
     m.onBeforeCompile = (shader, renderer) => {
       before(shader, renderer)
       shader.uniforms.uSwayTime = time
+      shader.uniforms.uSwayDir = swayDir
       shader.vertexShader =
-        "uniform float uSwayTime;\n" +
+        "uniform float uSwayTime;\nuniform vec2 uSwayDir;\n" +
         shader.vertexShader.replace(
           "#include <project_vertex>",
           /* glsl */ `vec4 mvPosition = vec4( transformed, 1.0 );
@@ -990,7 +999,7 @@ export class Overworld {
           {
             float swayK = clamp((transformed.y - ${from.toFixed(3)}) / ${(to - from).toFixed(3)}, 0.0, 1.0);
             float gust = sin(uSwayTime * 1.7 + mvPosition.x * 0.31 + mvPosition.z * 0.17);
-            mvPosition.x += floor(swayK * step(0.3, gust) + 0.5) / 16.0;
+            mvPosition.xz += uSwayDir * floor(swayK * step(0.3, gust) + 0.5) / 16.0;
           }
           mvPosition = modelViewMatrix * mvPosition;
           gl_Position = projectionMatrix * mvPosition;`
@@ -1013,6 +1022,7 @@ export class Overworld {
       const mesh = this.add(boxesGeometry(distancePostBoxes(post.metres, textBoxes)), this.occluderMat)
       mesh.position.set(x, 0, z)
       mesh.updateMatrix()
+      this.facers.push(mesh)
       this.point(mesh, `${post.metres} METRES INTO THE LAP.`)
       this.solids.push({ kind: "circle", x, z, r: 0.12 })
     }
@@ -1093,6 +1103,12 @@ export class Overworld {
     }
     this.runnerMesh.rotation.y = yaw
     this.runnerShadow.rotation.y = yaw
+    this.swayDir.value.set(this.axes.right.x, this.axes.right.z)
+    for (const f of this.facers) {
+      f.rotation.y = yaw
+      if (!f.matrixAutoUpdate) f.updateMatrix()
+    }
+    this.life?.setYaw(yaw)
     return this.look.lens === "ortho"
       ? new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400)
       : new THREE.PerspectiveCamera(30, 1, 1, 400)
@@ -1450,8 +1466,10 @@ export class Overworld {
     const g = this.lap.running ? this.lap.ghostAt(this.lap.time) : null
     this.ghostMesh.visible = !!g
     if (!g) return
-    const facing: Facing =
-      Math.abs(g.dx) >= Math.abs(g.dz) * 0.8 ? (g.dx >= 0 ? "right" : "left") : g.dz < 0 ? "up" : "down"
+    // which way it runs on screen, whatever the camera's angle
+    const sx = g.dx * this.axes.right.x + g.dz * this.axes.right.z
+    const sy = g.dx * this.axes.up.x + g.dz * this.axes.up.z
+    const facing: Facing = Math.abs(sx) >= Math.abs(sy) * 0.8 ? (sx >= 0 ? "right" : "left") : sy > 0 ? "up" : "down"
     const moving = Math.hypot(g.dx, g.dz) > 0.02
     const pose: Pose = !moving ? "stand" : this.reduceMotion ? "a" : Math.floor(now / 130) % 2 ? "a" : "b"
     const col = FACING_SET[facing] * POSES.length + POSES.indexOf(pose)
@@ -1685,8 +1703,9 @@ export class Overworld {
     this.runnerShadow.scale.set(0.95 * shrink, 1, 0.5 * shrink)
     // the headlamp's beam on the ground, the way he faces
     this.lampPool.visible = this.lampsLit
-    this.lampPool.position.set(pos.x + Math.cos(LAMP_ANGLE[r.facing]) * 1.75, 0, pos.z - Math.sin(LAMP_ANGLE[r.facing]) * 1.75)
-    this.lampPool.rotation.y = LAMP_ANGLE[r.facing]
+    const beam = LAMP_ANGLE[r.facing] + (this.look.yaw * Math.PI) / 180
+    this.lampPool.position.set(pos.x + Math.cos(beam) * 1.75, 0, pos.z - Math.sin(beam) * 1.75)
+    this.lampPool.rotation.y = beam
 
     this.stirStations(dt, now, false)
     this.life?.update({

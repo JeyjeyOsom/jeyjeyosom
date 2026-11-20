@@ -22,8 +22,12 @@ type Panel = "none" | "menu" | "map"
 type Stage = "loading" | "start" | "live"
 
 const LOOK_KEY = "roam-look"
+// The LOOK panel's experiments are kept only for ?look sessions; every
+// other visit gets the chosen default
+const LOOK_PROTOTYPE = new URLSearchParams(window.location.search).has("look")
 
 function loadLook(): Look {
+  if (!LOOK_PROTOTYPE) return DEFAULT_LOOK
   try {
     const raw = localStorage.getItem(LOOK_KEY)
     if (!raw) return DEFAULT_LOOK
@@ -376,6 +380,7 @@ export default function RoamMode() {
 
   useEffect(() => {
     engineRef.current?.setLook(look)
+    if (!LOOK_PROTOTYPE) return
     try {
       localStorage.setItem(LOOK_KEY, JSON.stringify(look))
     } catch {
