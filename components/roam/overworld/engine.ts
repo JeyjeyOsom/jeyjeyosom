@@ -55,7 +55,6 @@ import {
   fenceGeometry,
   flowerBoxes,
   groundGeometries,
-  landmarkModel,
   mountainGeometry,
   bushBoxes,
   palmBoxes,
@@ -66,6 +65,7 @@ import {
   tuftBoxes,
   waterfallGeometry,
 } from "./props"
+import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY } from "./landmarks"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { boxesGeometry, cellsGeometry } from "./voxels"
 
@@ -126,6 +126,8 @@ const CAMERA_DISTANCE = 60
 const STEP = 1 / 120
 const SPRITE_H = 1.25 / Math.cos(PITCH) // a vertical 20-pixel sprite, foreshortened back to 20 pixels
 const SEE_THROUGH_RADIUS = 20 // internal pixels
+/** How near the Runner must be to a Landmark's door to wake it */
+const WAKE_REACH = 7
 // The camera looks this far ahead of the Runner (up the screen), so he
 // runs in the lower half and the Landmarks he faces fit above him
 const LOOK_AHEAD = 2.4
@@ -190,7 +192,7 @@ function gradientTexture(tones: 2 | 3): THREE.DataTexture {
 // Decals: dithered shapes lying on the ground, in one colour, so they stay
 // on the palette. A blob shadow is a disc at half density; a pool of lamp
 // light thins toward its rim through a 4x4 ordered dither. A cone opens
-// along the decal's +x, from its lamp at u = 0.
+// along the decal's +x, from its lamp at u = 0; a rect fills its square.
 const DECAL_VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -205,14 +207,16 @@ const DECAL_VERTEX = /* glsl */ `
 const DECAL_FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
   uniform float uDensity;
-  uniform float uCone;
+  uniform float uShape;
   uniform float uFalloff;
   varying vec2 vUv;
   const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
   void main() {
     vec2 d = vUv - 0.5;
     float r;
-    if (uCone > 0.5) {
+    if (uShape > 1.5) {
+      r = max(abs(d.x), abs(d.y)) * 2.0;
+    } else if (uShape > 0.5) {
       float hw = 0.12 + 0.38 * vUv.x;
       if (abs(d.y) > hw) discard;
       r = max(abs(d.y) / hw * 0.55, vUv.x);
@@ -227,12 +231,14 @@ const DECAL_FRAGMENT = /* glsl */ `
   }
 `
 
-function decalMaterial(color: number, density: number, opts: { cone?: boolean; falloff?: boolean } = {}) {
+const DECAL_SHAPES = { disc: 0, cone: 1, rect: 2 } as const
+
+function decalMaterial(color: number, density: number, opts: { shape?: keyof typeof DECAL_SHAPES; falloff?: boolean } = {}) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(color) },
       uDensity: { value: density },
-      uCone: { value: opts.cone ? 1 : 0 },
+      uShape: { value: DECAL_SHAPES[opts.shape ?? "disc"] },
       uFalloff: { value: opts.falloff ? 1 : 0 },
     },
     vertexShader: DECAL_VERTEX,
@@ -317,10 +323,18 @@ export class Overworld {
   private readonly scenery: Scenery
   private readonly solids: Solid[]
   private readonly labelAnchors: Array<{ zoneId: string; pos: THREE.Vector3 }> = []
-  private readonly spinners: Array<{ part: THREE.Object3D; y: number }> = []
+  /** each Landmark's moving parts and screens, and how awake it is */
+  private readonly stations: Array<{
+    door: Vec2
+    centre: Vec2
+    wake: number
+    parts: Array<{ mesh: THREE.Mesh; part: LandmarkPart }>
+    screens: Array<{ screen: LandmarkScreen; g: CanvasRenderingContext2D; tex: THREE.CanvasTexture; drawnAt: number }>
+  }> = []
+  private readonly openedAt = performance.now()
   private readonly cowHeads: Array<{ head: THREE.Object3D; phase: number }> = []
   /** Oncoming Traffic: cars lapping the other way, stopping for the Runner */
-  private readonly cars: Array<{ group: THREE.Group; s: number; speed: number; solid: Solid & { kind: "circle" } }> = []
+  private readonly cars: Array<{ group: THREE.Group; s: number; speed: number; solids: Array<Solid & { kind: "circle" }> }> = []
   /** what switches on at Dusk: car lamps and the light they throw */
   private readonly lamps: THREE.Object3D[] = []
   /** pools of light that glow brighter at Dusk */
@@ -335,8 +349,8 @@ export class Overworld {
   private readonly foamMat = new THREE.MeshBasicMaterial()
   private readonly shadowMat: THREE.ShaderMaterial
   private readonly glowMat = glowMaterial()
-  private readonly crystalMat = glowMaterial()
-  private readonly beamMat = decalMaterial(0xffe3a3, 0.5, { cone: true, falloff: true })
+  private readonly rectShadowMat = decalMaterial(0x2b1b57, 0.5, { shape: "rect" })
+  private readonly beamMat = decalMaterial(0xffe3a3, 0.5, { shape: "cone", falloff: true })
   private readonly tailPoolMat = decalMaterial(0xe8452f, 0.34, { falloff: true })
   private readonly waterTex: THREE.DataTexture
   private readonly waterMat: THREE.MeshBasicMaterial
@@ -458,6 +472,7 @@ export class Overworld {
     this.runnerMesh.renderOrder = 2
     this.runnerShadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
     this.scene.add(this.runnerMesh, this.runnerShadow)
+    this.stirStations(0, performance.now(), true)
     // Decals write no depth, so they must draw after the ground they lie on
     this.scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh && obj.material instanceof THREE.ShaderMaterial && "uDensity" in obj.material.uniforms) {
@@ -596,6 +611,7 @@ export class Overworld {
     this.gradient.dispose()
     this.runnerTex.dispose()
     this.waterTex.dispose()
+    for (const st of this.stations) for (const sc of st.screens) sc.tex.dispose()
     this.renderer.dispose()
     this.renderer.forceContextLoss()
     this.canvas.remove()
@@ -726,9 +742,12 @@ export class Overworld {
       group.add(lit, beam, tail)
       this.lamps.push(lit, beam, tail)
       this.scene.add(group)
-      const solid = { kind: "circle" as const, x: 0, z: 0, r: 0.95 }
-      this.solids.push(solid)
-      const car = { group, s: at * LOOP_LENGTH, speed: 0, solid }
+      // two circles hugging the body, front and back: one round circle
+      // reached out of the lane far enough to shove a Runner standing at
+      // a door beside the road
+      const solids = [0, 1].map(() => ({ kind: "circle" as const, x: 0, z: 0, r: 0.6 }))
+      this.solids.push(...solids)
+      const car = { group, s: at * LOOP_LENGTH, speed: 0, solids }
       this.cars.push(car)
       this.moveCar(car, 0)
     })
@@ -740,12 +759,40 @@ export class Overworld {
       group.position.set(l.x, 0, l.z)
       group.rotation.y = Math.atan2(l.facing.x, l.facing.z)
       group.add(new THREE.Mesh(boxesGeometry(model.boxes), this.occluderMat))
-      if (model.spinner) {
-        const { boxes, y, glow } = model.spinner
-        const spinner = new THREE.Mesh(boxesGeometry(boxes), glow ? this.crystalMat : this.occluderMat)
-        spinner.position.y = y
-        group.add(spinner)
-        this.spinners.push({ part: spinner, y })
+      const station: (typeof this.stations)[number] = {
+        door: l.door,
+        centre: { x: l.x, z: l.z },
+        wake: this.reduceMotion ? 1 : 0,
+        parts: [],
+        screens: [],
+      }
+      for (const part of model.parts ?? []) {
+        const mesh = new THREE.Mesh(boxesGeometry(part.boxes), part.glow ? glowMaterial() : this.occluderMat)
+        const [px, py, pz] = part.at ?? [0, 0, 0]
+        mesh.position.set(px, py, pz)
+        group.add(mesh)
+        station.parts.push({ mesh, part })
+      }
+      for (const screen of model.screens ?? []) {
+        const canvas = document.createElement("canvas")
+        canvas.width = screen.cols
+        canvas.height = screen.rows
+        const tex = new THREE.CanvasTexture(canvas)
+        tex.magFilter = THREE.NearestFilter
+        tex.minFilter = THREE.NearestFilter
+        tex.generateMipmaps = false
+        // one canvas pixel per screen pixel, the upright face foreshortened
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(screen.cols / 16, screen.rows * SCREEN_PY), new THREE.MeshBasicMaterial({ map: tex }))
+        mesh.position.set(...screen.at)
+        group.add(mesh)
+        station.screens.push({ screen, g: canvas.getContext("2d")!, tex, drawnAt: -Infinity })
+      }
+      if (model.floor) group.add(new THREE.Mesh(cellsGeometry(model.floor, 0.007), this.solidMat))
+      for (const sh of model.shadows ?? []) {
+        const mesh = new THREE.Mesh(this.flatDisc(), this.rectShadowMat)
+        mesh.scale.set(sh.w, 1, sh.d)
+        mesh.position.set(sh.x, 0, sh.z)
+        group.add(mesh)
       }
       for (const pool of model.pools ?? []) {
         const mat = decalMaterial(pool.color, 0.3, { falloff: true })
@@ -755,6 +802,7 @@ export class Overworld {
         group.add(mesh)
         this.glowPools.push(mat)
       }
+      this.stations.push(station)
       this.scene.add(group)
       this.labelAnchors.push({ zoneId: l.zoneId, pos: new THREE.Vector3(l.x, model.height + 0.45, l.z) })
     }
@@ -783,8 +831,11 @@ export class Overworld {
     car.group.position.set(snapped.x, 0, snapped.z)
     // heading against the lap: the reverse of the road's tangent
     car.group.rotation.y = Math.atan2(now.p.tz, -now.p.tx)
-    car.solid.x = now.x
-    car.solid.z = now.z
+    car.solids.forEach((c, i) => {
+      const along = i === 0 ? 0.55 : -0.55
+      c.x = now.x + now.p.tx * along
+      c.z = now.z + now.p.tz * along
+    })
   }
 
   /** Occluders between the camera and the Runner dither away around him */
@@ -898,7 +949,11 @@ export class Overworld {
     this.runnerMat.color.setHex(light.sprite)
     const shadow = new THREE.Color(light.shade).multiplyScalar(0.42)
     ;(this.shadowMat.uniforms.uColor.value as THREE.Color).copy(shadow)
+    ;(this.rectShadowMat.uniforms.uColor.value as THREE.Color).copy(shadow)
     this.lampsLit = light.lamps
+    for (const st of this.stations) {
+      for (const { mesh, part } of st.parts) if (part.duskOnly) mesh.visible = light.lamps
+    }
     for (const lamp of this.lamps) lamp.visible = light.lamps
     for (const pool of this.glowPools) pool.uniforms.uDensity.value = light.lamps ? 0.34 : 0.16
     this.paintWater(light)
@@ -1170,19 +1225,49 @@ export class Overworld {
     this.runnerShadow.position.set(pos.x, 0, pos.z)
     this.runnerShadow.scale.set(0.95 * shrink, 1, 0.5 * shrink)
 
+    this.stirStations(dt, now, false)
     if (this.reduceMotion) return
     // the herd grazes in two poses, like the Title Screen's cows
     for (const c of this.cowHeads) {
       const beat = ((now / 1000 + c.phase) % 2.6) / 2.6
       c.head.rotation.z = beat < 0.64 ? -0.55 : 0.1
     }
-    for (const s of this.spinners) {
-      s.part.rotation.y += dt * 0.9
-      s.part.position.y = s.y + (Math.floor(now / 550) % 2) * 0.0625
-    }
-    // the crystal pulses in three steps; the waterfall falls a texel at a time
-    this.crystalMat.uniforms.uBoost.value = [0.92, 1, 1.1, 1][Math.floor(now / 260) % 4]
+    // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
+  }
+
+  /**
+   * Wake each Landmark as the Runner nears its door and let it stir: its
+   * parts move and its screens redraw, but only near the camera. Under
+   * reduced motion every Landmark stays awake and still, and only the
+   * screens' readouts (the race clock) change.
+   */
+  private stirStations(dt: number, now: number, first: boolean) {
+    const r = this.runner
+    const t = this.reduceMotion ? 0 : now / 1000
+    const elapsed = (now - this.openedAt) / 1000
+    for (const st of this.stations) {
+      if (!this.reduceMotion && r) {
+        const near = Math.hypot(st.door.x - r.x, st.door.z - r.z) < WAKE_REACH ? 1 : 0
+        const step = dt * 1.6
+        st.wake = near > st.wake ? Math.min(near, st.wake + step) : Math.max(near, st.wake - step)
+      }
+      const inView = Math.abs(st.centre.x - this.focus.x) < 18 && Math.abs(st.centre.z - this.focus.z) < 16
+      if (!first && !inView) continue
+      const clock: PartClock = { t, wake: st.wake, lit: this.lampsLit, elapsed, still: this.reduceMotion }
+      if (first || !this.reduceMotion) {
+        for (const { mesh, part } of st.parts) {
+          if (part.duskOnly) mesh.visible = this.lampsLit
+          part.animate?.(mesh, clock)
+        }
+      }
+      for (const sc of st.screens) {
+        if (!first && now - sc.drawnAt < 1000 / sc.screen.fps) continue
+        sc.drawnAt = now
+        sc.screen.draw(sc.g, clock)
+        sc.tex.needsUpdate = true
+      }
+    }
   }
 
   /** Nudge a ground point so it lands on a whole screen pixel */
