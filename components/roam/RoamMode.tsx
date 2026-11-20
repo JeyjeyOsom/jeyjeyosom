@@ -7,6 +7,7 @@ import { WORLD_MAP } from "../zones/registry"
 import { scrollToZone, zoneName } from "./world"
 import { DEFAULT_LOOK, type FrameReport, type LapReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
 import { formatLap } from "./overworld/lap"
+import { KITS, type KitId, type MedalId, MEDALS, MedalBook } from "./medals"
 import { RoamMap, RoamMenu } from "./RoamPanels"
 import { RoamCover } from "./RoamScreens"
 
@@ -146,6 +147,33 @@ export default function RoamMode() {
   const [lapDone, setLapDone] = useState<{ time: number; newBest: boolean } | null>(null)
   const [year, setYear] = useState<number | null>(null)
   const lapDoneTimer = useRef(0)
+
+  // Medals: the book, and a queue of toasts announcing them
+  const bookRef = useRef<MedalBook | null>(null)
+  if (!bookRef.current) bookRef.current = new MedalBook()
+  const book = bookRef.current
+  const [toasts, setToasts] = useState<Array<{ key: number; title: string; line: string }>>([])
+  const [medalCount, setMedalCount] = useState(() => book.count())
+  const [kit, setKit] = useState<KitId>(() => book.kit().id)
+  const toastKey = useRef(0)
+  const bestBefore = useRef<number | null>(null)
+  const recordRef = useRef<(id: MedalId, key?: string) => void>(() => {})
+  recordRef.current = (id, key) => {
+    const won = book.record(id, key)
+    if (!won) return
+    playSfx("medal")
+    setMedalCount(book.count())
+    const next = [{ key: ++toastKey.current, title: `MEDAL · ${won.medal.name}`, line: won.medal.cheer ?? won.medal.hint }]
+    for (const k of won.kits) next.push({ key: ++toastKey.current, title: `${k.name} UNLOCKED`, line: "Wear it from the menu." })
+    setToasts((q) => [...q, ...next])
+  }
+  const record = useCallback((id: MedalId, key?: string) => recordRef.current(id, key), [])
+  // one toast at a time, each for a few seconds
+  useEffect(() => {
+    if (toasts.length === 0) return
+    const timer = window.setTimeout(() => setToasts((q) => q.slice(1)), 3400)
+    return () => window.clearTimeout(timer)
+  }, [toasts])
   const [look, setLook] = useState<Look>(loadLook)
 
   // Latest values for the engine's callbacks and the queued transitions
@@ -179,7 +207,10 @@ export default function RoamMode() {
     const callbacks: OverworldCallbacks = {
       onPrompt: (zoneId) => {
         setPrompt(zoneId)
-        if (zoneId) latest.current.playSfx("prompt")
+        if (zoneId) {
+          latest.current.playSfx("prompt")
+          recordRef.current("sightseer", zoneId)
+        }
       },
       onNearest: (zoneId) => {
         setNearest(zoneId)
@@ -188,7 +219,10 @@ export default function RoamMode() {
       onPace: setPace,
       onStuck: setStuck,
       onRespawn: () => respawnRef.current(),
-      onMoved: () => setMoved(true),
+      onMoved: () => {
+        setMoved(true)
+        recordRef.current("first-steps")
+      },
       onJump: () => latest.current.playSfx("jump"),
       onSfx: (name) => latest.current.playSfx(name),
       onLap: (report) => {
@@ -199,9 +233,25 @@ export default function RoamMode() {
           setLapDone(done)
           window.clearTimeout(lapDoneTimer.current)
           lapDoneTimer.current = window.setTimeout(() => setLapDone(null), 3600)
+          recordRef.current("finisher")
+          if (done.newBest && bestBefore.current !== null) recordRef.current("negative-split")
+          if (done.time < 60) recordRef.current("sub-60")
         }
+        bestBefore.current = report.best
       },
       onYear: setYear,
+      onEvent: (e) => {
+        const r = recordRef.current
+        if (e.kind === "moo") r("herd", String(e.cow))
+        else if (e.kind === "birds") r("birds")
+        else if (e.kind === "crab") r("crab")
+        else if (e.kind === "cup") r("hydrated")
+        else if (e.kind === "pier") r("pier")
+        else if (e.kind === "stones") r("historian")
+        else if (e.kind === "honk") r("honk")
+        else if (e.kind === "watch") r("watch")
+        else if (e.kind === "banana") r("banana")
+      },
       onFrame: (report: FrameReport) => {
         const w = window.innerWidth
         const h = window.innerHeight
@@ -241,6 +291,9 @@ export default function RoamMode() {
     }
     engineRef.current = engine
     engine.setInputEnabled(false)
+    const startKit = bookRef.current?.kit()
+    if (startKit) engine.setKit(startKit.top, startKit.bottom)
+    if (bookRef.current?.has("banana")) engine.hideBanana()
     setReady(true)
     // the LOOK prototype flag doubles as the debug handle for test drivers
     const debug = window as { __overworld?: Overworld }
@@ -265,6 +318,10 @@ export default function RoamMode() {
   useEffect(() => {
     engineRef.current?.setSky(theme, cycle, CYCLE_MS, CYCLE_MID)
   }, [theme, cycle, ready])
+  // running under a sky counts toward DUSK TO DAWN
+  useEffect(() => {
+    if (moved && stage === "live" && view === "overworld") record("skies", theme)
+  }, [moved, stage, view, theme, record])
 
   useEffect(() => {
     engineRef.current?.setLook(look)
@@ -346,6 +403,7 @@ export default function RoamMode() {
         const p = engine.runnerOnScreen()
         await iris.close(p.x, p.y)
         coveredForDoor.current = true
+        recordRef.current("door")
         latest.current.roam.openDoor(zoneId)
       })
     },
@@ -564,8 +622,14 @@ export default function RoamMode() {
             </div>
           </div>
 
-          {/* a Lap just done */}
-          <div aria-live="polite" className="fixed inset-x-0 top-24 z-[65] flex justify-center px-4 pointer-events-none">
+          {/* a Lap just done, and Medals as they're won */}
+          <div aria-live="polite" className="fixed inset-x-0 top-24 z-[65] flex flex-col items-center gap-3 px-4 pointer-events-none">
+            {toasts[0] && (
+              <p key={toasts[0].key} className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 text-center">
+                <span className="block font-arcade text-[9px] md:text-[10px] text-gold-400">{toasts[0].title}</span>
+                <span className="mt-2 block font-body text-sm text-cream-100">{toasts[0].line}</span>
+              </p>
+            )}
             {lapDone && (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[10px] md:text-[11px] text-cream-100 text-center leading-relaxed">
                 LAP <span className="text-gold-300">{formatLap(lapDone.time)}</span>
@@ -614,7 +678,10 @@ export default function RoamMode() {
         <RoamMap
           landmarks={landmarks}
           runner={engineRef.current.runnerPosition()}
-          onTravel={travel}
+          onTravel={(zoneId) => {
+            record("travel")
+            travel(zoneId)
+          }}
           onClose={() => setPanel("none")}
         />
       )}
@@ -633,6 +700,16 @@ export default function RoamMode() {
           }}
           onLook={setLook}
           onExit={leave}
+          medals={MEDALS.map((m) => ({ ...m, earned: book.has(m.id), progress: book.progress(m.id) }))}
+          medalCount={medalCount}
+          kits={KITS.map((k) => ({ ...k, unlocked: book.unlocked(k.id) }))}
+          kit={kit}
+          onKit={(id) => {
+            book.setKit(id)
+            setKit(book.kit().id)
+            const k = book.kit()
+            engineRef.current?.setKit(k.top, k.bottom)
+          }}
         />
       )}
 

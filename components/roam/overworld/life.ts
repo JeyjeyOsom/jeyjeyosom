@@ -47,7 +47,11 @@ export interface LifeOptions {
   flatDisc: () => THREE.BufferGeometry
   /** a sound and where it comes from; the engine plays only what's in view */
   sfx: (name: LifeSfx, at: Vec2) => void
+  /** something the Runner did to the island's life (for Medals) */
+  event: (e: LifeEvent) => void
 }
+
+export type LifeEvent = { kind: "moo"; cow: number } | { kind: "birds" | "crab" | "cup" }
 
 export interface LifeFrame {
   dt: number
@@ -435,6 +439,7 @@ export class IslandLife {
         cow.lastMoo = t
         cow.mooUntil = t + 1.3
         this.o.sfx("moo", cow)
+        this.o.event({ kind: "moo", cow: this.cows.indexOf(cow) })
       }
 
       if (!this.o.reduceMotion) {
@@ -551,6 +556,7 @@ export class IslandLife {
             flock.t0 = t
             flock.dur = dist(flock.at, to) / 6
             this.o.sfx("flap", flock.at)
+            this.o.event({ kind: "birds" })
           }
         }
         if (Math.abs(flock.at.x - f.focus.x) > 22 || Math.abs(flock.at.z - f.focus.z) > 18) continue
@@ -656,6 +662,7 @@ export class IslandLife {
       }
       if (crab.state === "flee" && t > crab.until) {
         // burrow, and come up somewhere else later
+        this.o.event({ kind: "crab" })
         crab.state = "hidden"
         crab.until = t + 7 + this.rand() * 6
         crab.group.visible = false
@@ -839,6 +846,7 @@ export class IslandLife {
       this.carryUntil = t + 1.4
       this.tossed = false
       this.o.sfx("cup", r)
+      this.o.event({ kind: "cup" })
     }
     this.cup.visible = t < this.carryUntil
     if (this.cup.visible) {

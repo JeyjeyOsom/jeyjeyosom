@@ -113,6 +113,14 @@ _Avoid_: replay, shadow
 The stretch of loop road before the Quest Log's Landmark, where a standing stone carved with the year each quest began rises from the verge as the Runner passes, oldest first, and the HUD counts the years while he is on it. Only the years come from the Quest Log; its content stays on the page.
 _Avoid_: timeline, career path
 
+**Medal**:
+A small thing done in the Overworld (a full Lap, a moo out of every cow, the end of the pier, a secret or two), announced by a toast and listed in the Roam menu. Medals are kept in the visitor's browser, every one can be earned on a static host, and none ever gates content.
+_Avoid_: achievement, trophy, badge
+
+**Kit**:
+Another pair of colours for the Runner's singlet in Roam Mode, unlocked by the number of Medals and worn from the Roam menu. The cap, face, bib, shorts and shoes stay his, and the default Race Kit is his race-photo singlet.
+_Avoid_: skin, costume, outfit
+
 ### Assets & data
 
 **Cartridge Art**:

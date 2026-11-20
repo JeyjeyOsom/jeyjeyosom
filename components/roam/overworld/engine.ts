@@ -90,7 +90,7 @@ import { METERS_PER_UNIT } from "./movement"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { boxesGeometry, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
-import { IslandLife, type LifeSfx } from "./life"
+import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
 import { type LapFinish, LapTimer } from "./lap"
 import { QuestRoad } from "./questroad"
 import { QUESTS, questStartYear } from "../../zones/quests"
@@ -126,6 +126,9 @@ export interface FrameReport {
 
 export type OverworldSfx = LifeSfx | "horn" | "stone"
 
+/** Things the Runner did that the interface keeps score of (Medals) */
+export type OverworldEvent = LifeEvent | { kind: "pier" | "stones" | "honk" | "watch" | "banana" }
+
 export interface LapReport {
   running: boolean
   /** seconds into the Lap, to the tenth */
@@ -151,6 +154,7 @@ export interface OverworldCallbacks {
   onLap: (report: LapReport) => void
   /** the year to show while he runs the Quest Road, or null off it */
   onYear: (year: number | null) => void
+  onEvent: (e: OverworldEvent) => void
   onFrame: (report: FrameReport) => void
   onFrameTime: (ms: number) => void
   onContextLost: () => void
@@ -184,11 +188,21 @@ const FACING_SET: Record<Facing, number> = { right: 0, left: 0, down: 1, up: 2 }
 /** Which way the headlamp throws its beam (rotation about y from +x) */
 const LAMP_ANGLE: Record<Facing, number> = { right: 0, up: Math.PI / 2, left: Math.PI, down: -Math.PI / 2 }
 
-function drawRunnerAtlas(): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
+/** Paint the sheet; a Kit swaps the singlet's two colours */
+function drawRunnerAtlas(
+  canvas: HTMLCanvasElement = document.createElement("canvas"),
+  kit?: { top: string; bottom: string }
+): HTMLCanvasElement {
   canvas.width = 16 * FRAME_COLS
   canvas.height = 40
   const g = canvas.getContext("2d")!
+  g.clearRect(0, 0, canvas.width, canvas.height)
+  const swap = (fill: string) => {
+    const f = fill.toUpperCase()
+    if (kit && f === "#FF9A4A") return kit.top
+    if (kit && f === "#7EC8E8") return kit.bottom
+    return fill
+  }
   const sets: Array<{ shared: Px[]; lamp: Px[]; poses: Record<Pose, Px[]> }> = [
     {
       shared: RUNNER_SHARED,
@@ -225,7 +239,7 @@ function drawRunnerAtlas(): HTMLCanvasElement {
         const ox = (set * POSES.length + k) * 16
         const oy = lit * 20
         for (const [x, y, w, h, fill] of [...shared, ...pose, ...(lit ? lamp : [])]) {
-          g.fillStyle = fill
+          g.fillStyle = swap(fill)
           g.fillRect(ox + x, oy + y, w, h)
         }
       })
@@ -293,6 +307,10 @@ export class Overworld {
   private lastYear: number | null | undefined = undefined
   private readonly ghostMesh: THREE.Mesh
   private readonly ghostTex: THREE.Texture
+  /** events the interface has been told of once already */
+  private readonly told = new Set<string>()
+  private banana: THREE.Group | null = null
+  private kit = { top: "#FF9A4A", bottom: "#7EC8E8" }
   /** whole-pixel wind in grass, flowers, reeds and palm crowns */
   private readonly swayTime = { value: 0 }
   private readonly swayMats: THREE.MeshToonMaterial[] = []
@@ -458,7 +476,9 @@ export class Overworld {
       gradient: this.gradient,
       flatDisc: () => this.flatDisc(),
       sfx: (name, at) => this.sfxAt(name, at),
+      event: (e) => this.cb.onEvent(e),
     })
+    this.buildBanana()
     // the headlamp's pool of light, thrown ahead of him at Dusk
     this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
     this.lampPool.scale.set(3.2, 1, 2.2)
@@ -866,6 +886,7 @@ export class Overworld {
     if (car.waited > 1.4 && now - car.honked > 4) {
       car.honked = now
       this.sfxAt("horn", car.solids[0])
+      this.tellOnce("honk")
     }
     const rate = target < car.speed ? 14 : 3
     car.speed = target > car.speed ? Math.min(target, car.speed + rate * dt) : Math.max(target, car.speed - rate * dt)
@@ -1277,6 +1298,64 @@ export class Overworld {
     this.ghostMesh.rotation.y = this.runnerMesh.rotation.y
   }
 
+  private tellOnce(kind: "pier" | "stones" | "honk" | "watch" | "banana") {
+    if (this.told.has(kind)) return
+    this.told.add(kind)
+    this.cb.onEvent({ kind })
+  }
+
+  /** The secret banana, on the north-east beach behind the palms */
+  private buildBanana() {
+    const at = islandPoint(-0.62, 0.935)
+    const group = new THREE.Group()
+    const boxes = [0, 1, 2].flatMap((i) => [
+      { x: -0.12 + i * 0.09, y: 0.02, z: -0.16, w: 0.08, h: 0.08, d: 0.32, color: 0xffd84a },
+      { x: -0.12 + i * 0.09, y: 0.08, z: -0.22, w: 0.08, h: 0.08, d: 0.08, color: 0xffd84a },
+      { x: -0.12 + i * 0.09, y: 0.08, z: 0.14, w: 0.08, h: 0.08, d: 0.08, color: 0xffd84a },
+    ])
+    boxes.push({ x: -0.12, y: 0.12, z: -0.27, w: 0.26, h: 0.06, d: 0.06, color: 0x6b4a2e })
+    group.add(new THREE.Mesh(boxesGeometry(boxes), this.occluderMat))
+    const glint = new THREE.Mesh(boxesGeometry([{ x: 0.12, y: 0.22, z: 0, w: 2 / 16, h: 0.1, d: 0.02, color: 0xfff4e3 }]), this.glowMat)
+    group.add(glint)
+    const shadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
+    shadow.scale.set(0.6, 1, 0.4)
+    group.add(shadow)
+    group.position.set(at.x, 0, at.z)
+    this.scene.add(group)
+    this.banana = group
+  }
+
+  /** Found already on an earlier visit: leave the beach empty */
+  hideBanana() {
+    if (this.banana) this.banana.visible = false
+    this.told.add("banana")
+  }
+
+  private updateBanana(now: number) {
+    const b = this.banana
+    const r = this.runner
+    if (!b || !b.visible || !r) return
+    if (!this.reduceMotion) {
+      b.children[0].position.y = Math.floor(now / 600) % 2 ? 1 / 16 : 0
+      b.children[1].visible = Math.floor(now / 250) % 8 === 0
+    }
+    if (Math.hypot(r.x - b.position.x, r.z - b.position.z) < 0.75) {
+      b.visible = false
+      this.cb.onSfx("cup")
+      this.tellOnce("banana")
+    }
+  }
+
+  /** Dress the Runner in a Kit: his singlet's two colours */
+  setKit(top: string, bottom: string) {
+    this.kit = { top, bottom }
+    const canvas = this.runnerTex.image as HTMLCanvasElement
+    drawRunnerAtlas(canvas, this.kit)
+    this.runnerTex.needsUpdate = true
+    this.ghostTex.needsUpdate = true
+    if (!this.running) this.renderOnce()
+  }
+
   /** Play a sound only if its source is on screen, more or less */
   private sfxAt(name: OverworldSfx, at: Vec2) {
     if (Math.abs(at.x - this.focus.x) < 14 && Math.abs(at.z - this.focus.z) < 12) this.cb.onSfx(name)
@@ -1392,6 +1471,7 @@ export class Overworld {
     if (r.moving || r.airborne || speed > 0.4) this.stillSince = now
     const idle = (now - this.stillSince) / 1000
     let pose: Pose = idle > 4 && (idle - 4) % 7 < 1.8 ? "watch" : "stand"
+    if (pose === "watch") this.tellOnce("watch")
     if (r.airborne) pose = "jump"
     else if (speed > 0.4) {
       if (this.reduceMotion) pose = "a"
@@ -1443,7 +1523,10 @@ export class Overworld {
         this.lastYear = year
         this.cb.onYear(year)
       }
+      if (rising.length && this.questRoad.allRisen()) this.tellOnce("stones")
     }
+    if (r && r.z > PIER.z1 - 1 && Math.abs(r.x - PIER.x) < PIER.halfWidth) this.tellOnce("pier")
+    this.updateBanana(now)
     if (this.reduceMotion) return
     // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE

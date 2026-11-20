@@ -103,6 +103,7 @@ export type RoamSfx =
   | "stone"
   | "lap"
   | "best"
+  | "medal"
 
 interface SfxNote {
   /** start offset, s */
@@ -189,6 +190,16 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
       { at: 0.16, dur: 0.07, type: "square", from: midi(79), gain: 0.06 },
       { at: 0.24, dur: 0.4, type: "square", from: midi(84), gain: 0.06 },
       { at: 0.24, dur: 0.4, type: "triangle", from: midi(60), gain: 0.08 },
+    ],
+  },
+  // a Medal won: a bright little four-note jingle
+  medal: {
+    gap: 0.4,
+    notes: [
+      { at: 0, dur: 0.06, type: "square", from: midi(79), gain: 0.05 },
+      { at: 0.07, dur: 0.06, type: "square", from: midi(84), gain: 0.05 },
+      { at: 0.14, dur: 0.06, type: "square", from: midi(88), gain: 0.05 },
+      { at: 0.21, dur: 0.22, type: "square", from: midi(91), gain: 0.05 },
     ],
   },
   // a car waiting on the Runner: two polite beeps

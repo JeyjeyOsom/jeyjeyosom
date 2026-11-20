@@ -89,6 +89,11 @@ export class QuestRoad {
     })
   }
 
+  /** Every stone has come up */
+  allRisen(): boolean {
+    return this.stones.every((s) => s.risenAt !== null)
+  }
+
   /**
    * Raise the stones he has reached; returns the year to show while he is
    * on the stretch (null off it), and the stones that began rising now.

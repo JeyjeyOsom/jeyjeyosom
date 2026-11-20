@@ -14,6 +14,7 @@ import {
   type Vec2,
 } from "./overworld/level"
 import type { Look } from "./overworld/engine"
+import type { Kit, KitId, Medal } from "./medals"
 
 // The Overworld's two panels: the map (fast travel, and the keyboard and
 // screen-reader route to every Zone) and the menu. Both are dialogs over a
@@ -194,6 +195,11 @@ export function RoamMenu({
   onToggleSky,
   onLook,
   onExit,
+  medals,
+  medalCount,
+  kits,
+  kit,
+  onKit,
 }: {
   muted: boolean
   sky: "dusk" | "dawn"
@@ -205,6 +211,11 @@ export function RoamMenu({
   onToggleSky: () => void
   onLook: (look: Look) => void
   onExit: () => void
+  medals: Array<Medal & { earned: boolean; progress: number }>
+  medalCount: number
+  kits: Array<Kit & { unlocked: boolean }>
+  kit: KitId
+  onKit: (kit: KitId) => void
 }) {
   const firstRef = useRef<HTMLButtonElement>(null)
   useEffect(() => firstRef.current?.focus(), [])
@@ -236,6 +247,57 @@ export function RoamMenu({
           <button onClick={onExit} className={item}>
             {caret}EXIT THE OVERWORLD
           </button>
+        </div>
+
+        <h3 className="mt-7 font-arcade text-[9px] text-gold-400">
+          MEDALS{" "}
+          <span className="text-mist-300">
+            {medalCount}/{medals.length}
+          </span>
+        </h3>
+        <ul className="mt-3 grid sm:grid-cols-2 gap-x-4 gap-y-2">
+          {medals.map((m) => {
+            const hidden = m.secret && !m.earned
+            return (
+              <li key={m.id} className="flex items-start gap-2">
+                <span
+                  aria-hidden="true"
+                  className={`mt-0.5 inline-block w-3 h-3 shrink-0 ${m.earned ? "bg-gold-400" : "bg-dusk-700"}`}
+                />
+                <span className="min-w-0">
+                  <span className={`block font-arcade text-[8px] ${m.earned ? "text-cream-100" : "text-mist-300"}`}>
+                    {hidden ? "???" : m.name}
+                    <span className="sr-only">{m.earned ? " (earned)" : " (not yet)"}</span>
+                  </span>
+                  <span className="block font-body text-xs text-mist-300">
+                    {hidden ? "A secret." : m.earned && m.cheer ? m.cheer : m.hint}
+                    {!m.earned && m.needs ? ` ${m.progress}/${m.needs}` : ""}
+                  </span>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+
+        <h3 className="mt-7 font-arcade text-[9px] text-gold-400">KIT</h3>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {kits.map((k) => (
+            <button
+              key={k.id}
+              disabled={!k.unlocked}
+              aria-pressed={kit === k.id}
+              onClick={() => onKit(k.id)}
+              className={`flex items-center gap-2 font-arcade text-[8px] px-2 py-1.5 focus-ring disabled:opacity-50 ${
+                kit === k.id ? "bg-gold-400 text-dusk-950" : "bg-dusk-800 text-cream-100 hover:text-gold-300"
+              }`}
+            >
+              <span aria-hidden="true" className="inline-flex">
+                <span className="inline-block w-2 h-2" style={{ background: k.top }} />
+                <span className="inline-block w-2 h-2" style={{ background: k.bottom }} />
+              </span>
+              {k.unlocked ? k.name : `${k.name} · ${k.needs} MEDALS`}
+            </button>
+          ))}
         </div>
 
         <h3 className="mt-7 font-arcade text-[9px] text-gold-400">CONTROLS</h3>
