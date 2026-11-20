@@ -4,11 +4,12 @@ import { useRoam } from "./RoamContext"
 import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
 import { useSound } from "../SoundContext"
 import { WORLD_MAP } from "../zones/registry"
-import { scrollToZone, zoneName } from "./world"
+import { lastInput, scrollToZone, zoneName } from "./world"
 import { DEFAULT_LOOK, type FrameReport, type LapReport, type Look, Overworld, type OverworldCallbacks } from "./overworld/engine"
 import { formatLap } from "./overworld/lap"
 import { ISLAND_RX, ISLAND_RZ } from "./overworld/level"
 import { KITS, type KitId, type MedalId, MEDALS, MedalBook } from "./medals"
+import { held as padHeld, PAD, PadEdges, padGlyphs, type PadGlyphs, readPad, rumble, stick } from "./gamepad"
 import { RoamMap, RoamMenu, RoamMiniMap } from "./RoamPanels"
 import { RoamCover } from "./RoamScreens"
 
@@ -124,6 +125,25 @@ function useIris(reduceMotion: boolean) {
   return useMemo(() => ({ ref, close, open, cover }), [close, open, cover])
 }
 
+/** A gamepad button as a prompt shows it: a little cap with its glyph */
+function PadKey({ glyph }: { glyph: string }) {
+  return <span className="inline-block border border-gold-400 text-gold-400 px-1 leading-tight">{glyph}</span>
+}
+
+/** Move focus to the previous or next control in the open dialog */
+function moveFocus(step: 1 | -1) {
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+  if (!dialog) return
+  const items = Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]")).filter(
+    (el) => el.offsetParent !== null && el.tabIndex >= 0 && el.getAttribute("aria-hidden") !== "true"
+  )
+  if (items.length === 0) return
+  const at = items.indexOf(document.activeElement as HTMLElement)
+  const next = items[(at + step + items.length) % items.length]
+  next.focus({ focusVisible: true } as FocusOptions)
+  next.scrollIntoView({ block: "nearest" })
+}
+
 const isTyping = (e: KeyboardEvent) => {
   const t = e.target as HTMLElement | null
   return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)
@@ -163,6 +183,33 @@ export default function RoamMode() {
   const book = bookRef.current
   const [toasts, setToasts] = useState<Array<{ key: number; title: string; line: string }>>([])
   const [medalCount, setMedalCount] = useState(() => book.count())
+  // The last device used decides how prompts name the controls: keys, or
+  // the gamepad's buttons
+  const [pad, setPad] = useState<PadGlyphs | null>(() => (lastInput.pad ? padGlyphs(readPad()) : null))
+  const padRef = useRef<PadGlyphs | null>(pad)
+  const markPad = useCallback(() => {
+    lastInput.pad = true
+    if (padRef.current) return
+    padRef.current = padGlyphs(readPad())
+    setPad(padRef.current)
+  }, [])
+  useEffect(() => {
+    const toKeys = () => {
+      lastInput.pad = false
+      if (!padRef.current) return
+      padRef.current = null
+      setPad(null)
+    }
+    window.addEventListener("keydown", toKeys)
+    window.addEventListener("pointerdown", toKeys)
+    return () => {
+      window.removeEventListener("keydown", toKeys)
+      window.removeEventListener("pointerdown", toKeys)
+    }
+  }, [])
+  const buzz = useCallback((ms: number, strong: number, weak: number) => {
+    if (padRef.current) rumble(readPad(), ms, strong, weak)
+  }, [])
   const [kit, setKit] = useState<KitId>(() => book.kit().id)
   const toastKey = useRef(0)
   const bestBefore = useRef<number | null>(null)
@@ -171,6 +218,7 @@ export default function RoamMode() {
     const won = book.record(id, key)
     if (!won) return
     playSfx("medal")
+    buzz(160, 0.3, 0.6)
     setMedalCount(book.count())
     const next = [{ key: ++toastKey.current, title: `MEDAL · ${won.medal.name}`, line: won.medal.cheer ?? won.medal.hint }]
     for (const k of won.kits) next.push({ key: ++toastKey.current, title: `${k.name} UNLOCKED`, line: "Wear it from the menu." })
@@ -242,6 +290,7 @@ export default function RoamMode() {
         if (report.finished) {
           const done = report.finished
           latest.current.playSfx(done.newBest ? "best" : "lap")
+          buzz(done.newBest ? 320 : 180, 0.5, 0.8)
           setLapDone(done)
           window.clearTimeout(lapDoneTimer.current)
           lapDoneTimer.current = window.setTimeout(() => setLapDone(null), 3600)
@@ -294,6 +343,7 @@ export default function RoamMode() {
         waves.current = level
         latest.current.setAmbience({ waves: level, dusk: latest.current.theme === "dusk" })
       },
+      onPad: markPad,
       onHover: (text) => {
         const el = caption.current
         if (!el) return
@@ -456,6 +506,7 @@ export default function RoamMode() {
         if (!engine) return
         engine.setInputEnabled(false)
         latest.current.playSfx("door")
+        buzz(90, 0.2, 0.4)
         const p = engine.runnerOnScreen()
         await iris.close(p.x, p.y)
         coveredForDoor.current = true
@@ -463,7 +514,7 @@ export default function RoamMode() {
         latest.current.roam.openDoor(zoneId)
       })
     },
-    [enqueue, iris]
+    [enqueue, iris, buzz]
   )
 
   latest.current.openDoor = openDoor
@@ -509,6 +560,75 @@ export default function RoamMode() {
     engineRef.current?.setInputEnabled(panel === "none")
     if (panel === "none" && document.activeElement instanceof HTMLElement) document.activeElement.blur()
   }, [panel, ready, stage, view])
+
+  // ---- the gamepad's share of the interface ----
+  // PRESS START, doors, panels and the map. The engine reads the pad for
+  // movement; this loop runs whatever the engine is doing, since behind a
+  // door it's paused.
+  const padUi = useRef({ stage, view, panel, prompt, failure, roam, openDoor, playSfx })
+  padUi.current = { stage, view, panel, prompt, failure, roam, openDoor, playSfx }
+  useEffect(() => {
+    const edges = new PadEdges()
+    let raf = 0
+    let last = performance.now()
+    let navSince = 0
+    let navAt = 0
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop)
+      const dt = Math.min((now - last) / 1000, 1 / 20)
+      last = now
+      const p = readPad()
+      edges.update(p)
+      if (!p) return
+      const ui = padUi.current
+      if (edges.anyDown()) markPad()
+      if (ui.failure) {
+        if (edges.down(PAD.A) || edges.down(PAD.B)) ui.roam.exit()
+        return
+      }
+      if (ui.stage === "start") {
+        if (edges.down(PAD.A) || edges.down(PAD.START)) setStage("live")
+        else if (edges.down(PAD.B)) ui.roam.exit()
+        return
+      }
+      if (ui.stage !== "live" || busy.current) return
+      const leftStick = stick(p, 0, 1)
+      if (ui.view === "door") {
+        // the page behind the door scrolls with the stick or the D-pad
+        const dy = padHeld(p, PAD.DOWN) ? 1 : padHeld(p, PAD.UP) ? -1 : leftStick.y
+        if (dy) window.scrollBy(0, dy * 900 * dt)
+        if (edges.down(PAD.B)) ui.roam.backToOverworld()
+        return
+      }
+      if (ui.view !== "overworld") return
+      if (ui.panel !== "none") {
+        // up and down step through the panel's controls, repeating if held
+        const dir = padHeld(p, PAD.DOWN) || padHeld(p, PAD.RIGHT) || leftStick.y > 0.6 ? 1 : padHeld(p, PAD.UP) || padHeld(p, PAD.LEFT) || leftStick.y < -0.6 ? -1 : 0
+        if (!dir) navSince = 0
+        else if (!navSince) {
+          navSince = now
+          navAt = now
+          moveFocus(dir)
+        } else if (now - navSince > 350 && now - navAt > 140) {
+          navAt = now
+          moveFocus(dir)
+        }
+        if (edges.down(PAD.A) && document.activeElement instanceof HTMLElement) document.activeElement.click()
+        else if (edges.down(PAD.B) || edges.down(PAD.START) || (ui.panel === "map" && edges.down(PAD.Y))) setPanel("none")
+        return
+      }
+      if (edges.down(PAD.X) && ui.prompt) ui.openDoor(ui.prompt)
+      else if (edges.down(PAD.Y)) {
+        ui.playSfx("menu")
+        setPanel("map")
+      } else if (edges.down(PAD.START)) {
+        ui.playSfx("menu")
+        setPanel("menu")
+      }
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [markPad])
 
   // ---- keys the interface owns: start, Enter, M, Esc ----
   useEffect(() => {
@@ -661,13 +781,13 @@ export default function RoamMode() {
                   onClick={blurAfter(() => setPanel("map"))}
                   className="font-arcade text-[8px] md:text-[9px] text-cream-100 hover:text-gold-300 focus-ring"
                 >
-                  MAP <span className="text-mist-300">M</span>
+                  MAP <span className="text-mist-300">{pad ? pad.Y : "M"}</span>
                 </button>
                 <button
                   onClick={blurAfter(() => setPanel("menu"))}
                   className="font-arcade text-[8px] md:text-[9px] text-cream-100 hover:text-gold-300 focus-ring"
                 >
-                  MENU <span className="text-mist-300">ESC</span>
+                  MENU <span className="text-mist-300">{pad ? pad.START : "ESC"}</span>
                 </button>
                 <button
                   onClick={blurAfter(toggleMuted)}
@@ -704,16 +824,26 @@ export default function RoamMode() {
           <div aria-live="polite" className="fixed inset-x-0 bottom-6 z-[65] flex justify-center px-4 pointer-events-none">
             {prompt ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[9px] md:text-[10px] text-cream-100">
-                <span className="text-gold-400 animate-blink">ENTER</span> ▸ OPEN THE {zoneName(prompt)}
+                {pad ? <PadKey glyph={pad.X} /> : <span className="text-gold-400 animate-blink">ENTER</span>} ▸ OPEN THE{" "}
+                {zoneName(prompt)}
               </p>
             ) : stuck ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[9px] text-cream-100">
-                STUCK? PRESS <span className="text-gold-400">R</span>
+                STUCK? PRESS {pad ? <PadKey glyph={pad.BACK} /> : <span className="text-gold-400">R</span>}
               </p>
             ) : !moved ? (
               <p className="pixel-border bg-dusk-950/90 mx-1 px-4 py-3 font-arcade text-[8px] md:text-[9px] text-cream-100 text-center leading-relaxed">
-                <span className="text-gold-400">WASD</span> RUN · <span className="text-gold-400">SHIFT</span> SPRINT ·{" "}
-                <span className="text-gold-400">SPACE</span> JUMP · <span className="text-gold-400">M</span> MAP
+                {pad ? (
+                  <>
+                    <span className="text-gold-400">STICK</span> RUN · <PadKey glyph={pad.B} /> SPRINT · <PadKey glyph={pad.A} /> JUMP ·{" "}
+                    <PadKey glyph={pad.Y} /> MAP
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gold-400">WASD</span> RUN · <span className="text-gold-400">SHIFT</span> SPRINT ·{" "}
+                    <span className="text-gold-400">SPACE</span> JUMP · <span className="text-gold-400">M</span> MAP
+                  </>
+                )}
               </p>
             ) : null}
           </div>
@@ -739,7 +869,7 @@ export default function RoamMode() {
             onClick={roam.backToOverworld}
             className="pointer-events-auto pixel-border bg-dusk-950/95 mx-1 px-4 py-3 font-arcade text-[9px] md:text-[10px] text-gold-400 hover:text-gold-300 focus-ring"
           >
-            ◂ BACK TO THE OVERWORLD <span className="text-mist-300">ESC</span>
+            ◂ BACK TO THE OVERWORLD <span className="text-mist-300">{pad ? pad.B : "ESC"}</span>
           </button>
         </div>
       )}
@@ -770,6 +900,7 @@ export default function RoamMode() {
           }}
           onLook={setLook}
           onExit={leave}
+          pad={pad ?? padGlyphs(readPad())}
           medals={MEDALS.map((m) => ({ ...m, earned: book.has(m.id), progress: book.progress(m.id) }))}
           medalCount={medalCount}
           kits={KITS.map((k) => ({ ...k, unlocked: book.unlocked(k.id) }))}

@@ -92,6 +92,7 @@ import { inPier, islandReach, surfaceAt } from "./level"
 import { boxesGeometry, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
 import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
+import { held as padHeld, PAD, PadEdges, readPad, stick } from "../gamepad"
 import { type LapFinish, LapTimer } from "./lap"
 import { QuestRoad } from "./questroad"
 import { QUESTS, questStartYear } from "../../zones/quests"
@@ -168,6 +169,8 @@ export interface OverworldCallbacks {
   onAmbience: (waves: number) => void
   /** what the pointer is over, or null */
   onHover: (caption: string | null) => void
+  /** a gamepad moved him (so the prompts can show its buttons) */
+  onPad: () => void
   /** a Landmark clicked in the scene */
   onOpen: (zoneId: string) => void
   onFrame: (report: FrameReport) => void
@@ -340,6 +343,9 @@ export class Overworld {
   private readonly pointables: Array<{ obj: THREE.Object3D; caption: () => string; click?: () => void }> = []
   private readonly raycaster = new THREE.Raycaster()
   private stridePhase = 0
+  /** the gamepad's buttons, tracked every frame so a press that closes a
+   *  panel isn't read as a jump the moment the panel goes */
+  private readonly padEdges = new PadEdges()
   private lastWaves = -1
   /** events the interface has been told of once already */
   private readonly told = new Set<string>()
@@ -1374,6 +1380,43 @@ export class Overworld {
     this.setZoom(Math.max(0, Math.min(ZOOM_ROWS.length - 1, this.zoom + (e.deltaY > 0 ? 1 : -1))))
   }
 
+  /**
+   * The gamepad: the left stick (or the D-pad) runs him, as gently as it
+   * is tilted; A jumps, B or the right trigger sprints, the bumpers zoom,
+   * the right stick looks around and View respawns him. Keys win when
+   * both are held.
+   */
+  private readGamepad(intent: { x: number; y: number; sprint: boolean }, dt: number) {
+    const pad = readPad()
+    this.padEdges.update(pad)
+    if (!pad || !this.inputEnabled) return
+    const left = stick(pad, 0, 1)
+    let x = left.x
+    let y = -left.y
+    if (padHeld(pad, PAD.LEFT) || padHeld(pad, PAD.RIGHT)) x = (padHeld(pad, PAD.RIGHT) ? 1 : 0) - (padHeld(pad, PAD.LEFT) ? 1 : 0)
+    if (padHeld(pad, PAD.UP) || padHeld(pad, PAD.DOWN)) y = (padHeld(pad, PAD.UP) ? 1 : 0) - (padHeld(pad, PAD.DOWN) ? 1 : 0)
+    const sprint = padHeld(pad, PAD.B) || (pad.buttons[PAD.RT]?.value ?? 0) > 0.5
+    if (!intent.x && !intent.y) {
+      intent.x = x
+      intent.y = y
+    }
+    intent.sprint ||= sprint
+    if (this.padEdges.down(PAD.A)) this.jumpQueued = true
+    if (this.padEdges.down(PAD.LB)) this.setZoom(Math.min(ZOOM_ROWS.length - 1, this.zoom + 1))
+    if (this.padEdges.down(PAD.RB)) this.setZoom(Math.max(0, this.zoom - 1))
+    if (this.padEdges.down(PAD.BACK)) this.cb.onRespawn()
+    // look around with the right stick, as a drag would
+    const look = stick(pad, 2, 3)
+    if (look.x || look.y) {
+      const { right, up } = this.axes
+      this.pan.x += (right.x * look.x - up.x * look.y) * 14 * dt
+      this.pan.z += (right.z * look.x - up.z * look.y) * 14 * dt
+      const len = Math.hypot(this.pan.x, this.pan.z)
+      if (len > 24) this.pan.multiplyScalar(24 / len)
+    }
+    if (x || y || sprint || look.x || look.y || this.padEdges.anyDown()) this.cb.onPad()
+  }
+
   /** Step the whole-pixel zoom, and remember it */
   setZoom(level: number) {
     if (level === this.zoom) return
@@ -1580,6 +1623,7 @@ export class Overworld {
       sprint: this.held.sprint,
       jump: false,
     }
+    this.readGamepad(intent, dt)
     // a clicked spot steers him until he gets there, a key takes over, or
     // he's stuck against something
     if (intent.x || intent.y || !this.inputEnabled || this.stuck.on) this.goal = null

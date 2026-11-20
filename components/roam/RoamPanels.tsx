@@ -18,6 +18,7 @@ import {
 } from "./overworld/level"
 import type { Look } from "./overworld/engine"
 import type { Kit, KitId, Medal } from "./medals"
+import type { PadGlyphs } from "./gamepad"
 
 // The Overworld's two panels: the map (fast travel, and the keyboard and
 // screen-reader route to every Zone) and the menu. Both are dialogs over a
@@ -257,6 +258,7 @@ export function RoamMenu({
   kits,
   kit,
   onKit,
+  pad,
 }: {
   muted: boolean
   sky: "dusk" | "dawn"
@@ -273,6 +275,8 @@ export function RoamMenu({
   kits: Array<Kit & { unlocked: boolean }>
   kit: KitId
   onKit: (kit: KitId) => void
+  /** the pad's glyphs, for its table of controls */
+  pad: PadGlyphs
 }) {
   const firstRef = useRef<HTMLButtonElement>(null)
   useEffect(() => firstRef.current?.focus(), [])
@@ -391,6 +395,30 @@ export function RoamMenu({
             {CONTROLS.map(([key, action]) => (
               <tr key={key}>
                 <td className="py-1 pr-4 font-arcade text-[8px] text-gold-300 whitespace-nowrap">{key}</td>
+                <td className="py-1 text-mist-300">{action}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3 className="mt-7 font-arcade text-[9px] text-gold-400">GAMEPAD</h3>
+        <table className="mt-3 w-full font-body text-sm">
+          <tbody>
+            {(
+              [
+                ["LEFT STICK / D-PAD", "Run (tilt gently to jog)"],
+                [`${pad.B} / RT`, "Sprint"],
+                [pad.A, "Jump"],
+                [pad.X, "Open a Landmark"],
+                [pad.Y, "Map"],
+                ["LB / RB", "Zoom out and in"],
+                ["RIGHT STICK", "Look around"],
+                [pad.BACK, "Back to the nearest Landmark"],
+                [pad.START, "Menu"],
+              ] as Array<[string, string]>
+            ).map(([button, action]) => (
+              <tr key={action}>
+                <td className="py-1 pr-4 font-arcade text-[8px] text-gold-300 whitespace-nowrap">{button}</td>
                 <td className="py-1 text-mist-300">{action}</td>
               </tr>
             ))}

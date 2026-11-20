@@ -20,9 +20,23 @@ function hasWebGL2(): boolean {
   return webgl2
 }
 
-/** Roam Mode's entrances only appear with a keyboard and WebGL2 (ADR 0002) */
+/** How the visitor last asked for something: Roam Mode's prompts name the
+ *  pad's buttons when it was the pad (its Start enters from the page) */
+export const lastInput = { pad: false }
+
+/** A gamepad is connected (browsers show one only after a button press) */
+export function hasGamepad(): boolean {
+  try {
+    return Array.from(navigator.getGamepads?.() ?? []).some((p) => !!p && p.connected)
+  } catch {
+    return false
+  }
+}
+
+/** Roam Mode's entrances appear with WebGL2 and a way to play: a keyboard
+ *  and mouse, or a gamepad (ADR 0002) */
 export function canRoam(): boolean {
-  return window.matchMedia("(pointer: fine)").matches && hasWebGL2()
+  return (window.matchMedia("(pointer: fine)").matches || hasGamepad()) && hasWebGL2()
 }
 
 /** The Zone a visitor is looking at: the one under 40% of the viewport */

@@ -15,7 +15,7 @@ The opt-in experience entered via Press Start, where keyboard input drives the R
 _Avoid_: game mode, interactive mode
 
 **Roam Mode**:
-The opt-in experience where the keyboard moves the Runner freely around the Overworld: a third Mode beside Browse Mode and Play Mode, with its own entrances.
+The opt-in experience where the keyboard (or a gamepad) moves the Runner freely around the Overworld: a third Mode beside Browse Mode and Play Mode, with its own entrances.
 _Avoid_: 3D mode, explore mode, free roam, game mode
 
 **Press Start**:

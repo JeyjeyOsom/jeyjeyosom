@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { canRoam, scrollToZone, zoneOnScreen } from "./world"
+import { canRoam, hasGamepad, lastInput, scrollToZone, zoneOnScreen } from "./world"
 import { WORLD_MAP } from "../zones/registry"
 import { usePlayMode } from "../play/PlayModeContext"
 
@@ -123,9 +123,42 @@ export function RoamProvider({ children }: { children: ReactNode }) {
       startRoaming(knownZone(hash.slice(ROAM_HASH.length + 1)), false)
     } else {
       window.history.replaceState(null, "", window.location.pathname + window.location.search)
-      setNotice("The Overworld needs a keyboard and WebGL2, so here is the page instead.")
+      setNotice("The Overworld needs a keyboard or a gamepad, and WebGL2, so here is the page instead.")
     }
   }, [startRoaming])
+
+  // A gamepad picked up later opens the entrances too, and its Start
+  // button is one: pressed on the page, it enters the Overworld. The pad
+  // is polled only while one is connected.
+  const enterRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    let timer = 0
+    // a pad usually shows itself to the page through the very press that
+    // means "start", so a Start already down when it appears counts
+    let wasDown = false
+    const poll = () => {
+      const pads = Array.from(navigator.getGamepads?.() ?? [])
+      const down = pads.some((p) => !!p?.connected && !!p.buttons[9]?.pressed)
+      if (down && !wasDown && viewRef.current === "off" && !playingRef.current) {
+        lastInput.pad = true
+        enterRef.current()
+      }
+      wasDown = down
+    }
+    const onPad = () => {
+      setEligible(canRoam())
+      window.clearInterval(timer)
+      if (hasGamepad()) timer = window.setInterval(poll, 100)
+    }
+    onPad()
+    window.addEventListener("gamepadconnected", onPad)
+    window.addEventListener("gamepaddisconnected", onPad)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("gamepadconnected", onPad)
+      window.removeEventListener("gamepaddisconnected", onPad)
+    }
+  }, [])
 
   const enter = useCallback(
     (fromZone?: string) => {
@@ -138,6 +171,8 @@ export function RoamProvider({ children }: { children: ReactNode }) {
     },
     [startRoaming, exitPlay]
   )
+
+  enterRef.current = () => enter()
 
   const openDoor = useCallback((zoneId: string) => {
     window.history.pushState({ roam: "door", zone: zoneId }, "", `#${zoneId}`)
