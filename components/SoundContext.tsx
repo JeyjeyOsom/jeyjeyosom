@@ -172,9 +172,9 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
   flap: {
     gap: 1,
     notes: [
-      { at: 0, dur: 0.03, type: "square", from: 1900, to: 2500, gain: 0.018 },
-      { at: 0.06, dur: 0.03, type: "square", from: 2100, to: 2700, gain: 0.018 },
-      { at: 0.12, dur: 0.03, type: "square", from: 1800, to: 2400, gain: 0.018 },
+      { at: 0, dur: 0.03, type: "square", from: 1900, to: 2500, gain: 0.047 },
+      { at: 0.06, dur: 0.03, type: "square", from: 2100, to: 2700, gain: 0.047 },
+      { at: 0.12, dur: 0.03, type: "square", from: 1800, to: 2400, gain: 0.047 },
     ],
   },
   splash: {
@@ -599,11 +599,12 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     if (!ctx || !sfx || !noise) return
     const t = ctx.currentTime
     const shape = {
+      // gains set by measurement so every surface peaks near -32 dBFS
       road: { type: "bandpass", freq: 2300, q: 1.4, gain: 0.05, dur: 0.035 },
-      grass: { type: "lowpass", freq: 750, q: 0.7, gain: 0.05, dur: 0.05 },
-      sand: { type: "bandpass", freq: 1300, q: 0.8, gain: 0.035, dur: 0.075 },
-      wood: { type: "bandpass", freq: 850, q: 2, gain: 0.05, dur: 0.05 },
-      puddle: { type: "bandpass", freq: 1900, q: 0.9, gain: 0.06, dur: 0.09 },
+      grass: { type: "lowpass", freq: 750, q: 0.7, gain: 0.088, dur: 0.05 },
+      sand: { type: "bandpass", freq: 1300, q: 0.8, gain: 0.055, dur: 0.075 },
+      wood: { type: "bandpass", freq: 850, q: 2, gain: 0.03, dur: 0.05 },
+      puddle: { type: "bandpass", freq: 1900, q: 0.9, gain: 0.035, dur: 0.09 },
     }[surface] as { type: BiquadFilterType; freq: number; q: number; gain: number; dur: number }
     const s = ctx.createBufferSource()
     s.buffer = noise
@@ -625,7 +626,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       o.type = "triangle"
       o.frequency.setValueAtTime(170, t)
       const og = ctx.createGain()
-      og.gain.setValueAtTime(0.05, t)
+      og.gain.setValueAtTime(0.03, t)
       og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06)
       o.connect(og)
       og.connect(sfx)
@@ -760,12 +761,37 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         }, 650)
         ambienceRef.current = { gain, src, lfo, timer, rain, rainSrc }
       }
-      ambienceRef.current.gain.gain.setTargetAtTime(next.waves * 0.07, ctx.currentTime, 0.5)
-      ambienceRef.current.rain.gain.setTargetAtTime(next.rain * 0.06, ctx.currentTime, 0.8)
+      // measured: these keep the surf and the rain about 6 dB under the tune
+      ambienceRef.current.gain.gain.setTargetAtTime(next.waves * 0.0137, ctx.currentTime, 0.5)
+      ambienceRef.current.rain.gain.setTargetAtTime(next.rain * 0.0088, ctx.currentTime, 0.8)
     },
     [stopAmbience]
   )
   useEffect(() => () => stopAmbience(), [stopAmbience])
+
+  // ?look (the prototype flag) exposes the mixer to test drivers, which
+  // measure each sound's level since nobody can listen in a headless run
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("look")) return
+    const debug = window as { __sound?: object }
+    debug.__sound = {
+      ensure: () => {
+        mutedRef.current = false
+        return ensureAudio()
+      },
+      nodes: () => ({ ctx: ctxRef.current, sfx: sfxGainRef.current, bgm: bgmGainRef.current }),
+      playSfx,
+      playStep,
+      playGel,
+      setAmbience,
+      setMode,
+      startBgm,
+      stopBgm,
+    }
+    return () => {
+      delete debug.__sound
+    }
+  }, [ensureAudio, playSfx, playStep, playGel, setAmbience, setMode, startBgm, stopBgm])
 
   const value = useMemo(
     () => ({ muted, toggleMuted, playGel, playStumble, playGameOver, playSfx, playStep, setAmbience, setMode }),

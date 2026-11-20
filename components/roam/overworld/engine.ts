@@ -9,29 +9,6 @@
 
 import * as THREE from "three"
 import {
-  HEADLAMP_LIT,
-  HEADLAMP_LIT_FRONT,
-  RUNNER_BACK_A,
-  RUNNER_BACK_B,
-  RUNNER_BACK_JUMP,
-  RUNNER_BACK_SHARED,
-  RUNNER_BACK_STANDING,
-  RUNNER_BACK_WATCH,
-  RUNNER_FRAME_A,
-  RUNNER_FRAME_B,
-  RUNNER_FRONT_A,
-  RUNNER_FRONT_B,
-  RUNNER_FRONT_JUMP,
-  RUNNER_FRONT_SHARED,
-  RUNNER_FRONT_STANDING,
-  RUNNER_FRONT_WATCH,
-  RUNNER_JUMP,
-  RUNNER_SHARED,
-  RUNNER_STANDING,
-  RUNNER_WATCH,
-  type Px,
-} from "../../sprites"
-import {
   buildSolids,
   BEACH_REACH,
   CAMERA_PITCH,
@@ -91,9 +68,12 @@ import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky
 import { inPier, islandReach, surfaceAt } from "./level"
 import { boxesGeometry, type Cell, cellsGeometry } from "./voxels"
 import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
-import { IslandLife, type LifeEvent, type LifeSfx } from "./life"
-import { held as padHeld, PAD, PadEdges, readPad, stick } from "../gamepad"
-import { type LapFinish, LapTimer } from "./lap"
+import { IslandLife } from "./life"
+import { Controls } from "./controls"
+import { drawRunnerAtlas, FACING_SET, FRAME_COLS, LAMP_ANGLE, type Pose, POSES, WATER_PATTERN, WATER_SIZE } from "./textures"
+import type { LapReport, Look, OverworldCallbacks, OverworldSfx } from "./types"
+export * from "./types"
+import { LapTimer } from "./lap"
 import { QuestRoad } from "./questroad"
 import { rainGrade, Weather, type WeatherMode } from "./weather"
 import { QUESTS, questStartYear } from "../../zones/quests"
@@ -101,91 +81,6 @@ import { QUESTS, questStartYear } from "../../zones/quests"
 // Palette colours go to the screen exactly as written: no colour
 // management between the hex codes and the framebuffer.
 THREE.ColorManagement.enabled = false
-
-export interface Look {
-  /** 0: straight-on three-quarter view; 45: diamond */
-  yaw: 0 | 45
-  lens: "ortho" | "perspective"
-  /** internal rows before the pixel upscale */
-  rows: 180 | 270
-  tones: 2 | 3
-}
-
-/** Juan's pick from the LOOK prototype (2026-11-20): the diamond angle
- *  through the slightly perspective lens */
-export const DEFAULT_LOOK: Look = { yaw: 45, lens: "perspective", rows: 180, tones: 2 }
-
-export interface LabelPosition {
-  zoneId: string
-  /** where its label hangs, in CSS pixels of the host; may be off screen */
-  x: number
-  y: number
-  onScreen: boolean
-}
-
-export interface FrameReport {
-  labels: LabelPosition[]
-  /** the Runner's chest, in CSS pixels of the host */
-  runner: { x: number; y: number }
-  /** where he stands on the island, for the minimap */
-  world: { x: number; z: number }
-  /** how fast he's going, in units a second (the tab-title runner) */
-  speed: number
-}
-
-export type StepSurface = "road" | "grass" | "sand" | "wood" | "puddle"
-
-export type OverworldSfx = LifeSfx | "horn" | "stone"
-
-/** Things the Runner did that the interface keeps score of (Medals) */
-export type OverworldEvent = LifeEvent | { kind: "pier" | "stones" | "honk" | "watch" | "banana" }
-
-export interface LapReport {
-  running: boolean
-  /** seconds into the Lap, to the tenth */
-  time: number
-  best: number | null
-  /** the Lap that just ended, if one did */
-  finished: LapFinish | null
-}
-
-export interface OverworldCallbacks {
-  /** the Landmark whose door the Runner is at, or null */
-  onPrompt: (zoneId: string | null) => void
-  /** the Landmark nearest the Runner, wherever he is */
-  onNearest: (zoneId: string) => void
-  onPace: (pace: string | null) => void
-  onStuck: (stuck: boolean) => void
-  onRespawn: () => void
-  onMoved: () => void
-  onJump: () => void
-  /** a sound from something in view */
-  onSfx: (name: OverworldSfx) => void
-  /** the Lap on his watch changed (at most every tenth of a second) */
-  onLap: (report: LapReport) => void
-  /** the year to show while he runs the Quest Road, or null off it */
-  onYear: (year: number | null) => void
-  onEvent: (e: OverworldEvent) => void
-  /** a footfall, and what it lands on */
-  onStep: (surface: StepSurface) => void
-  /** how near the coast he is, 0 inland .. 1 on the beach, for the surf */
-  onAmbience: (waves: number) => void
-  /** what the pointer is over, or null */
-  onHover: (caption: string | null) => void
-  /** a gamepad moved him (so the prompts can show its buttons) */
-  onPad: () => void
-  /** the touch thumb-stick: where it was planted and where the thumb is,
-   *  in CSS pixels, and whether it's pushed far enough to sprint; null
-   *  when no thumb is down */
-  onStick: (stick: { ox: number; oy: number; x: number; y: number; sprint: boolean } | null) => void
-  /** a Landmark clicked in the scene */
-  onOpen: (zoneId: string) => void
-  /** how hard it's raining, 0..1, reported in twentieths */
-  onRain: (intensity: number) => void
-  onFrame: (report: FrameReport) => void
-  onFrameTime: (ms: number) => void
-  onContextLost: () => void
-}
 
 interface Options {
   zoneIds: string[]
@@ -220,110 +115,12 @@ function byTile<T>(items: T[], at: (item: T) => Vec2): Map<string, T[]> {
   }
   return tiles
 }
-/** The touch thumb-stick's reach in CSS pixels, and how far past it sprints */
-export const STICK_RADIUS = 44
-export const STICK_SPRINT = 1.5
+export { STICK_RADIUS, STICK_SPRINT } from "./controls"
 /** How near the Runner must be to a Landmark's door to wake it */
 const WAKE_REACH = 7
 // The camera looks this far ahead of the Runner (up the screen), so he
 // runs in the lower half and the Landmarks he faces fit above him
 const LOOK_AHEAD = 2.4
-
-// The sprite sheet: one row per headlamp state, and for each facing (side,
-// front, back) the same run of poses
-const POSES = ["stand", "a", "b", "jump", "watch"] as const
-type Pose = (typeof POSES)[number]
-const FRAME_COLS = 3 * POSES.length
-const FACING_SET: Record<Facing, number> = { right: 0, left: 0, down: 1, up: 2 }
-/** Which way the headlamp throws its beam (rotation about y from +x) */
-const LAMP_ANGLE: Record<Facing, number> = { right: 0, up: Math.PI / 2, left: Math.PI, down: -Math.PI / 2 }
-
-/** Paint the sheet; a Kit swaps the singlet's two colours */
-function drawRunnerAtlas(
-  canvas: HTMLCanvasElement = document.createElement("canvas"),
-  kit?: { top: string; bottom: string }
-): HTMLCanvasElement {
-  canvas.width = 16 * FRAME_COLS
-  canvas.height = 40
-  const g = canvas.getContext("2d")!
-  g.clearRect(0, 0, canvas.width, canvas.height)
-  const swap = (fill: string) => {
-    const f = fill.toUpperCase()
-    if (kit && f === "#FF9A4A") return kit.top
-    if (kit && f === "#7EC8E8") return kit.bottom
-    return fill
-  }
-  const sets: Array<{ shared: Px[]; lamp: Px[]; poses: Record<Pose, Px[]> }> = [
-    {
-      shared: RUNNER_SHARED,
-      lamp: HEADLAMP_LIT,
-      poses: { stand: RUNNER_STANDING, a: RUNNER_FRAME_A, b: RUNNER_FRAME_B, jump: RUNNER_JUMP, watch: RUNNER_WATCH },
-    },
-    {
-      shared: RUNNER_FRONT_SHARED,
-      lamp: HEADLAMP_LIT_FRONT,
-      poses: {
-        stand: RUNNER_FRONT_STANDING,
-        a: RUNNER_FRONT_A,
-        b: RUNNER_FRONT_B,
-        jump: RUNNER_FRONT_JUMP,
-        watch: RUNNER_FRONT_WATCH,
-      },
-    },
-    {
-      shared: RUNNER_BACK_SHARED,
-      lamp: [],
-      poses: {
-        stand: RUNNER_BACK_STANDING,
-        a: RUNNER_BACK_A,
-        b: RUNNER_BACK_B,
-        jump: RUNNER_BACK_JUMP,
-        watch: RUNNER_BACK_WATCH,
-      },
-    },
-  ]
-  for (let lit = 0; lit < 2; lit++) {
-    sets.forEach(({ shared, lamp, poses }, set) => {
-      POSES.forEach((name, k) => {
-        const pose = poses[name]
-        const ox = (set * POSES.length + k) * 16
-        const oy = lit * 20
-        for (const [x, y, w, h, fill] of [...shared, ...pose, ...(lit ? lamp : [])]) {
-          g.fillStyle = swap(fill)
-          g.fillRect(ox + x, oy + y, w, h)
-        }
-      })
-    })
-  }
-  return canvas
-}
-
-// The waterfall's texture: 12 x 12 texels of three tones (deep, mid, foam)
-// in streaks, recoloured whenever the sky changes
-const WATER_SIZE = 12
-const WATER_PATTERN: Uint8Array = (() => {
-  const p = new Uint8Array(WATER_SIZE * WATER_SIZE)
-  let seed = 7
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
-  const streak = (u: number, tone: number, min: number, max: number) => {
-    const start = Math.floor(rand() * WATER_SIZE)
-    const length = min + Math.floor(rand() * (max - min + 1))
-    for (let v = 0; v < length; v++) p[((start + v) % WATER_SIZE) * WATER_SIZE + u] = tone
-  }
-  for (let u = 0; u < WATER_SIZE; u++) {
-    const edge = u === 0 || u === WATER_SIZE - 1
-    // the edges churn white; the body is deep water with long pale streaks
-    // and a short fleck of foam here and there
-    for (let v = 0; v < WATER_SIZE; v++) p[v * WATER_SIZE + u] = edge ? 2 : 0
-    if (edge) {
-      streak(u, 1, 2, 4)
-      continue
-    }
-    if (u % 3 !== 1) streak(u, 1, 3, 7)
-    if (rand() < 0.45) streak(u, 2, 1, 2)
-  }
-  return p
-})()
 
 export class Overworld {
   private readonly host: HTMLElement
@@ -364,12 +161,11 @@ export class Overworld {
   private readonly ghostTex: THREE.Texture
   /** whole-pixel zoom: 0 near (the Look's rows), 1 middle, 2 far */
   private zoom = 0
-  private lastWheel = 0
   /** where a click asked him to run, and its marker */
   private goal: Vec2 | null = null
   private readonly goalMarker: THREE.Mesh
   /** the pointer, for captions and clicks */
-  private pointer: { x: number; y: number; moved: number } | null = null
+  private pointer: { x: number; y: number } | null = null
   private hoverAt = 0
   private hoverDirty = false
   private lastCaption: string | null = null
@@ -377,12 +173,6 @@ export class Overworld {
   private readonly pointables: Array<{ obj: THREE.Object3D; caption: () => string; click?: () => void }> = []
   private readonly raycaster = new THREE.Raycaster()
   private stridePhase = 0
-  /** the gamepad's buttons, tracked every frame so a press that closes a
-   *  panel isn't read as a jump the moment the panel goes */
-  private readonly padEdges = new PadEdges()
-  /** touch: the first finger is a thumb-stick (or a tap), a second looks around */
-  private stickTouch: { id: number; ox: number; oy: number; x: number; y: number; t0: number; moved: number } | null = null
-  private panTouch: { id: number; x: number; y: number } | null = null
   private lastWaves = -1
   /** events the interface has been told of once already */
   private readonly told = new Set<string>()
@@ -455,10 +245,8 @@ export class Overworld {
   private size = { iw: 320, ih: 180, scale: 1, left: 0, top: 0 }
 
   // input
-  private readonly held = { up: false, down: false, left: false, right: false, sprint: false }
-  private jumpQueued = false
+  private readonly controls: Controls
   private inputEnabled = true
-  private drag: { x: number; y: number } | null = null
 
   // loop
   private raf = 0
@@ -623,26 +411,30 @@ export class Overworld {
     this.camera = this.makeCamera()
     this.applySky(SKIES[this.sky])
 
-    this.onKeyDown = this.onKeyDown.bind(this)
-    this.onKeyUp = this.onKeyUp.bind(this)
-    this.onBlur = this.onBlur.bind(this)
     this.onVisibility = this.onVisibility.bind(this)
-    this.onPointerDown = this.onPointerDown.bind(this)
-    this.onPointerMove = this.onPointerMove.bind(this)
-    this.onPointerUp = this.onPointerUp.bind(this)
     this.onContextLost = this.onContextLost.bind(this)
     this.tick = this.tick.bind(this)
-    window.addEventListener("keydown", this.onKeyDown)
-    window.addEventListener("keyup", this.onKeyUp)
-    window.addEventListener("blur", this.onBlur)
     document.addEventListener("visibilitychange", this.onVisibility)
-    this.canvas.addEventListener("pointerdown", this.onPointerDown)
-    this.onWheel = this.onWheel.bind(this)
-    this.canvas.addEventListener("wheel", this.onWheel, { passive: true })
-    window.addEventListener("pointermove", this.onPointerMove)
-    window.addEventListener("pointerup", this.onPointerUp)
-    window.addEventListener("pointercancel", this.onPointerUp)
     this.canvas.addEventListener("webglcontextlost", this.onContextLost)
+    this.controls = new Controls({
+      canvas: this.canvas,
+      enabled: () => this.inputEnabled,
+      panBy: (dx, dy) => this.panBy(dx, dy),
+      look: (x, y, dt) => this.lookBy(x, y, dt),
+      zoom: (step) =>
+        this.setZoom(step === "cycle" ? (this.zoom + 1) % ZOOM_ROWS.length : Math.max(0, Math.min(ZOOM_ROWS.length - 1, this.zoom + step))),
+      respawn: () => this.cb.onRespawn(),
+      act: (x, y, tap) => this.actAt(x, y, tap),
+      hover: (at) => {
+        // over the island: raycast there; off it: clear any caption
+        if (at) this.pointer = at
+        else if (this.lastCaption === null) return
+        else this.pointer = null
+        this.hoverDirty = true
+      },
+      stick: (stick) => this.cb.onStick(stick),
+      usedPad: () => this.cb.onPad(),
+    })
 
     this.resizeObserver = new ResizeObserver(() => this.resize())
     this.resizeObserver.observe(host)
@@ -660,7 +452,7 @@ export class Overworld {
   /** Stop rendering, e.g. while a door is open */
   pause() {
     this.paused = true
-    this.releaseKeys()
+    this.controls.release()
     this.stop()
     this.goal = null
     this.pointer = null
@@ -673,7 +465,7 @@ export class Overworld {
 
   setInputEnabled(enabled: boolean) {
     this.inputEnabled = enabled
-    if (!enabled) this.releaseKeys()
+    if (!enabled) this.controls.release()
   }
 
   /** Put the Runner at a Landmark's door, camera and all */
@@ -741,15 +533,8 @@ export class Overworld {
   dispose() {
     this.stop()
     this.resizeObserver.disconnect()
-    window.removeEventListener("keydown", this.onKeyDown)
-    window.removeEventListener("keyup", this.onKeyUp)
-    window.removeEventListener("blur", this.onBlur)
+    this.controls.dispose()
     document.removeEventListener("visibilitychange", this.onVisibility)
-    this.canvas.removeEventListener("pointerdown", this.onPointerDown)
-    this.canvas.removeEventListener("wheel", this.onWheel)
-    window.removeEventListener("pointermove", this.onPointerMove)
-    window.removeEventListener("pointerup", this.onPointerUp)
-    window.removeEventListener("pointercancel", this.onPointerUp)
     this.canvas.removeEventListener("webglcontextlost", this.onContextLost)
     const materials = new Set<THREE.Material>()
     this.scene.traverse((obj) => {
@@ -1301,123 +1086,14 @@ export class Overworld {
 
   // ---- input ----
 
-  private isTyping(e: KeyboardEvent): boolean {
-    const t = e.target as HTMLElement | null
-    return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)
-  }
-
-  private onKeyDown(e: KeyboardEvent) {
-    if (!this.inputEnabled || this.isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return
-    let handled = true
-    switch (e.code) {
-      case "ArrowUp":
-      case "KeyW":
-        this.held.up = true
-        break
-      case "ArrowDown":
-      case "KeyS":
-        this.held.down = true
-        break
-      case "ArrowLeft":
-      case "KeyA":
-        this.held.left = true
-        break
-      case "ArrowRight":
-      case "KeyD":
-        this.held.right = true
-        break
-      case "ShiftLeft":
-      case "ShiftRight":
-        this.held.sprint = true
-        break
-      case "Space":
-        if (!e.repeat) this.jumpQueued = true
-        break
-      case "KeyZ":
-        if (!e.repeat) this.setZoom((this.zoom + 1) % ZOOM_ROWS.length)
-        break
-      case "Minus":
-        this.setZoom(Math.min(ZOOM_ROWS.length - 1, this.zoom + 1))
-        break
-      case "Equal":
-        this.setZoom(Math.max(0, this.zoom - 1))
-        break
-      case "KeyR":
-        if (!e.repeat) this.cb.onRespawn()
-        break
-      default:
-        handled = false
-    }
-    if (handled) e.preventDefault()
-  }
-
-  private onKeyUp(e: KeyboardEvent) {
-    switch (e.code) {
-      case "ArrowUp":
-      case "KeyW":
-        this.held.up = false
-        break
-      case "ArrowDown":
-      case "KeyS":
-        this.held.down = false
-        break
-      case "ArrowLeft":
-      case "KeyA":
-        this.held.left = false
-        break
-      case "ArrowRight":
-      case "KeyD":
-        this.held.right = false
-        break
-      case "ShiftLeft":
-      case "ShiftRight":
-        this.held.sprint = false
-        break
-    }
-  }
-
-  private releaseKeys() {
-    this.held.up = this.held.down = this.held.left = this.held.right = this.held.sprint = false
-    this.jumpQueued = false
-    this.drag = null
-    this.panTouch = null
-    if (this.stickTouch) {
-      this.stickTouch = null
-      this.reportStick()
-    }
-  }
-
-  private onBlur() {
-    this.releaseKeys()
-  }
-
   private onVisibility() {
     this.hidden = document.visibilityState === "hidden"
     if (this.hidden) {
-      this.releaseKeys()
+      this.controls.release()
       this.stop()
     } else {
       this.wake()
     }
-  }
-
-  // Look around: drag the view; any movement key glides it home. A click
-  // that doesn't drag acts on what's under it, or runs him there.
-  private onPointerDown(e: PointerEvent) {
-    if (!this.inputEnabled) return
-    if (e.pointerType === "touch") {
-      if (!this.stickTouch) {
-        const at = { x: e.clientX, y: e.clientY }
-        this.stickTouch = { id: e.pointerId, ox: at.x, oy: at.y, ...at, t0: performance.now(), moved: 0 }
-        this.reportStick()
-      } else if (!this.panTouch) {
-        this.panTouch = { id: e.pointerId, x: e.clientX, y: e.clientY }
-      }
-      return
-    }
-    if (e.button !== 0) return
-    this.drag = { x: e.clientX, y: e.clientY }
-    this.pointer = { x: e.clientX, y: e.clientY, moved: 0 }
   }
 
   /** Slide the view by a drag of dx, dy CSS pixels (mouse, or a second finger) */
@@ -1432,58 +1108,6 @@ export class Overworld {
     if (len > 24) this.pan.multiplyScalar(24 / len)
   }
 
-  private onPointerMove(e: PointerEvent) {
-    if (e.pointerType === "touch") {
-      const st = this.stickTouch
-      if (st && st.id === e.pointerId) {
-        st.moved += Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y)
-        st.x = e.clientX
-        st.y = e.clientY
-        this.reportStick()
-      } else if (this.panTouch && this.panTouch.id === e.pointerId) {
-        this.panBy(e.clientX - this.panTouch.x, e.clientY - this.panTouch.y)
-        this.panTouch = { id: e.pointerId, x: e.clientX, y: e.clientY }
-      }
-      return
-    }
-    if (e.target === this.canvas || this.drag) {
-      this.hoverDirty = true
-      if (this.pointer) this.pointer = { ...this.pointer, x: e.clientX, y: e.clientY }
-      else this.pointer = { x: e.clientX, y: e.clientY, moved: 0 }
-    } else if (this.lastCaption !== null) {
-      this.pointer = null
-      this.hoverDirty = true
-    }
-    if (!this.drag) return
-    const dx = e.clientX - this.drag.x
-    const dy = e.clientY - this.drag.y
-    this.drag = { x: e.clientX, y: e.clientY }
-    if (this.pointer) this.pointer.moved += Math.abs(dx) + Math.abs(dy)
-    if (this.pointer && this.pointer.moved < 5) return
-    this.panBy(dx, dy)
-  }
-
-  private onPointerUp(e: PointerEvent) {
-    if (e.pointerType === "touch") {
-      const st = this.stickTouch
-      if (st && st.id === e.pointerId) {
-        this.stickTouch = null
-        this.reportStick()
-        // a quick touch that barely moved is a tap, not a run
-        const tap = e.type === "pointerup" && st.moved < 12 && performance.now() - st.t0 < 350
-        if (tap && this.inputEnabled) this.actAt(e.clientX, e.clientY, true)
-      } else if (this.panTouch && this.panTouch.id === e.pointerId) {
-        this.panTouch = null
-      }
-      return
-    }
-    const wasDrag = !this.drag || !this.pointer || this.pointer.moved >= 5
-    this.drag = null
-    if (this.pointer) this.pointer.moved = 0
-    if (wasDrag || e.target !== this.canvas || !this.inputEnabled) return
-    this.actAt(e.clientX, e.clientY, false)
-  }
-
   /**
    * A click or a tap: act on what's there (a Landmark opens, a cow moos),
    * or run him to the spot if he can stand there. A tap also shows the
@@ -1491,7 +1115,7 @@ export class Overworld {
    */
   private actAt(clientX: number, clientY: number, tap: boolean) {
     if (tap) {
-      this.pointer = { x: clientX, y: clientY, moved: 0 }
+      this.pointer = { x: clientX, y: clientY }
       this.lastCaption = null
     }
     this.hoverNow()
@@ -1507,86 +1131,23 @@ export class Overworld {
     }
   }
 
-  /** Tell the interface where the thumb-stick is, so it can draw it */
-  private reportStick() {
-    const st = this.stickTouch
-    if (!st) {
-      this.cb.onStick(null)
-      return
-    }
-    const len = Math.hypot(st.x - st.ox, st.y - st.oy)
-    this.cb.onStick({ ox: st.ox, oy: st.oy, x: st.x, y: st.y, sprint: len > STICK_RADIUS * STICK_SPRINT })
-  }
-
   /** A jump asked for by a touch button */
   jump() {
-    if (this.inputEnabled) this.jumpQueued = true
+    this.controls.jump()
+  }
+
+  /** Look around with a stick, as a drag would */
+  private lookBy(x: number, y: number, dt: number) {
+    const { right, up } = this.axes
+    this.pan.x += (right.x * x - up.x * y) * 14 * dt
+    this.pan.z += (right.z * x - up.z * y) * 14 * dt
+    const len = Math.hypot(this.pan.x, this.pan.z)
+    if (len > 24) this.pan.multiplyScalar(24 / len)
   }
 
   /** Step to the next zoom, wrapping round (a touch button) */
   cycleZoom() {
     this.setZoom((this.zoom + 1) % ZOOM_ROWS.length)
-  }
-
-  private onWheel(e: WheelEvent) {
-    const now = performance.now()
-    if (now - this.lastWheel < 180 || e.deltaY === 0) return
-    this.lastWheel = now
-    this.setZoom(Math.max(0, Math.min(ZOOM_ROWS.length - 1, this.zoom + (e.deltaY > 0 ? 1 : -1))))
-  }
-
-  /**
-   * The gamepad: the left stick (or the D-pad) runs him, as gently as it
-   * is tilted; A jumps, B or the right trigger sprints, the bumpers zoom,
-   * the right stick looks around and View respawns him. Keys win when
-   * both are held.
-   */
-  private readGamepad(intent: { x: number; y: number; sprint: boolean }, dt: number) {
-    const pad = readPad()
-    this.padEdges.update(pad)
-    if (!pad || !this.inputEnabled) return
-    const left = stick(pad, 0, 1)
-    let x = left.x
-    let y = -left.y
-    if (padHeld(pad, PAD.LEFT) || padHeld(pad, PAD.RIGHT)) x = (padHeld(pad, PAD.RIGHT) ? 1 : 0) - (padHeld(pad, PAD.LEFT) ? 1 : 0)
-    if (padHeld(pad, PAD.UP) || padHeld(pad, PAD.DOWN)) y = (padHeld(pad, PAD.UP) ? 1 : 0) - (padHeld(pad, PAD.DOWN) ? 1 : 0)
-    const sprint = padHeld(pad, PAD.B) || (pad.buttons[PAD.RT]?.value ?? 0) > 0.5
-    if (!intent.x && !intent.y) {
-      intent.x = x
-      intent.y = y
-    }
-    intent.sprint ||= sprint
-    if (this.padEdges.down(PAD.A)) this.jumpQueued = true
-    if (this.padEdges.down(PAD.LB)) this.setZoom(Math.min(ZOOM_ROWS.length - 1, this.zoom + 1))
-    if (this.padEdges.down(PAD.RB)) this.setZoom(Math.max(0, this.zoom - 1))
-    if (this.padEdges.down(PAD.BACK)) this.cb.onRespawn()
-    // look around with the right stick, as a drag would
-    const look = stick(pad, 2, 3)
-    if (look.x || look.y) {
-      const { right, up } = this.axes
-      this.pan.x += (right.x * look.x - up.x * look.y) * 14 * dt
-      this.pan.z += (right.z * look.x - up.z * look.y) * 14 * dt
-      const len = Math.hypot(this.pan.x, this.pan.z)
-      if (len > 24) this.pan.multiplyScalar(24 / len)
-    }
-    if (x || y || sprint || look.x || look.y || this.padEdges.anyDown()) this.cb.onPad()
-  }
-
-  /**
-   * The touch thumb-stick: the thumb's offset from where it landed steers
-   * him, as far as it's pushed; past the ring, he sprints.
-   */
-  private readStick(intent: { x: number; y: number; sprint: boolean }) {
-    const st = this.stickTouch
-    if (!st || !this.inputEnabled || intent.x || intent.y) return
-    const dx = st.x - st.ox
-    const dy = st.y - st.oy
-    const len = Math.hypot(dx, dy)
-    if (len < 8) return
-    const k = Math.min(1, len / STICK_RADIUS) / len
-    intent.x = dx * k
-    intent.y = -dy * k
-    if (len > STICK_RADIUS * STICK_SPRINT) intent.sprint = true
   }
 
   /** Step the whole-pixel zoom, and remember it */
@@ -1813,14 +1374,7 @@ export class Overworld {
     for (const car of this.cars) this.moveCar(car, dt)
 
     // input -> movement, in fixed steps
-    const intent = {
-      x: (this.held.right ? 1 : 0) - (this.held.left ? 1 : 0),
-      y: (this.held.up ? 1 : 0) - (this.held.down ? 1 : 0),
-      sprint: this.held.sprint,
-      jump: false,
-    }
-    this.readGamepad(intent, dt)
-    this.readStick(intent)
+    const intent = { ...this.controls.steer(dt), jump: false }
     // a clicked spot steers him until he gets there, a key takes over, or
     // he's stuck against something
     if (intent.x || intent.y || !this.inputEnabled || this.stuck.on) this.goal = null
@@ -1843,8 +1397,7 @@ export class Overworld {
     this.acc += dt
     this.jumped = this.landed = false
     while (this.acc >= STEP) {
-      intent.jump = this.jumpQueued
-      this.jumpQueued = false
+      intent.jump = this.controls.takeJump()
       const wasAirborne = this.runner.airborne
       this.runner = stepRunner(this.runner, intent, STEP, this.axes, this.solids, walkable)
       if (this.runner.airborne && !wasAirborne) {
