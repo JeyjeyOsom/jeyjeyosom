@@ -201,6 +201,24 @@ html.play-mode {
   scroll-behavior: auto;
 }
 
+/* Roam Mode: while the Overworld covers the page, the page must not scroll
+   underneath it (the World and the Overworld stay in step) */
+html.roam-covering {
+  overflow: hidden;
+  scroll-behavior: auto;
+}
+
+/* The Overworld renders small and is scaled up with hard pixels */
+.roam-canvas {
+  position: absolute;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: grab;
+}
+.roam-canvas:active {
+  cursor: grabbing;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

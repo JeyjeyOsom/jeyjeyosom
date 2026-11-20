@@ -3,7 +3,7 @@ import { useState } from "react"
 import emailjs from "emailjs-com"
 import Toast from "../ui/Toast"
 import ZoneHeader from "./ZoneHeader"
-import { type Px, PixelRects } from "../sprites"
+import { CRYSTAL, PixelRects } from "../sprites"
 import { usePlayMode } from "../play/PlayModeContext"
 
 // The Save Point acknowledges the run's Gel score — Play Mode only.
@@ -19,19 +19,6 @@ interface Errors {
   email?: string
   message?: string
 }
-
-// Save crystal on an 11x14 grid
-const CRYSTAL: Px[] = [
-  [4, 0, 3, 1, "#FFE3A3"],
-  [3, 1, 5, 2, "#FFC94D"],
-  [2, 3, 7, 3, "#FFC94D"],
-  [3, 3, 2, 2, "#FFF4E3"], // glint
-  [3, 6, 5, 2, "#FFA05C"],
-  [4, 8, 3, 2, "#FF7A3D"],
-  [5, 10, 1, 1, "#E8542F"],
-  [3, 12, 5, 1, "#3E2A73"], // pedestal
-  [2, 13, 7, 1, "#2B1B57"],
-]
 
 const INPUT_CLASSES = `w-full bg-dusk-900 border-2 py-3 px-4 outline-none transition-colors duration-300
   font-body text-base text-cream-100 placeholder:text-mist-300/40`

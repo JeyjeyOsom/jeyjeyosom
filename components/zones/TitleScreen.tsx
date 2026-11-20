@@ -5,6 +5,8 @@ import { Ground } from "../Track"
 import Traffic from "../Traffic"
 import { usePlayMode } from "../play/PlayModeContext"
 import { useTheme, CYCLE_MS, CYCLE_MID } from "../ThemeContext"
+import { ROAM_HASH, useRoam } from "../roam/RoamContext"
+import { preloadRoamMode } from "../roam/world"
 
 // Scene scenery per theme: the sky gradient and the landforms under it —
 // Juan's actual training view: a big dark mountain behind hazy foothills,
@@ -230,6 +232,7 @@ export default function TitleScreen() {
   const ref = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
   const { playing, enter } = usePlayMode()
+  const roam = useRoam()
   const { theme, cycle } = useTheme()
   const scene = SCENES[theme]
 
@@ -297,6 +300,8 @@ export default function TitleScreen() {
   // Press Start switches to Play Mode where a keyboard is likely present;
   // touch devices stay in Browse Mode and follow the anchor instead.
   const handlePressStart = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Behind an Overworld door the page is Browse Mode; the anchor just scrolls
+    if (roam.view !== "off") return
     if (window.matchMedia("(pointer: fine)").matches) {
       e.preventDefault()
       enter()
@@ -564,6 +569,21 @@ export default function TitleScreen() {
           >
             ▸ PRESS START
           </a>
+          {/* Roam Mode's entrance: only where a keyboard and WebGL2 are */}
+          {roam.eligible && roam.view === "off" && (
+            <a
+              href={ROAM_HASH}
+              onClick={(e) => {
+                e.preventDefault()
+                roam.enter("title")
+              }}
+              onPointerEnter={preloadRoamMode}
+              onFocus={preloadRoamMode}
+              className="-mt-1 font-arcade text-[10px] md:text-xs text-sunset-300 hover:text-gold-300 focus-ring"
+            >
+              ▸ ROAM THE OVERWORLD
+            </a>
+          )}
           <a
             href="#projects"
             className="group font-pixel text-lg text-cream-100/80 hover:text-cream-100 focus-ring"

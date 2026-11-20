@@ -101,6 +101,265 @@ export const RUNNER_FRAME_B: Px[] = [
   [12, 16, 1, 1, ACCENT],
 ]
 
+// ---- Front and back views (Roam Mode) ----
+// The Overworld's camera never rotates, so the Runner needs only four
+// facings: the side view above (mirrored for left), plus a front view for
+// running toward the camera and a back view for running away. Same 16x20
+// grid and identity colors; "viewer-left" means the left of the image.
+
+const EYE = "#3B2A20"
+const HAIR = "#2A2018"
+const SOLE = "#B9B4AA"
+
+// Head, singlet with bib, shorts: common to every front pose
+export const RUNNER_FRONT_SHARED: Px[] = [
+  [6, 0, 4, 1, CAP],
+  [5, 1, 6, 1, CAP],
+  [5, 1, 2, 1, SHADES], // shades pushed up onto the cap
+  [9, 1, 2, 1, SHADES],
+  [7, 1, 2, 1, LAMP], // headlamp, centre front (lit via HEADLAMP_LIT_FRONT)
+  [4, 2, 8, 1, CAP], // brim
+  [5, 3, 6, 1, SKIN], // face
+  [6, 3, 1, 1, EYE],
+  [9, 3, 1, 1, EYE],
+  [6, 4, 4, 1, SKIN], // jaw
+  [4, 5, 8, 3, SHIRT_O],
+  [4, 8, 8, 2, SHIRT_B],
+  [6, 6, 4, 3, BIB], // race bib
+  [7, 7, 2, 1, CAP], // bib number
+  [4, 10, 8, 2, SHORTS],
+]
+
+export const RUNNER_FRONT_STANDING: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [12, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 7, 1, 3, SKIN],
+  [3, 9, 1, 1, CAP], // watch
+  [5, 12, 2, 1, SHORTS],
+  [9, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [9, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [9, 18, 3, 2, SHOE],
+  [4, 19, 1, 1, ACCENT],
+  [11, 19, 1, 1, ACCENT],
+]
+
+// Front A: viewer-left knee up, viewer-right arm driving across the body
+export const RUNNER_FRONT_A: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 3, SKIN],
+  [3, 8, 1, 1, CAP], // watch
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 2, SKIN],
+  [11, 8, 1, 1, SKIN], // hand across the singlet
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 3, SKIN],
+  [4, 16, 3, 2, SHOE], // lifted foot
+  [4, 17, 1, 1, ACCENT],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 5, SKIN],
+  [9, 18, 3, 2, SHOE],
+  [11, 19, 1, 1, ACCENT],
+]
+
+// Front B: the mirror stride
+export const RUNNER_FRONT_B: Px[] = [
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 3, SKIN],
+  [3, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 2, SKIN],
+  [3, 7, 1, 1, CAP], // watch
+  [4, 8, 1, 1, SKIN], // hand across the singlet
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [4, 19, 1, 1, ACCENT],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 3, SKIN],
+  [9, 16, 3, 2, SHOE], // lifted foot
+  [11, 17, 1, 1, ACCENT],
+]
+
+// Back of the head, cap strap, singlet without the bib, shorts
+export const RUNNER_BACK_SHARED: Px[] = [
+  [6, 0, 4, 1, CAP],
+  [5, 1, 6, 2, CAP],
+  [4, 2, 1, 1, CAP], // brim edges peeking out
+  [11, 2, 1, 1, CAP],
+  [7, 2, 2, 1, HAIR], // strap opening
+  [5, 3, 6, 1, HAIR],
+  [4, 3, 1, 1, SKIN], // ears
+  [11, 3, 1, 1, SKIN],
+  [6, 4, 4, 1, SKIN], // nape
+  [4, 5, 8, 3, SHIRT_O],
+  [4, 8, 8, 2, SHIRT_B],
+  [4, 10, 8, 2, SHORTS],
+]
+
+export const RUNNER_BACK_STANDING: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [12, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 7, 1, 3, SKIN],
+  [12, 9, 1, 1, CAP], // watch
+  [5, 12, 2, 1, SHORTS],
+  [9, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [9, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [9, 18, 3, 2, SHOE],
+  [5, 18, 1, 1, ACCENT], // heel tabs
+  [10, 18, 1, 1, ACCENT],
+]
+
+// Back A: viewer-right heel kicked up, viewer-right arm swung back
+export const RUNNER_BACK_A: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 2, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 3, SKIN],
+  [12, 9, 1, 1, CAP], // watch
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [5, 18, 1, 1, ACCENT],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 2, SKIN],
+  [9, 15, 3, 2, SHOE], // sole showing
+  [9, 16, 3, 1, SOLE],
+]
+
+// Back B: the mirror stride
+export const RUNNER_BACK_B: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 3, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 2, SKIN],
+  [12, 7, 1, 1, CAP], // watch
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 5, SKIN],
+  [9, 18, 3, 2, SHOE],
+  [10, 18, 1, 1, ACCENT],
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 2, SKIN],
+  [4, 15, 3, 2, SHOE], // sole showing
+  [4, 16, 3, 1, SOLE],
+]
+
+// The front headlamp switched on (dusk only, like HEADLAMP_LIT)
+export const HEADLAMP_LIT_FRONT: Px[] = [[7, 1, 2, 1, "#FFE3A3"]]
+
+// ---- Watch check (Roam Mode) ----
+// Standing still a while, the Runner lifts his wrist to read his watch,
+// the one that shows his Pace. Same legs as standing.
+
+const STAND_LEGS: Px[] = [
+  [5, 12, 2, 1, SHORTS],
+  [9, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [9, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [9, 18, 3, 2, SHOE],
+]
+
+export const RUNNER_WATCH: Px[] = [
+  [4, 5, 1, 2, SHIRT_B],
+  [4, 7, 1, 3, SKIN],
+  [11, 5, 1, 1, SHIRT_B],
+  [12, 5, 1, 1, SKIN], // elbow out front
+  [12, 4, 1, 1, SKIN],
+  [11, 3, 1, 1, CAP], // the watch, held up before his eyes
+  ...STAND_LEGS,
+  [6, 19, 1, 1, ACCENT],
+  [11, 19, 1, 1, ACCENT],
+]
+
+export const RUNNER_FRONT_WATCH: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 1, SKIN], // elbow
+  [9, 5, 3, 1, SKIN], // forearm raised across the chest
+  [9, 5, 1, 1, CAP], // watch
+  ...STAND_LEGS,
+  [4, 19, 1, 1, ACCENT],
+  [11, 19, 1, 1, ACCENT],
+]
+
+export const RUNNER_BACK_WATCH: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 4, 1, 2, SKIN], // elbow up, the wrist out of sight in front
+  ...STAND_LEGS,
+  [5, 18, 1, 1, ACCENT],
+  [10, 18, 1, 1, ACCENT],
+]
+
+// ---- Jump poses (Roam Mode) ----
+// A running leap, one per facing: lead knee driven up, trailing leg long
+// behind, the lead arm thrown high. Front and back tuck both feet and
+// raise both arms, since a leap toward or away from the camera shows no
+// stride.
+
+export const RUNNER_JUMP: Px[] = [
+  // trailing arm low behind
+  [4, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 2, SKIN],
+  [2, 8, 1, 1, SKIN],
+  // lead arm thrown up and forward
+  [11, 5, 1, 1, SHIRT_B],
+  [12, 4, 1, 2, SKIN],
+  [13, 3, 1, 1, SKIN],
+  [12, 5, 1, 1, CAP], // watch
+  // lead knee driven up, shin hanging
+  [9, 12, 3, 1, SHORTS],
+  [12, 12, 1, 2, SKIN],
+  [11, 14, 2, 2, SKIN],
+  [10, 16, 3, 2, SHOE],
+  [12, 17, 1, 1, ACCENT],
+  // trailing leg long behind
+  [5, 12, 2, 1, SHORTS],
+  [4, 13, 2, 1, SKIN],
+  [2, 14, 2, 1, SKIN],
+  [0, 15, 3, 2, SHOE],
+  [0, 16, 1, 1, ACCENT],
+]
+
+export const RUNNER_FRONT_JUMP: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [2, 3, 1, 2, SKIN], // arms up
+  [2, 4, 1, 1, CAP], // watch
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 3, 1, 2, SKIN],
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 3, SKIN],
+  [4, 16, 3, 2, SHOE],
+  [4, 17, 1, 1, ACCENT],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 3, SKIN],
+  [9, 16, 3, 2, SHOE],
+  [11, 17, 1, 1, ACCENT],
+]
+
+export const RUNNER_BACK_JUMP: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [2, 3, 1, 2, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 3, 1, 2, SKIN],
+  [13, 4, 1, 1, CAP], // watch
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 2, SKIN],
+  [4, 15, 3, 2, SHOE],
+  [4, 16, 3, 1, SOLE],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 2, SKIN],
+  [9, 15, 3, 2, SHOE],
+  [9, 16, 3, 1, SOLE],
+]
+
 // ---- Warm-up poses (Stats Screen idle routine) ----
 // Local 16x20 coords; grounded feet sit at y19. Rendered in a 16x22 viewBox
 // with a translate: grounded frames shift down 2, the airborne hop doesn't.
@@ -208,6 +467,20 @@ export const GEL: Px[] = [
   [4, 3, 1, 4, "#E0A82E"], // right shade
   [0, 7, 6, 1, "#E0A82E"], // bottom shade
   [1, 3, 1, 2, "#FFF4E3"], // shine
+]
+
+// The Save Point's save crystal on an 11x14 grid; the Overworld extrudes it
+// for the Save Point's Landmark
+export const CRYSTAL: Px[] = [
+  [4, 0, 3, 1, "#FFE3A3"],
+  [3, 1, 5, 2, "#FFC94D"],
+  [2, 3, 7, 3, "#FFC94D"],
+  [3, 3, 2, 2, "#FFF4E3"], // glint
+  [3, 6, 5, 2, "#FFA05C"],
+  [4, 8, 3, 2, "#FF7A3D"],
+  [5, 10, 1, 1, "#E8542F"],
+  [3, 12, 5, 1, "#3E2A73"], // pedestal
+  [2, 13, 7, 1, "#2B1B57"],
 ]
 
 // The headlamp switched on: a bright lamp pixel plus a short beam ahead of
