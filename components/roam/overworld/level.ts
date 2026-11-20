@@ -12,6 +12,14 @@ export interface Vec2 {
   z: number
 }
 
+// ---- The camera's grid ----
+
+/** The camera's tilt below the horizon; it never rotates (ADR 0003) */
+export const CAMERA_PITCH = (42 * Math.PI) / 180
+/** World units per screen pixel: across the screen, and along the ground
+ *  into it, which the tilt stretches */
+export const GROUND_PIXEL = { x: 1 / 16, z: 1 / (16 * Math.sin(CAMERA_PITCH)) }
+
 // ---- The island ----
 
 export const ISLAND_RX = 86
@@ -240,6 +248,38 @@ export const PASTURE = { minX: -12, maxX: 20, minZ: -8, maxZ: 12 }
 export const POND = { x: -32, z: -6, rx: 9, rz: 6 }
 export const MOUNTAIN = { x: -8, z: -56, baseHalfX: 34, baseHalfZ: 9, layers: 6, layerHeight: 2.2 }
 
+/** One of the mountain's stepped terraces; each is narrower, shallower and
+ *  further west than the one below, so the peak sits west of centre */
+export function terrace(i: number) {
+  const hx = MOUNTAIN.baseHalfX * (1 - i * 0.16)
+  const hz = MOUNTAIN.baseHalfZ * (1 - i * 0.12)
+  const cx = MOUNTAIN.x - i * 2.4
+  return {
+    cx,
+    hx,
+    hz,
+    minX: cx - hx,
+    maxX: cx + hx,
+    /** the south face, toward the camera */
+    front: MOUNTAIN.z + hz,
+    y: i * MOUNTAIN.layerHeight,
+    top: (i + 1) * MOUNTAIN.layerHeight,
+    /** the ledge that breaks up its silhouette, east of centre */
+    ledge: { minX: cx + hx * 0.3, maxX: cx + hx * 0.8, front: MOUNTAIN.z + hz * 0.85 },
+  }
+}
+
+/** A spring on the fourth terrace that steps down the south face */
+export const WATERFALL = { x: -30, fromLayer: 3, halfWidth: 0.56 }
+/** The pool at its foot */
+export const PLUNGE = { x: -30, z: -45.9, rx: 2.4, rz: 1.3 }
+
+export function inPlunge(x: number, z: number, margin = 0): boolean {
+  const dx = (x - PLUNGE.x) / (PLUNGE.rx + margin)
+  const dz = (z - PLUNGE.z) / (PLUNGE.rz + margin)
+  return dx * dx + dz * dz < 1
+}
+
 export function inPond(x: number, z: number, margin = 0): boolean {
   const dx = (x - POND.x) / (POND.rx + margin)
   const dz = (z - POND.z) / (POND.rz + margin)
@@ -257,7 +297,7 @@ export function inPasture(x: number, z: number, margin = 0): boolean {
 
 // ---- Seeded scatter ----
 
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed >>> 0
   return () => {
     a = (a + 0x6d2b79f5) >>> 0
@@ -391,9 +431,9 @@ export type Solid =
   | { kind: "box"; minX: number; maxX: number; minZ: number; maxZ: number }
   | { kind: "circle"; x: number; z: number; r: number }
 
-/** Where the Runner may stand: on the island, out of the pond */
+/** Where the Runner may stand: on the island, out of the pond and the pool */
 export function walkable(x: number, z: number): boolean {
-  return islandReach(x, z) < WALK_REACH && !inPond(x, z)
+  return islandReach(x, z) < WALK_REACH && !inPond(x, z) && !inPlunge(x, z)
 }
 
 /** The fence posts around the pasture, every two units, with a gate gap

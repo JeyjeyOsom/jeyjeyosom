@@ -38,6 +38,23 @@ function loadLook(): Look {
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
 
+// Where an off-screen Landmark's label pins itself: on the edge of the
+// screen, inside the HUD, along the line from the centre toward it
+const PIN_INSET = { left: 30, right: 30, top: 100, bottom: 88 }
+
+function pinToEdge(x: number, y: number, w: number, h: number) {
+  const cx = w / 2
+  const cy = h / 2
+  const dx = x - cx
+  const dy = y - cy
+  const kx = dx > 0 ? (w - PIN_INSET.right - cx) / dx : dx < 0 ? (PIN_INSET.left - cx) / dx : Infinity
+  const ky = dy > 0 ? (h - PIN_INSET.bottom - cy) / dy : dy < 0 ? (PIN_INSET.top - cy) / dy : Infinity
+  const k = Math.min(kx, ky)
+  // the arrow turns in eighths, so its pixels stay square
+  const angle = Math.round((Math.atan2(dy, dx) * 180) / Math.PI / 45) * 45
+  return { x: Math.round(cx + dx * k), y: Math.round(cy + dy * k), angle }
+}
+
 /** The iris: a stepped circle closing on (or opening from) a point */
 function useIris(reduceMotion: boolean) {
   const ref = useRef<HTMLDivElement>(null)
@@ -169,11 +186,21 @@ export default function RoamMode() {
       onMoved: () => setMoved(true),
       onJump: () => latest.current.playSfx("jump"),
       onFrame: (report: FrameReport) => {
+        const w = window.innerWidth
+        const h = window.innerHeight
         for (const label of report.labels) {
           const el = labelRefs.current.get(label.zoneId)
           if (!el) continue
-          el.style.visibility = label.visible ? "visible" : "hidden"
-          el.style.transform = `translate(${label.x}px, ${label.y}px) translate(-50%, -100%)`
+          el.style.visibility = "visible"
+          if (label.onScreen) {
+            el.dataset.pin = "false"
+            el.style.transform = `translate(${label.x}px, ${label.y}px) translate(-50%, -100%)`
+          } else {
+            const pin = pinToEdge(label.x, label.y, w, h)
+            el.dataset.pin = "true"
+            el.style.setProperty("--pin-angle", `${pin.angle}deg`)
+            el.style.transform = `translate(${pin.x}px, ${pin.y}px) translate(-50%, -50%)`
+          }
         }
       },
       onFrameTime: setFrameMs,
@@ -198,9 +225,13 @@ export default function RoamMode() {
     engineRef.current = engine
     engine.setInputEnabled(false)
     setReady(true)
+    // the LOOK prototype flag doubles as the debug handle for test drivers
+    const debug = window as { __overworld?: Overworld }
+    if (new URLSearchParams(window.location.search).has("look")) debug.__overworld = engine
     return () => {
       engine.dispose()
       engineRef.current = null
+      delete debug.__overworld
     }
     // the engine is built once per visit to Roam Mode
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -420,7 +451,7 @@ export default function RoamMode() {
         // display, not visibility: each label sets its own visibility
         style={{ display: inOverworld ? "block" : "none" }}
       >
-        {WORLD_MAP.map((zone) => (
+        {WORLD_MAP.map((zone, i) => (
           <button
             key={zone.id}
             ref={(el) => {
@@ -429,12 +460,27 @@ export default function RoamMode() {
             }}
             onClick={blurAfter(() => openDoor(zone.id))}
             aria-label={`Open the ${zoneName(zone.id).toLowerCase()}`}
-            className={`absolute left-0 top-0 pointer-events-auto whitespace-nowrap px-2 py-1 font-arcade text-[8px] md:text-[9px] focus-ring ${
+            title={zone.zoneName}
+            data-pin="false"
+            className={`group absolute left-0 top-0 pointer-events-auto whitespace-nowrap px-2 py-1 font-arcade text-[8px] md:text-[9px] focus-ring data-[pin=true]:px-1.5 data-[pin=true]:opacity-80 data-[pin=true]:hover:opacity-100 ${
               prompt === zone.id ? "bg-gold-400 text-dusk-950" : "bg-dusk-950/85 text-gold-300 hover:text-gold-400"
             }`}
             style={{ visibility: "hidden" }}
           >
-            {zone.zoneName}
+            <span className="group-data-[pin=true]:hidden">{zone.zoneName}</span>
+            {/* off screen: its map number and an arrow toward it */}
+            <span aria-hidden="true" className="hidden group-data-[pin=true]:inline-flex items-center gap-1">
+              {i + 1}
+              <svg
+                width="6"
+                height="8"
+                viewBox="0 0 6 8"
+                className="crisp"
+                style={{ transform: "rotate(var(--pin-angle, 0deg))" }}
+              >
+                <path d="M0 0h2v8h-2zM2 2h2v4h-2zM4 3h2v2h-2z" fill="currentColor" />
+              </svg>
+            </span>
           </button>
         ))}
       </div>

@@ -13,20 +13,24 @@ import {
   HEADLAMP_LIT_FRONT,
   RUNNER_BACK_A,
   RUNNER_BACK_B,
+  RUNNER_BACK_JUMP,
   RUNNER_BACK_SHARED,
   RUNNER_BACK_STANDING,
   RUNNER_FRAME_A,
   RUNNER_FRAME_B,
   RUNNER_FRONT_A,
   RUNNER_FRONT_B,
+  RUNNER_FRONT_JUMP,
   RUNNER_FRONT_SHARED,
   RUNNER_FRONT_STANDING,
+  RUNNER_JUMP,
   RUNNER_SHARED,
   RUNNER_STANDING,
   type Px,
 } from "../../sprites"
 import {
   buildSolids,
+  CAMERA_PITCH,
   DOOR_REACH,
   type LandmarkPlacement,
   placeLandmarks,
@@ -44,6 +48,7 @@ import { type Facing, formatPace, newRunner, type RunnerState, stepRunner } from
 import {
   CAR_COLORS,
   carBoxes,
+  carLampBoxes,
   coastWaterShapes,
   cowBodyBoxes,
   cowHeadBoxes,
@@ -54,13 +59,15 @@ import {
   mountainGeometry,
   bushBoxes,
   palmBoxes,
-  patchBoxes,
+  patchCells,
+  plungeShapes,
   roadGeometry,
   rockBoxes,
   tuftBoxes,
+  waterfallGeometry,
 } from "./props"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
-import { boxesGeometry } from "./voxels"
+import { boxesGeometry, cellsGeometry } from "./voxels"
 
 // Palette colours go to the screen exactly as written: no colour
 // management between the hex codes and the framebuffer.
@@ -79,9 +86,10 @@ export const DEFAULT_LOOK: Look = { yaw: 0, lens: "ortho", rows: 180, tones: 2 }
 
 export interface LabelPosition {
   zoneId: string
+  /** where its label hangs, in CSS pixels of the host; may be off screen */
   x: number
   y: number
-  visible: boolean
+  onScreen: boolean
 }
 
 export interface FrameReport {
@@ -113,7 +121,7 @@ interface Options {
 }
 
 const PIXELS_PER_UNIT = 16
-const PITCH = (42 * Math.PI) / 180
+const PITCH = CAMERA_PITCH
 const CAMERA_DISTANCE = 60
 const STEP = 1 / 120
 const SPRITE_H = 1.25 / Math.cos(PITCH) // a vertical 20-pixel sprite, foreshortened back to 20 pixels
@@ -122,23 +130,40 @@ const SEE_THROUGH_RADIUS = 20 // internal pixels
 // runs in the lower half and the Landmarks he faces fit above him
 const LOOK_AHEAD = 2.4
 
-const FRAME_COLS = 9 // side, front, back x (stand, A, B)
-const FACING_COL: Record<Facing, number> = { right: 0, left: 0, down: 3, up: 6 }
+// The sprite sheet: one row per headlamp state, and for each facing (side,
+// front, back) the same run of poses
+const POSES = ["stand", "a", "b", "jump"] as const
+type Pose = (typeof POSES)[number]
+const FRAME_COLS = 3 * POSES.length
+const FACING_SET: Record<Facing, number> = { right: 0, left: 0, down: 1, up: 2 }
 
 function drawRunnerAtlas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas")
   canvas.width = 16 * FRAME_COLS
   canvas.height = 40
   const g = canvas.getContext("2d")!
-  const sets: Array<[Px[], Px[], Px[], Px[], Px[]]> = [
-    [RUNNER_SHARED, RUNNER_STANDING, RUNNER_FRAME_A, RUNNER_FRAME_B, HEADLAMP_LIT],
-    [RUNNER_FRONT_SHARED, RUNNER_FRONT_STANDING, RUNNER_FRONT_A, RUNNER_FRONT_B, HEADLAMP_LIT_FRONT],
-    [RUNNER_BACK_SHARED, RUNNER_BACK_STANDING, RUNNER_BACK_A, RUNNER_BACK_B, []],
+  const sets: Array<{ shared: Px[]; lamp: Px[]; poses: Record<Pose, Px[]> }> = [
+    {
+      shared: RUNNER_SHARED,
+      lamp: HEADLAMP_LIT,
+      poses: { stand: RUNNER_STANDING, a: RUNNER_FRAME_A, b: RUNNER_FRAME_B, jump: RUNNER_JUMP },
+    },
+    {
+      shared: RUNNER_FRONT_SHARED,
+      lamp: HEADLAMP_LIT_FRONT,
+      poses: { stand: RUNNER_FRONT_STANDING, a: RUNNER_FRONT_A, b: RUNNER_FRONT_B, jump: RUNNER_FRONT_JUMP },
+    },
+    {
+      shared: RUNNER_BACK_SHARED,
+      lamp: [],
+      poses: { stand: RUNNER_BACK_STANDING, a: RUNNER_BACK_A, b: RUNNER_BACK_B, jump: RUNNER_BACK_JUMP },
+    },
   ]
   for (let lit = 0; lit < 2; lit++) {
-    sets.forEach(([shared, stand, a, b, lamp], set) => {
-      ;[stand, a, b].forEach((pose, k) => {
-        const ox = (set * 3 + k) * 16
+    sets.forEach(({ shared, lamp, poses }, set) => {
+      POSES.forEach((name, k) => {
+        const pose = poses[name]
+        const ox = (set * POSES.length + k) * 16
         const oy = lit * 20
         for (const [x, y, w, h, fill] of [...shared, ...pose, ...(lit ? lamp : [])]) {
           g.fillStyle = fill
@@ -162,8 +187,11 @@ function gradientTexture(tones: 2 | 3): THREE.DataTexture {
   return tex
 }
 
-// A dithered disc on the ground: a blob shadow that stays on the palette
-const SHADOW_VERTEX = /* glsl */ `
+// Decals: dithered shapes lying on the ground, in one colour, so they stay
+// on the palette. A blob shadow is a disc at half density; a pool of lamp
+// light thins toward its rim through a 4x4 ordered dither. A cone opens
+// along the decal's +x, from its lamp at u = 0.
+const DECAL_VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -174,16 +202,105 @@ const SHADOW_VERTEX = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * p;
   }
 `
-const SHADOW_FRAGMENT = /* glsl */ `
+const DECAL_FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
+  uniform float uDensity;
+  uniform float uCone;
+  uniform float uFalloff;
   varying vec2 vUv;
+  const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
   void main() {
     vec2 d = vUv - 0.5;
-    if (dot(d, d) > 0.25) discard;
-    if (mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y), 2.0) < 0.5) discard;
+    float r;
+    if (uCone > 0.5) {
+      float hw = 0.12 + 0.38 * vUv.x;
+      if (abs(d.y) > hw) discard;
+      r = max(abs(d.y) / hw * 0.55, vUv.x);
+    } else {
+      r = length(d) * 2.0;
+    }
+    if (r > 1.0) discard;
+    ivec2 q = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
+    float threshold = (BAYER[q.x + q.y * 4] + 0.5) / 16.0;
+    if (threshold > uDensity * mix(1.0, 1.0 - r * r, uFalloff)) discard;
     gl_FragColor = vec4(uColor, 1.0);
   }
 `
+
+function decalMaterial(color: number, density: number, opts: { cone?: boolean; falloff?: boolean } = {}) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uDensity: { value: density },
+      uCone: { value: opts.cone ? 1 : 0 },
+      uFalloff: { value: opts.falloff ? 1 : 0 },
+    },
+    vertexShader: DECAL_VERTEX,
+    fragmentShader: DECAL_FRAGMENT,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  })
+}
+
+// Glow: boxes drawn in their own colours, untouched by the sky's light
+// (lamps, the save crystal), with a fixed step of shade per face so their
+// shape still reads. uBoost pulses them.
+const GLOW_VERTEX = /* glsl */ `
+  varying vec3 vColor;
+  varying float vShade;
+  void main() {
+    vColor = color;
+    vec3 n = normalize(mat3(modelMatrix) * normal);
+    vShade = n.y > 0.5 ? 1.0 : (n.z > 0.5 ? 0.9 : 0.78);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const GLOW_FRAGMENT = /* glsl */ `
+  uniform float uBoost;
+  varying vec3 vColor;
+  varying float vShade;
+  void main() {
+    gl_FragColor = vec4(min(vColor * vShade * uBoost, vec3(1.0)), 1.0);
+  }
+`
+
+function glowMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: { uBoost: { value: 1 } },
+    vertexShader: GLOW_VERTEX,
+    fragmentShader: GLOW_FRAGMENT,
+    vertexColors: true,
+  })
+}
+
+// The waterfall's texture: 12 x 12 texels of three tones (deep, mid, foam)
+// in streaks, recoloured whenever the sky changes
+const WATER_SIZE = 12
+const WATER_PATTERN: Uint8Array = (() => {
+  const p = new Uint8Array(WATER_SIZE * WATER_SIZE)
+  let seed = 7
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const streak = (u: number, tone: number, min: number, max: number) => {
+    const start = Math.floor(rand() * WATER_SIZE)
+    const length = min + Math.floor(rand() * (max - min + 1))
+    for (let v = 0; v < length; v++) p[((start + v) % WATER_SIZE) * WATER_SIZE + u] = tone
+  }
+  for (let u = 0; u < WATER_SIZE; u++) {
+    const edge = u === 0 || u === WATER_SIZE - 1
+    // the edges churn white; the body is deep water with long pale streaks
+    // and a short fleck of foam here and there
+    for (let v = 0; v < WATER_SIZE; v++) p[v * WATER_SIZE + u] = edge ? 2 : 0
+    if (edge) {
+      streak(u, 1, 2, 4)
+      continue
+    }
+    if (u % 3 !== 1) streak(u, 1, 3, 7)
+    if (rand() < 0.45) streak(u, 2, 1, 2)
+  }
+  return p
+})()
 
 export class Overworld {
   private readonly host: HTMLElement
@@ -200,10 +317,14 @@ export class Overworld {
   private readonly scenery: Scenery
   private readonly solids: Solid[]
   private readonly labelAnchors: Array<{ zoneId: string; pos: THREE.Vector3 }> = []
-  private readonly spinners: THREE.Object3D[] = []
+  private readonly spinners: Array<{ part: THREE.Object3D; y: number }> = []
   private readonly cowHeads: Array<{ head: THREE.Object3D; phase: number }> = []
   /** Oncoming Traffic: cars lapping the other way, stopping for the Runner */
   private readonly cars: Array<{ group: THREE.Group; s: number; speed: number; solid: Solid & { kind: "circle" } }> = []
+  /** what switches on at Dusk: car lamps and the light they throw */
+  private readonly lamps: THREE.Object3D[] = []
+  /** pools of light that glow brighter at Dusk */
+  private readonly glowPools: THREE.ShaderMaterial[] = []
 
   // materials and lights
   private gradient: THREE.DataTexture
@@ -213,6 +334,12 @@ export class Overworld {
   private readonly shallowMat = new THREE.MeshBasicMaterial()
   private readonly foamMat = new THREE.MeshBasicMaterial()
   private readonly shadowMat: THREE.ShaderMaterial
+  private readonly glowMat = glowMaterial()
+  private readonly crystalMat = glowMaterial()
+  private readonly beamMat = decalMaterial(0xffe3a3, 0.5, { cone: true, falloff: true })
+  private readonly tailPoolMat = decalMaterial(0xe8452f, 0.34, { falloff: true })
+  private readonly waterTex: THREE.DataTexture
+  private readonly waterMat: THREE.MeshBasicMaterial
   private readonly runnerMat: THREE.MeshBasicMaterial
   private readonly runnerTex: THREE.CanvasTexture
   private readonly sun = new THREE.DirectionalLight()
@@ -294,15 +421,14 @@ export class Overworld {
     this.solidMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: this.gradient })
     this.occluderMat = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: this.gradient })
     this.installSeeThrough(this.occluderMat)
-    this.shadowMat = new THREE.ShaderMaterial({
-      uniforms: { uColor: { value: new THREE.Color(0x2b1b57) } },
-      vertexShader: SHADOW_VERTEX,
-      fragmentShader: SHADOW_FRAGMENT,
-      depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
-    })
+    this.shadowMat = decalMaterial(0x2b1b57, 0.5)
+    this.waterTex = new THREE.DataTexture(new Uint8Array(WATER_SIZE * WATER_SIZE * 4), WATER_SIZE, WATER_SIZE, THREE.RGBAFormat)
+    this.waterTex.magFilter = THREE.NearestFilter
+    this.waterTex.minFilter = THREE.NearestFilter
+    this.waterTex.wrapS = THREE.RepeatWrapping
+    this.waterTex.wrapT = THREE.RepeatWrapping
+    this.waterTex.generateMipmaps = false
+    this.waterMat = new THREE.MeshBasicMaterial({ map: this.waterTex, side: THREE.DoubleSide })
 
     this.runnerTex = new THREE.CanvasTexture(drawRunnerAtlas())
     this.runnerTex.magFilter = THREE.NearestFilter
@@ -332,6 +458,12 @@ export class Overworld {
     this.runnerMesh.renderOrder = 2
     this.runnerShadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
     this.scene.add(this.runnerMesh, this.runnerShadow)
+    // Decals write no depth, so they must draw after the ground they lie on
+    this.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.material instanceof THREE.ShaderMaterial && "uDensity" in obj.material.uniforms) {
+        obj.renderOrder = Math.max(obj.renderOrder, 1)
+      }
+    })
 
     const start = this.landmarks[0]
     this.runner = newRunner(start?.door.x ?? 0, start?.door.z ?? 40)
@@ -463,6 +595,7 @@ export class Overworld {
     materials.forEach((m) => m.dispose())
     this.gradient.dispose()
     this.runnerTex.dispose()
+    this.waterTex.dispose()
     this.renderer.dispose()
     this.renderer.forceContextLoss()
     this.canvas.remove()
@@ -527,8 +660,12 @@ export class Overworld {
 
     for (const g of groundGeometries()) this.add(g, this.solidMat)
     this.add(flat(water.pond, 0.008), this.shallowMat)
+    const plunge = plungeShapes()
+    this.add(flat(plunge.pool, 0.008), this.shallowMat)
+    this.add(flat(plunge.foam, 0.01), this.foamMat)
     this.add(roadGeometry(), this.solidMat)
     this.add(mountainGeometry(), this.occluderMat)
+    this.add(waterfallGeometry(), this.waterMat, 1)
     this.add(fenceGeometry(), this.solidMat)
 
     const s = this.scenery
@@ -540,7 +677,7 @@ export class Overworld {
     }
     for (let v = 0; v < 2; v++) {
       const patches = s.patches.filter((p) => p.variant % 2 === v)
-      this.instanced(boxesGeometry(patchBoxes(v)), this.solidMat, patches, (k) => [k * 1.6, k])
+      this.add(cellsGeometry(patchCells(patches, v), 0.006 + v * 0.0005), this.solidMat)
     }
     for (let v = 0; v < 2; v++) {
       const bushes = s.bushes.filter((b) => b.variant % 2 === v)
@@ -578,6 +715,16 @@ export class Overworld {
       const shadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
       shadow.scale.set(2.7, 1, 1.5)
       group.add(shadow)
+      // lamps lit, the beam they throw ahead, and a red glow behind
+      const lit = new THREE.Mesh(boxesGeometry(carLampBoxes()), this.glowMat)
+      const beam = new THREE.Mesh(this.flatDisc(), this.beamMat)
+      beam.scale.set(3.6, 1, 2.4)
+      beam.position.x = 1.15 + 1.8
+      const tail = new THREE.Mesh(this.flatDisc(), this.tailPoolMat)
+      tail.scale.set(1.3, 1, 1.7)
+      tail.position.x = -1.75
+      group.add(lit, beam, tail)
+      this.lamps.push(lit, beam, tail)
       this.scene.add(group)
       const solid = { kind: "circle" as const, x: 0, z: 0, r: 0.95 }
       this.solids.push(solid)
@@ -594,10 +741,19 @@ export class Overworld {
       group.rotation.y = Math.atan2(l.facing.x, l.facing.z)
       group.add(new THREE.Mesh(boxesGeometry(model.boxes), this.occluderMat))
       if (model.spinner) {
-        const spinner = new THREE.Mesh(boxesGeometry(model.spinner), this.occluderMat)
-        spinner.position.y = model.spinnerY ?? 1
+        const { boxes, y, glow } = model.spinner
+        const spinner = new THREE.Mesh(boxesGeometry(boxes), glow ? this.crystalMat : this.occluderMat)
+        spinner.position.y = y
         group.add(spinner)
-        this.spinners.push(spinner)
+        this.spinners.push({ part: spinner, y })
+      }
+      for (const pool of model.pools ?? []) {
+        const mat = decalMaterial(pool.color, 0.3, { falloff: true })
+        const mesh = new THREE.Mesh(this.flatDisc(), mat)
+        mesh.scale.set(pool.rx * 2, 1, pool.rz * 2)
+        mesh.position.set(pool.x, 0, pool.z)
+        group.add(mesh)
+        this.glowPools.push(mat)
       }
       this.scene.add(group)
       this.labelAnchors.push({ zoneId: l.zoneId, pos: new THREE.Vector3(l.x, model.height + 0.45, l.z) })
@@ -743,6 +899,19 @@ export class Overworld {
     const shadow = new THREE.Color(light.shade).multiplyScalar(0.42)
     ;(this.shadowMat.uniforms.uColor.value as THREE.Color).copy(shadow)
     this.lampsLit = light.lamps
+    for (const lamp of this.lamps) lamp.visible = light.lamps
+    for (const pool of this.glowPools) pool.uniforms.uDensity.value = light.lamps ? 0.34 : 0.16
+    this.paintWater(light)
+  }
+
+  /** Recolour the waterfall's three tones from the sky */
+  private paintWater(light: SkyLight) {
+    const deep = new THREE.Color(light.sea)
+    const foam = new THREE.Color(light.foam)
+    const tones = [deep, deep.clone().lerp(foam, 0.45), foam].map((c) => [c.r * 255, c.g * 255, c.b * 255])
+    const data = this.waterTex.image.data as Uint8Array
+    WATER_PATTERN.forEach((tone, i) => data.set([...tones[tone], 255], i * 4))
+    this.waterTex.needsUpdate = true
   }
 
   // ---- input ----
@@ -980,16 +1149,16 @@ export class Overworld {
     this.animClock += dt
 
     // which frame of the sheet
-    let pose = 0 // stand
-    if (r.airborne) pose = 1
+    let pose: Pose = "stand"
+    if (r.airborne) pose = "jump"
     else if (speed > 0.4) {
-      if (this.reduceMotion) pose = 1
+      if (this.reduceMotion) pose = "a"
       else {
         const period = r.sprinting ? 0.11 : 0.15
-        pose = Math.floor(this.animClock / period) % 2 === 0 ? 1 : 2
+        pose = Math.floor(this.animClock / period) % 2 === 0 ? "a" : "b"
       }
     }
-    const col = FACING_COL[r.facing] + pose
+    const col = FACING_SET[r.facing] * POSES.length + POSES.indexOf(pose)
     this.runnerTex.offset.set(col / FRAME_COLS, this.lampsLit ? 0 : 0.5)
 
     // the sprite sits on whole screen pixels, mirrored for left
@@ -1008,9 +1177,12 @@ export class Overworld {
       c.head.rotation.z = beat < 0.64 ? -0.55 : 0.1
     }
     for (const s of this.spinners) {
-      s.rotation.y += dt * 0.9
-      s.position.y = 1.1 + (Math.floor(now / 550) % 2) * 0.0625
+      s.part.rotation.y += dt * 0.9
+      s.part.position.y = s.y + (Math.floor(now / 550) % 2) * 0.0625
     }
+    // the crystal pulses in three steps; the waterfall falls a texel at a time
+    this.crystalMat.uniforms.uBoost.value = [0.92, 1, 1.1, 1][Math.floor(now / 260) % 4]
+    this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
   }
 
   /** Nudge a ground point so it lands on a whole screen pixel */
@@ -1073,8 +1245,8 @@ export class Overworld {
 
     const labels = this.labelAnchors.map(({ zoneId, pos }) => {
       const s = this.toScreen(pos.x, pos.y, pos.z)
-      const visible = s.x > -80 && s.y > -40 && s.x < this.host.clientWidth + 80 && s.y < this.host.clientHeight + 40
-      return { zoneId, x: s.x, y: s.y, visible }
+      const onScreen = s.x > 0 && s.y > 0 && s.x < this.host.clientWidth && s.y < this.host.clientHeight
+      return { zoneId, x: s.x, y: s.y, onScreen }
     })
     this.cb.onFrame({ labels, runner: this.runnerOnScreen() })
 

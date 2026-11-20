@@ -104,3 +104,37 @@ export function centered(
 ): Box {
   return { x: cx - w / 2, y, z: cz - d / 2, w, h, d, color }
 }
+
+/** A flat rectangle on the ground: x/z are its min corner */
+export interface Cell {
+  x: number
+  z: number
+  w: number
+  d: number
+  color: number
+}
+
+/** Merge flat rectangles into one upward-facing geometry at height y */
+export function cellsGeometry(cells: Cell[], y: number): THREE.BufferGeometry {
+  const positions: number[] = []
+  const colors: number[] = []
+  const col = new THREE.Color()
+  for (const c of cells) {
+    col.setHex(c.color)
+    const x1 = c.x + c.w
+    const z1 = c.z + c.d
+    // wound counter-clockwise seen from above
+    for (const [x, z] of [[c.x, c.z], [c.x, z1], [x1, z1], [c.x, c.z], [x1, z1], [x1, c.z]]) {
+      positions.push(x, y, z)
+      colors.push(col.r, col.g, col.b)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
+  g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3))
+  const normals = new Float32Array(positions.length)
+  for (let i = 1; i < normals.length; i += 3) normals[i] = 1
+  g.setAttribute("normal", new THREE.BufferAttribute(normals, 3))
+  g.computeBoundingSphere()
+  return g
+}

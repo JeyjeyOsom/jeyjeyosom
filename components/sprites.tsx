@@ -251,6 +251,68 @@ export const RUNNER_BACK_B: Px[] = [
 // The front headlamp switched on (dusk only, like HEADLAMP_LIT)
 export const HEADLAMP_LIT_FRONT: Px[] = [[7, 1, 2, 1, "#FFE3A3"]]
 
+// ---- Jump poses (Roam Mode) ----
+// A running leap, one per facing: lead knee driven up, trailing leg long
+// behind, the lead arm thrown high. Front and back tuck both feet and
+// raise both arms, since a leap toward or away from the camera shows no
+// stride.
+
+export const RUNNER_JUMP: Px[] = [
+  // trailing arm low behind
+  [4, 5, 1, 1, SHIRT_B],
+  [3, 6, 1, 2, SKIN],
+  [2, 8, 1, 1, SKIN],
+  // lead arm thrown up and forward
+  [11, 5, 1, 1, SHIRT_B],
+  [12, 4, 1, 2, SKIN],
+  [13, 3, 1, 1, SKIN],
+  [12, 5, 1, 1, CAP], // watch
+  // lead knee driven up, shin hanging
+  [9, 12, 3, 1, SHORTS],
+  [12, 12, 1, 2, SKIN],
+  [11, 14, 2, 2, SKIN],
+  [10, 16, 3, 2, SHOE],
+  [12, 17, 1, 1, ACCENT],
+  // trailing leg long behind
+  [5, 12, 2, 1, SHORTS],
+  [4, 13, 2, 1, SKIN],
+  [2, 14, 2, 1, SKIN],
+  [0, 15, 3, 2, SHOE],
+  [0, 16, 1, 1, ACCENT],
+]
+
+export const RUNNER_FRONT_JUMP: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [2, 3, 1, 2, SKIN], // arms up
+  [2, 4, 1, 1, CAP], // watch
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 3, 1, 2, SKIN],
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 3, SKIN],
+  [4, 16, 3, 2, SHOE],
+  [4, 17, 1, 1, ACCENT],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 3, SKIN],
+  [9, 16, 3, 2, SHOE],
+  [11, 17, 1, 1, ACCENT],
+]
+
+export const RUNNER_BACK_JUMP: Px[] = [
+  [3, 5, 1, 1, SHIRT_B],
+  [2, 3, 1, 2, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 3, 1, 2, SKIN],
+  [13, 4, 1, 1, CAP], // watch
+  [5, 12, 2, 1, SHORTS],
+  [5, 13, 2, 2, SKIN],
+  [4, 15, 3, 2, SHOE],
+  [4, 16, 3, 1, SOLE],
+  [9, 12, 2, 1, SHORTS],
+  [9, 13, 2, 2, SKIN],
+  [9, 15, 3, 2, SHOE],
+  [9, 16, 3, 1, SOLE],
+]
+
 // ---- Warm-up poses (Stats Screen idle routine) ----
 // Local 16x20 coords; grounded feet sit at y19. Rendered in a 16x22 viewBox
 // with a translate: grounded frames shift down 2, the airborne hop doesn't.
