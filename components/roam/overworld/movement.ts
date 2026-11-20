@@ -149,12 +149,24 @@ export function stepRunner(
     }
   }
 
+  // A wall eats the speed it stopped, so the Pace drops when blocked. A
+  // push never adds speed: a moving solid (a car) shoving him out of its
+  // way would otherwise turn the shove into a long slide.
+  let nvx = (next.x - s.x) / dt
+  let nvz = (next.z - s.z) / dt
+  const cap = Math.hypot(vx, vz)
+  const got = Math.hypot(nvx, nvz)
+  if (got > cap) {
+    const k = got > 1e-9 ? cap / got : 0
+    nvx *= k
+    nvz *= k
+  }
+
   return {
     x: next.x,
     z: next.z,
-    // a wall eats the speed it stopped, so the Pace drops when blocked
-    vx: (next.x - s.x) / dt,
-    vz: (next.z - s.z) / dt,
+    vx: nvx,
+    vz: nvz,
     h,
     vh,
     airborne,

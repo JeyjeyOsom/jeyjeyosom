@@ -89,7 +89,7 @@ const TRACKS: Record<SoundMode, Track> = {
 // Roam Mode's effects: short square-wave cues, each with a minimum gap so
 // a held key or a jittery trigger can't stack them (folio-2025's sound
 // registry, minus the files)
-export type RoamSfx = "door" | "warp" | "prompt" | "jump" | "menu"
+export type RoamSfx = "door" | "warp" | "prompt" | "jump" | "menu" | "moo" | "flap" | "splash" | "cup" | "horn"
 
 interface SfxNote {
   /** start offset, s */
@@ -118,6 +118,48 @@ const ROAM_SFX: Record<RoamSfx, { gap: number; notes: SfxNote[] }> = {
   prompt: { gap: 0.3, notes: [{ at: 0, dur: 0.06, type: "square", from: midi(81), gain: 0.04 }] },
   jump: { gap: 0.15, notes: [{ at: 0, dur: 0.09, type: "triangle", from: 420, to: 760, gain: 0.08 }] },
   menu: { gap: 0.08, notes: [{ at: 0, dur: 0.03, type: "square", from: midi(88), gain: 0.04 }] },
+  // a cow, low and sliding
+  moo: {
+    gap: 1,
+    notes: [
+      { at: 0, dur: 0.5, type: "sawtooth", from: 150, to: 108, gain: 0.045 },
+      { at: 0.04, dur: 0.44, type: "square", from: 75, to: 56, gain: 0.025 },
+    ],
+  },
+  // birds lifting off: three quick chirps
+  flap: {
+    gap: 1,
+    notes: [
+      { at: 0, dur: 0.03, type: "square", from: 1900, to: 2500, gain: 0.018 },
+      { at: 0.06, dur: 0.03, type: "square", from: 2100, to: 2700, gain: 0.018 },
+      { at: 0.12, dur: 0.03, type: "square", from: 1800, to: 2400, gain: 0.018 },
+    ],
+  },
+  splash: {
+    gap: 0.5,
+    notes: [
+      { at: 0, dur: 0.12, type: "triangle", from: 900, to: 280, gain: 0.05 },
+      { at: 0.04, dur: 0.1, type: "square", from: 1400, to: 500, gain: 0.015 },
+    ],
+  },
+  // a cup taken from the aid station
+  cup: {
+    gap: 1,
+    notes: [
+      { at: 0, dur: 0.05, type: "square", from: midi(84), gain: 0.05 },
+      { at: 0.06, dur: 0.08, type: "square", from: midi(91), gain: 0.05 },
+    ],
+  },
+  // a car waiting on the Runner: two polite beeps
+  horn: {
+    gap: 3,
+    notes: [
+      { at: 0, dur: 0.12, type: "square", from: 440, gain: 0.04 },
+      { at: 0, dur: 0.12, type: "square", from: 554, gain: 0.025 },
+      { at: 0.18, dur: 0.16, type: "square", from: 440, gain: 0.04 },
+      { at: 0.18, dur: 0.16, type: "square", from: 554, gain: 0.025 },
+    ],
+  },
 }
 
 interface SoundState {

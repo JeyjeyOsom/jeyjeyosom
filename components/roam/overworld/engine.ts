@@ -16,6 +16,7 @@ import {
   RUNNER_BACK_JUMP,
   RUNNER_BACK_SHARED,
   RUNNER_BACK_STANDING,
+  RUNNER_BACK_WATCH,
   RUNNER_FRAME_A,
   RUNNER_FRAME_B,
   RUNNER_FRONT_A,
@@ -23,9 +24,11 @@ import {
   RUNNER_FRONT_JUMP,
   RUNNER_FRONT_SHARED,
   RUNNER_FRONT_STANDING,
+  RUNNER_FRONT_WATCH,
   RUNNER_JUMP,
   RUNNER_SHARED,
   RUNNER_STANDING,
+  RUNNER_WATCH,
   type Px,
 } from "../../sprites"
 import {
@@ -48,10 +51,9 @@ import { type Facing, formatPace, newRunner, type RunnerState, stepRunner } from
 import {
   CAR_COLORS,
   carBoxes,
+  carBrakeBoxes,
   carLampBoxes,
   coastWaterShapes,
-  cowBodyBoxes,
-  cowHeadBoxes,
   fenceGeometry,
   flowerBoxes,
   groundGeometries,
@@ -68,6 +70,8 @@ import {
 import { landmarkModel, type LandmarkPart, type LandmarkScreen, type PartClock, PY as SCREEN_PY } from "./landmarks"
 import { cycleLight, type Sky, type SkyCycle, SKIES, type SkyLight } from "./sky"
 import { boxesGeometry, cellsGeometry } from "./voxels"
+import { decalMaterial, glowMaterial, gradientTexture } from "./materials"
+import { IslandLife, type LifeSfx } from "./life"
 
 // Palette colours go to the screen exactly as written: no colour
 // management between the hex codes and the framebuffer.
@@ -98,6 +102,8 @@ export interface FrameReport {
   runner: { x: number; y: number }
 }
 
+export type OverworldSfx = LifeSfx | "horn"
+
 export interface OverworldCallbacks {
   /** the Landmark whose door the Runner is at, or null */
   onPrompt: (zoneId: string | null) => void
@@ -108,6 +114,8 @@ export interface OverworldCallbacks {
   onRespawn: () => void
   onMoved: () => void
   onJump: () => void
+  /** a sound from something in view */
+  onSfx: (name: OverworldSfx) => void
   onFrame: (report: FrameReport) => void
   onFrameTime: (ms: number) => void
   onContextLost: () => void
@@ -134,10 +142,12 @@ const LOOK_AHEAD = 2.4
 
 // The sprite sheet: one row per headlamp state, and for each facing (side,
 // front, back) the same run of poses
-const POSES = ["stand", "a", "b", "jump"] as const
+const POSES = ["stand", "a", "b", "jump", "watch"] as const
 type Pose = (typeof POSES)[number]
 const FRAME_COLS = 3 * POSES.length
 const FACING_SET: Record<Facing, number> = { right: 0, left: 0, down: 1, up: 2 }
+/** Which way the headlamp throws its beam (rotation about y from +x) */
+const LAMP_ANGLE: Record<Facing, number> = { right: 0, up: Math.PI / 2, left: Math.PI, down: -Math.PI / 2 }
 
 function drawRunnerAtlas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas")
@@ -148,17 +158,29 @@ function drawRunnerAtlas(): HTMLCanvasElement {
     {
       shared: RUNNER_SHARED,
       lamp: HEADLAMP_LIT,
-      poses: { stand: RUNNER_STANDING, a: RUNNER_FRAME_A, b: RUNNER_FRAME_B, jump: RUNNER_JUMP },
+      poses: { stand: RUNNER_STANDING, a: RUNNER_FRAME_A, b: RUNNER_FRAME_B, jump: RUNNER_JUMP, watch: RUNNER_WATCH },
     },
     {
       shared: RUNNER_FRONT_SHARED,
       lamp: HEADLAMP_LIT_FRONT,
-      poses: { stand: RUNNER_FRONT_STANDING, a: RUNNER_FRONT_A, b: RUNNER_FRONT_B, jump: RUNNER_FRONT_JUMP },
+      poses: {
+        stand: RUNNER_FRONT_STANDING,
+        a: RUNNER_FRONT_A,
+        b: RUNNER_FRONT_B,
+        jump: RUNNER_FRONT_JUMP,
+        watch: RUNNER_FRONT_WATCH,
+      },
     },
     {
       shared: RUNNER_BACK_SHARED,
       lamp: [],
-      poses: { stand: RUNNER_BACK_STANDING, a: RUNNER_BACK_A, b: RUNNER_BACK_B, jump: RUNNER_BACK_JUMP },
+      poses: {
+        stand: RUNNER_BACK_STANDING,
+        a: RUNNER_BACK_A,
+        b: RUNNER_BACK_B,
+        jump: RUNNER_BACK_JUMP,
+        watch: RUNNER_BACK_WATCH,
+      },
     },
   ]
   for (let lit = 0; lit < 2; lit++) {
@@ -175,110 +197,6 @@ function drawRunnerAtlas(): HTMLCanvasElement {
     })
   }
   return canvas
-}
-
-function gradientTexture(tones: 2 | 3): THREE.DataTexture {
-  const values = tones === 2 ? [0, 255] : [0, 128, 255]
-  const data = new Uint8Array(values.length * 4)
-  values.forEach((v, i) => data.set([v, v, v, 255], i * 4))
-  const tex = new THREE.DataTexture(data, values.length, 1, THREE.RGBAFormat)
-  tex.minFilter = THREE.NearestFilter
-  tex.magFilter = THREE.NearestFilter
-  tex.generateMipmaps = false
-  tex.needsUpdate = true
-  return tex
-}
-
-// Decals: dithered shapes lying on the ground, in one colour, so they stay
-// on the palette. A blob shadow is a disc at half density; a pool of lamp
-// light thins toward its rim through a 4x4 ordered dither. A cone opens
-// along the decal's +x, from its lamp at u = 0; a rect fills its square.
-const DECAL_VERTEX = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    vec4 p = vec4(position, 1.0);
-    #ifdef USE_INSTANCING
-      p = instanceMatrix * p;
-    #endif
-    gl_Position = projectionMatrix * modelViewMatrix * p;
-  }
-`
-const DECAL_FRAGMENT = /* glsl */ `
-  uniform vec3 uColor;
-  uniform float uDensity;
-  uniform float uShape;
-  uniform float uFalloff;
-  varying vec2 vUv;
-  const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
-  void main() {
-    vec2 d = vUv - 0.5;
-    float r;
-    if (uShape > 1.5) {
-      r = max(abs(d.x), abs(d.y)) * 2.0;
-    } else if (uShape > 0.5) {
-      float hw = 0.12 + 0.38 * vUv.x;
-      if (abs(d.y) > hw) discard;
-      r = max(abs(d.y) / hw * 0.55, vUv.x);
-    } else {
-      r = length(d) * 2.0;
-    }
-    if (r > 1.0) discard;
-    ivec2 q = ivec2(mod(floor(gl_FragCoord.xy), 4.0));
-    float threshold = (BAYER[q.x + q.y * 4] + 0.5) / 16.0;
-    if (threshold > uDensity * mix(1.0, 1.0 - r * r, uFalloff)) discard;
-    gl_FragColor = vec4(uColor, 1.0);
-  }
-`
-
-const DECAL_SHAPES = { disc: 0, cone: 1, rect: 2 } as const
-
-function decalMaterial(color: number, density: number, opts: { shape?: keyof typeof DECAL_SHAPES; falloff?: boolean } = {}) {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      uColor: { value: new THREE.Color(color) },
-      uDensity: { value: density },
-      uShape: { value: DECAL_SHAPES[opts.shape ?? "disc"] },
-      uFalloff: { value: opts.falloff ? 1 : 0 },
-    },
-    vertexShader: DECAL_VERTEX,
-    fragmentShader: DECAL_FRAGMENT,
-    depthWrite: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -2,
-    polygonOffsetUnits: -2,
-  })
-}
-
-// Glow: boxes drawn in their own colours, untouched by the sky's light
-// (lamps, the save crystal), with a fixed step of shade per face so their
-// shape still reads. uBoost pulses them.
-const GLOW_VERTEX = /* glsl */ `
-  varying vec3 vColor;
-  varying float vShade;
-  void main() {
-    vColor = color;
-    vec3 n = normalize(mat3(modelMatrix) * normal);
-    vShade = n.y > 0.5 ? 1.0 : (n.z > 0.5 ? 0.9 : 0.78);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-const GLOW_FRAGMENT = /* glsl */ `
-  uniform float uBoost;
-  varying vec3 vColor;
-  varying float vShade;
-  void main() {
-    gl_FragColor = vec4(min(vColor * vShade * uBoost, vec3(1.0)), 1.0);
-  }
-`
-
-function glowMaterial() {
-  return new THREE.ShaderMaterial({
-    uniforms: { uBoost: { value: 1 } },
-    vertexShader: GLOW_VERTEX,
-    fragmentShader: GLOW_FRAGMENT,
-    vertexColors: true,
-  })
 }
 
 // The waterfall's texture: 12 x 12 texels of three tones (deep, mid, foam)
@@ -325,6 +243,7 @@ export class Overworld {
   private readonly labelAnchors: Array<{ zoneId: string; pos: THREE.Vector3 }> = []
   /** each Landmark's moving parts and screens, and how awake it is */
   private readonly stations: Array<{
+    zoneId: string
     door: Vec2
     centre: Vec2
     wake: number
@@ -332,9 +251,18 @@ export class Overworld {
     screens: Array<{ screen: LandmarkScreen; g: CanvasRenderingContext2D; tex: THREE.CanvasTexture; drawnAt: number }>
   }> = []
   private readonly openedAt = performance.now()
-  private readonly cowHeads: Array<{ head: THREE.Object3D; phase: number }> = []
+  private life: IslandLife | null = null
   /** Oncoming Traffic: cars lapping the other way, stopping for the Runner */
-  private readonly cars: Array<{ group: THREE.Group; s: number; speed: number; solids: Array<Solid & { kind: "circle" }> }> = []
+  private readonly cars: Array<{
+    group: THREE.Group
+    s: number
+    speed: number
+    solids: Array<Solid & { kind: "circle" }>
+    brake: THREE.Mesh
+    /** seconds spent waiting for the Runner, and when it last honked */
+    waited: number
+    honked: number
+  }> = []
   /** what switches on at Dusk: car lamps and the light they throw */
   private readonly lamps: THREE.Object3D[] = []
   /** pools of light that glow brighter at Dusk */
@@ -366,6 +294,11 @@ export class Overworld {
   private readonly runnerShadow: THREE.Mesh
   private animClock = 0
   private lampsLit = false
+  /** when he last stood still, for the watch check */
+  private stillSince = performance.now()
+  private jumped = false
+  private landed = false
+  private readonly lampPool: THREE.Mesh
 
   // camera rig
   private readonly focus = new THREE.Vector3()
@@ -465,6 +398,23 @@ export class Overworld {
     this.scenery = scatterScenery(this.landmarks)
     this.solids = buildSolids(this.landmarks, this.scenery)
     this.buildWorld()
+    this.life = new IslandLife(this.scene, {
+      reduceMotion: this.reduceMotion,
+      cows: this.scenery.cows,
+      flowers: this.scenery.flowers,
+      bushes: this.scenery.bushes,
+      aidStation: this.landmarks.find((l) => l.zoneId === "skills"),
+      solids: this.solids,
+      occluder: this.occluderMat,
+      shadow: this.shadowMat,
+      gradient: this.gradient,
+      flatDisc: () => this.flatDisc(),
+      sfx: (name, at) => this.sfxAt(name, at),
+    })
+    // the headlamp's pool of light, thrown ahead of him at Dusk
+    this.lampPool = new THREE.Mesh(this.flatDisc(), decalMaterial(0xffe3a3, 0.42, { shape: "cone", falloff: true }))
+    this.lampPool.scale.set(3.2, 1, 2.2)
+    this.scene.add(this.lampPool)
 
     const runnerGeo = new THREE.PlaneGeometry(1, SPRITE_H)
     runnerGeo.translate(0, SPRITE_H / 2, 0)
@@ -582,6 +532,7 @@ export class Overworld {
       this.gradient = gradientTexture(look.tones)
       this.solidMat.gradientMap = this.gradient
       this.occluderMat.gradientMap = this.gradient
+      this.life?.setGradient(this.gradient)
       old.dispose()
     }
     this.camera = this.makeCamera()
@@ -705,24 +656,6 @@ export class Overworld {
       this.instanced(boxesGeometry(flowerBoxes(v)), this.solidMat, s.flowers.filter((f) => f.variant === v))
     }
 
-    // the herd
-    const bodies = [boxesGeometry(cowBodyBoxes(0)), boxesGeometry(cowBodyBoxes(1))]
-    const heads = [boxesGeometry(cowHeadBoxes(0)), boxesGeometry(cowHeadBoxes(1))]
-    s.cows.forEach((c, i) => {
-      const group = new THREE.Group()
-      group.position.set(c.x, 0, c.z)
-      group.rotation.y = c.rot
-      const body = new THREE.Mesh(bodies[c.variant], this.occluderMat)
-      const head = new THREE.Mesh(heads[c.variant], this.occluderMat)
-      head.position.set(0.68, 1.0, 0)
-      head.rotation.z = -0.55 // grazing
-      const shadow = new THREE.Mesh(this.flatDisc(), this.shadowMat)
-      shadow.scale.set(2.0, 1, 1.1)
-      group.add(body, head, shadow)
-      this.scene.add(group)
-      this.cowHeads.push({ head, phase: i * 1.7 })
-    })
-
     // Oncoming Traffic, in the outer lane
     const carGeos = CAR_COLORS.map(([body, roof]) => boxesGeometry(carBoxes(body, roof)))
     ;[0.18, 0.5, 0.83].forEach((at, i) => {
@@ -739,7 +672,9 @@ export class Overworld {
       const tail = new THREE.Mesh(this.flatDisc(), this.tailPoolMat)
       tail.scale.set(1.3, 1, 1.7)
       tail.position.x = -1.75
-      group.add(lit, beam, tail)
+      const brake = new THREE.Mesh(boxesGeometry(carBrakeBoxes()), this.glowMat)
+      brake.visible = false
+      group.add(lit, beam, tail, brake)
       this.lamps.push(lit, beam, tail)
       this.scene.add(group)
       // two circles hugging the body, front and back: one round circle
@@ -747,7 +682,7 @@ export class Overworld {
       // a door beside the road
       const solids = [0, 1].map(() => ({ kind: "circle" as const, x: 0, z: 0, r: 0.6 }))
       this.solids.push(...solids)
-      const car = { group, s: at * LOOP_LENGTH, speed: 0, solids }
+      const car = { group, s: at * LOOP_LENGTH, speed: 0, solids, brake, waited: 0, honked: -Infinity }
       this.cars.push(car)
       this.moveCar(car, 0)
     })
@@ -760,6 +695,7 @@ export class Overworld {
       group.rotation.y = Math.atan2(l.facing.x, l.facing.z)
       group.add(new THREE.Mesh(boxesGeometry(model.boxes), this.occluderMat))
       const station: (typeof this.stations)[number] = {
+        zoneId: l.zoneId,
         door: l.door,
         centre: { x: l.x, z: l.z },
         wake: this.reduceMotion ? 1 : 0,
@@ -823,18 +759,26 @@ export class Overworld {
       !!r &&
       (Math.hypot(r.x - ahead.x, r.z - ahead.z) < 1.7 || Math.hypot(r.x - here.x, r.z - here.z) < 1.6)
     const target = blocked || this.reduceMotion ? 0 : CRUISE
+    // brake lamps while it slows or waits; a honk if he lingers in its way
+    car.brake.visible = !this.reduceMotion && (blocked || target < car.speed - 0.05)
+    car.waited = blocked && !this.reduceMotion ? car.waited + dt : 0
+    const now = performance.now() / 1000
+    if (car.waited > 1.4 && now - car.honked > 4) {
+      car.honked = now
+      this.sfxAt("horn", car.solids[0])
+    }
     const rate = target < car.speed ? 14 : 3
     car.speed = target > car.speed ? Math.min(target, car.speed + rate * dt) : Math.max(target, car.speed - rate * dt)
     car.s = (car.s - car.speed * dt + LOOP_LENGTH) % LOOP_LENGTH
-    const now = lanePoint(car.s)
-    const snapped = this.camera ? this.snapToPixels(now.x, now.z) : now
+    const at = lanePoint(car.s)
+    const snapped = this.camera ? this.snapToPixels(at.x, at.z) : at
     car.group.position.set(snapped.x, 0, snapped.z)
     // heading against the lap: the reverse of the road's tangent
-    car.group.rotation.y = Math.atan2(now.p.tz, -now.p.tx)
+    car.group.rotation.y = Math.atan2(at.p.tz, -at.p.tx)
     car.solids.forEach((c, i) => {
       const along = i === 0 ? 0.55 : -0.55
-      c.x = now.x + now.p.tx * along
-      c.z = now.z + now.p.tz * along
+      c.x = at.x + at.p.tx * along
+      c.z = at.z + at.p.tz * along
     })
   }
 
@@ -956,6 +900,7 @@ export class Overworld {
     }
     for (const lamp of this.lamps) lamp.visible = light.lamps
     for (const pool of this.glowPools) pool.uniforms.uDensity.value = light.lamps ? 0.34 : 0.16
+    this.life?.setSky(light)
     this.paintWater(light)
   }
 
@@ -1103,6 +1048,11 @@ export class Overworld {
     cancelAnimationFrame(this.raf)
   }
 
+  /** Play a sound only if its source is on screen, more or less */
+  private sfxAt(name: OverworldSfx, at: Vec2) {
+    if (Math.abs(at.x - this.focus.x) < 14 && Math.abs(at.z - this.focus.z) < 12) this.cb.onSfx(name)
+  }
+
   private nearest(): LandmarkPlacement {
     let best = this.landmarks[0]
     let bestD = Infinity
@@ -1132,12 +1082,17 @@ export class Overworld {
       jump: false,
     }
     this.acc += dt
+    this.jumped = this.landed = false
     while (this.acc >= STEP) {
       intent.jump = this.jumpQueued
       this.jumpQueued = false
       const wasAirborne = this.runner.airborne
       this.runner = stepRunner(this.runner, intent, STEP, this.axes, this.solids, walkable)
-      if (this.runner.airborne && !wasAirborne) this.cb.onJump()
+      if (this.runner.airborne && !wasAirborne) {
+        this.jumped = true
+        this.cb.onJump()
+      }
+      if (!this.runner.airborne && wasAirborne) this.landed = true
       this.acc -= STEP
     }
     const r = this.runner
@@ -1203,8 +1158,10 @@ export class Overworld {
     const speed = Math.hypot(r.vx, r.vz)
     this.animClock += dt
 
-    // which frame of the sheet
-    let pose: Pose = "stand"
+    // which frame of the sheet; standing a while, he checks his watch
+    if (r.moving || r.airborne || speed > 0.4) this.stillSince = now
+    const idle = (now - this.stillSince) / 1000
+    let pose: Pose = idle > 4 && (idle - 4) % 7 < 1.8 ? "watch" : "stand"
     if (r.airborne) pose = "jump"
     else if (speed > 0.4) {
       if (this.reduceMotion) pose = "a"
@@ -1224,14 +1181,23 @@ export class Overworld {
     const shrink = 1 - Math.min(r.h / 1.5, 0.4)
     this.runnerShadow.position.set(pos.x, 0, pos.z)
     this.runnerShadow.scale.set(0.95 * shrink, 1, 0.5 * shrink)
+    // the headlamp's beam on the ground, the way he faces
+    this.lampPool.visible = this.lampsLit
+    this.lampPool.position.set(pos.x + Math.cos(LAMP_ANGLE[r.facing]) * 1.75, 0, pos.z - Math.sin(LAMP_ANGLE[r.facing]) * 1.75)
+    this.lampPool.rotation.y = LAMP_ANGLE[r.facing]
 
     this.stirStations(dt, now, false)
+    this.life?.update({
+      dt,
+      t: now / 1000,
+      runner: r,
+      jumped: this.jumped,
+      landed: this.landed,
+      lit: this.lampsLit,
+      focus: { x: this.focus.x, z: this.focus.z },
+    })
+    this.jumped = this.landed = false
     if (this.reduceMotion) return
-    // the herd grazes in two poses, like the Title Screen's cows
-    for (const c of this.cowHeads) {
-      const beat = ((now / 1000 + c.phase) % 2.6) / 2.6
-      c.head.rotation.z = beat < 0.64 ? -0.55 : 0.1
-    }
     // the waterfall falls a texel at a time
     this.waterTex.offset.y = -Math.floor(now / 85) / WATER_SIZE
   }
@@ -1254,7 +1220,8 @@ export class Overworld {
       }
       const inView = Math.abs(st.centre.x - this.focus.x) < 18 && Math.abs(st.centre.z - this.focus.z) < 16
       if (!first && !inView) continue
-      const clock: PartClock = { t, wake: st.wake, lit: this.lampsLit, elapsed, still: this.reduceMotion }
+      const since = st.zoneId === "skills" && this.life ? this.life.sinceCup(now / 1000) : Infinity
+      const clock: PartClock = { t, wake: st.wake, lit: this.lampsLit, elapsed, still: this.reduceMotion, since }
       if (first || !this.reduceMotion) {
         for (const { mesh, part } of st.parts) {
           if (part.duskOnly) mesh.visible = this.lampsLit

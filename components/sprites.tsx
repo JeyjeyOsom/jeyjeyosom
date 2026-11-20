@@ -251,6 +251,53 @@ export const RUNNER_BACK_B: Px[] = [
 // The front headlamp switched on (dusk only, like HEADLAMP_LIT)
 export const HEADLAMP_LIT_FRONT: Px[] = [[7, 1, 2, 1, "#FFE3A3"]]
 
+// ---- Watch check (Roam Mode) ----
+// Standing still a while, the Runner lifts his wrist to read his watch,
+// the one that shows his Pace. Same legs as standing.
+
+const STAND_LEGS: Px[] = [
+  [5, 12, 2, 1, SHORTS],
+  [9, 12, 2, 1, SHORTS],
+  [5, 13, 2, 5, SKIN],
+  [9, 13, 2, 5, SKIN],
+  [4, 18, 3, 2, SHOE],
+  [9, 18, 3, 2, SHOE],
+]
+
+export const RUNNER_WATCH: Px[] = [
+  [4, 5, 1, 2, SHIRT_B],
+  [4, 7, 1, 3, SKIN],
+  [11, 5, 1, 1, SHIRT_B],
+  [12, 5, 1, 1, SKIN], // elbow out front
+  [12, 4, 1, 1, SKIN],
+  [11, 3, 1, 1, CAP], // the watch, held up before his eyes
+  ...STAND_LEGS,
+  [6, 19, 1, 1, ACCENT],
+  [11, 19, 1, 1, ACCENT],
+]
+
+export const RUNNER_FRONT_WATCH: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [12, 6, 1, 1, SKIN], // elbow
+  [9, 5, 3, 1, SKIN], // forearm raised across the chest
+  [9, 5, 1, 1, CAP], // watch
+  ...STAND_LEGS,
+  [4, 19, 1, 1, ACCENT],
+  [11, 19, 1, 1, ACCENT],
+]
+
+export const RUNNER_BACK_WATCH: Px[] = [
+  [3, 5, 1, 2, SHIRT_B],
+  [3, 7, 1, 3, SKIN],
+  [12, 5, 1, 1, SHIRT_B],
+  [13, 4, 1, 2, SKIN], // elbow up, the wrist out of sight in front
+  ...STAND_LEGS,
+  [5, 18, 1, 1, ACCENT],
+  [10, 18, 1, 1, ACCENT],
+]
+
 // ---- Jump poses (Roam Mode) ----
 // A running leap, one per facing: lead knee driven up, trailing leg long
 // behind, the lead arm thrown high. Front and back tuck both feet and

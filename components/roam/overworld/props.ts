@@ -269,6 +269,11 @@ export function carLampBoxes(): Box[] {
   ]
 }
 
+/** Brake lamps, brighter and larger than the tail lamps, while a car waits */
+export function carBrakeBoxes(): Box[] {
+  return [centered(-1.14, 0.41, 0.34, 0.06, 0.2, 0.28, 0xff3b2a), centered(-1.14, 0.41, -0.34, 0.06, 0.2, 0.28, 0xff3b2a)]
+}
+
 export function carBoxes(body: number, roof: number): Box[] {
   const boxes: Box[] = [
     centered(0, 0.22, 0, 2.2, 0.5, 1.1, body),

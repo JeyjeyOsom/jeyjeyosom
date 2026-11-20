@@ -185,6 +185,7 @@ export default function RoamMode() {
       onRespawn: () => respawnRef.current(),
       onMoved: () => setMoved(true),
       onJump: () => latest.current.playSfx("jump"),
+      onSfx: (name) => latest.current.playSfx(name),
       onFrame: (report: FrameReport) => {
         const w = window.innerWidth
         const h = window.innerHeight

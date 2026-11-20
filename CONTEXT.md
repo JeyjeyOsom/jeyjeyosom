@@ -84,7 +84,7 @@ The World's collectible and the run's score: an energy gel drawn as a small gold
 _Avoid_: coins, points, pickups
 
 **Oncoming Traffic**:
-Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running — slow at first, faster as the run clock builds; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. In the Overworld, cars lap the loop road against the Runner and wait whenever he is in their way. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk). The World's scroll speed never changes: difficulty ramps the stream, Zones stay readable.
+Pixel cars and motorcycles that pass right-to-left through the Runner's lane while he is running — slow at first, faster as the run clock builds; jumped over or they cause a Stumble. Decorative on the Title Screen in Browse Mode; a hazard only in Play Mode, and the road empties when the Runner stands still. In the Overworld, cars lap the loop road against the Runner and wait whenever he is in their way, brake lamps lit, with a polite honk if he lingers; a car never shoves him. Vehicle colors are identities, not theme roles; headlights follow the sky (lit at Dusk). The World's scroll speed never changes: difficulty ramps the stream, Zones stay readable.
 _Avoid_: enemies, obstacles (they never block World progress)
 
 **Stumble**:

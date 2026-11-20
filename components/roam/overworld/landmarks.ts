@@ -39,6 +39,8 @@ export interface PartClock {
   elapsed: number
   /** reduced motion: hold one pose, skip transitions */
   still: boolean
+  /** seconds since the Runner last took something here */
+  since: number
 }
 
 export interface LandmarkPart {
@@ -80,7 +82,7 @@ export interface LandmarkModel {
 // ---- Helpers ----
 
 /** A string in the 3x5 font as boxes on an upright face, centred on cx */
-function textBoxes(text: string, cx: number, top: number, z: number, color: number, scale = 1, depth = 0.03): Box[] {
+export function textBoxes(text: string, cx: number, top: number, z: number, color: number, scale = 1, depth = 0.03): Box[] {
   const x0 = cx - (textWidth(text) * PX * scale) / 2
   return textPx(text, 0, 0, "").map(([x, y, w, h]) => ({
     x: x0 + x * PX * scale,
@@ -553,11 +555,15 @@ function aidStation(): LandmarkModel {
   boxes.push(...roofText("AID", 0, -0.2, 3.04, C.cream, 3))
   for (let i = 0; i < 12; i++) boxes.push({ x: -3 + i * 0.5 + 0.1, y: 2.5, z: 1.76, w: 0.3, h: 0.1, d: 0.04, color: i % 2 ? C.cream : C.sunset })
 
-  // the cup at the front edge, nudged forward while awake: take one
+  // the cup at the front edge, nudged forward while awake: run past the
+  // table to take it, and a fresh one is poured a few seconds later
   const offer: LandmarkPart = {
     boxes: [centered(0, 0, 0, 0.2, 0.24, 0.2, C.cream), centered(0, 0.22, 0, 0.16, PY, 0.16, C.sky)],
     at: [0.2, 0.94, 1.05],
-    animate: (p, c) => (p.position.y = 0.94 + (c.wake > 0.5 ? bob(c.t, 0.6, 2) : 0)),
+    animate: (p, c) => {
+      p.visible = c.since > 5
+      p.position.y = 0.94 + (c.wake > 0.5 ? bob(c.t, 0.6, 2) : 0)
+    },
   }
   // the tap drips while awake
   const drip: LandmarkPart = {

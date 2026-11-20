@@ -47,6 +47,12 @@ export const BEACH_REACH = 0.89
 /** How far onto the sand the Runner may go */
 export const WALK_REACH = 0.965
 
+/** A point on the island at an angle and a reach (1 = waterline) */
+export function islandPoint(theta: number, reach: number): Vec2 {
+  const r = reach * coastWobble(theta)
+  return { x: Math.cos(theta) * r * ISLAND_RX, z: Math.sin(theta) * r * ISLAND_RZ }
+}
+
 /** A closed outline of the island at a given reach (1 = waterline) */
 export function islandOutline(reach: number, segments = 180): Vec2[] {
   const pts: Vec2[] = []
@@ -425,6 +431,16 @@ export function scatterScenery(landmarks: LandmarkPlacement[]): Scenery {
   }
 }
 
+// ---- What the Runner stands on ----
+
+export type Surface = "road" | "sand" | "grass"
+
+export function surfaceAt(x: number, z: number): Surface {
+  if (roadDistance(x, z) < ROAD.halfWidth) return "road"
+  if (islandReach(x, z) > BEACH_REACH) return "sand"
+  return "grass"
+}
+
 // ---- Collision ----
 
 export type Solid =
@@ -474,7 +490,7 @@ export function buildSolids(landmarks: LandmarkPlacement[], scenery: Scenery): S
   for (const p of scenery.palms) solids.push({ kind: "circle", x: p.x, z: p.z, r: 0.35 })
   for (const r of scenery.rocks) solids.push({ kind: "circle", x: r.x, z: r.z, r: 0.45 * r.scale })
   for (const b of scenery.bushes) solids.push({ kind: "circle", x: b.x, z: b.z, r: 0.5 * b.scale })
-  for (const c of scenery.cows) solids.push({ kind: "circle", x: c.x, z: c.z, r: 0.85 })
+  // the herd wanders, so the cows bring their own solids (life.ts)
   solids.push(...fenceRails())
   solids.push({
     kind: "box",
