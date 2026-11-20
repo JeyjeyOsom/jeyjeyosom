@@ -306,6 +306,34 @@ export function RoamMenu({
           </button>
         </div>
 
+        {showLook && (
+          <>
+            <h3 className="mt-7 font-arcade text-[9px] text-gold-400">LOOK (PROTOTYPE)</h3>
+            <div className="mt-3 space-y-2">
+              {(Object.keys(LOOK_OPTIONS) as Array<keyof Look>).map((key) => (
+                <div key={key} className="flex items-center gap-3">
+                  <span className="w-16 font-arcade text-[8px] text-mist-300">{LOOK_LABELS[key]}</span>
+                  {LOOK_OPTIONS[key].map(([value, label]) => (
+                    <button
+                      key={String(value)}
+                      aria-pressed={look[key] === value}
+                      onClick={() => onLook({ ...look, [key]: value })}
+                      className={`font-arcade text-[8px] px-2 py-1 focus-ring ${
+                        look[key] === value ? "bg-gold-400 text-dusk-950" : "bg-dusk-800 text-cream-100"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              <p className="font-arcade text-[8px] text-mist-300">
+                FRAME {frameMs ? frameMs.toFixed(1) : "--"} MS
+              </p>
+            </div>
+          </>
+        )}
+
         <h3 className="mt-7 font-arcade text-[9px] text-gold-400">
           MEDALS{" "}
           <span className="text-mist-300">
@@ -369,33 +397,6 @@ export function RoamMenu({
           </tbody>
         </table>
 
-        {showLook && (
-          <>
-            <h3 className="mt-7 font-arcade text-[9px] text-gold-400">LOOK (PROTOTYPE)</h3>
-            <div className="mt-3 space-y-2">
-              {(Object.keys(LOOK_OPTIONS) as Array<keyof Look>).map((key) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="w-16 font-arcade text-[8px] text-mist-300">{LOOK_LABELS[key]}</span>
-                  {LOOK_OPTIONS[key].map(([value, label]) => (
-                    <button
-                      key={String(value)}
-                      aria-pressed={look[key] === value}
-                      onClick={() => onLook({ ...look, [key]: value })}
-                      className={`font-arcade text-[8px] px-2 py-1 focus-ring ${
-                        look[key] === value ? "bg-gold-400 text-dusk-950" : "bg-dusk-800 text-cream-100"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ))}
-              <p className="font-arcade text-[8px] text-mist-300">
-                FRAME {frameMs ? frameMs.toFixed(1) : "--"} MS
-              </p>
-            </div>
-          </>
-        )}
       </div>
     </div>
   )
